@@ -20,6 +20,12 @@ enum NugsConstants {
     /// resize directive (pixels).
     static let imageCDNBase = "https://assets-01.nugscdn.net/livedownloads"
 
+    /// Resolve a catalog image path (or pass through an absolute URL).
+    static func imageURL(path: String, height: Int = 400) -> URL? {
+        if path.lowercased().hasPrefix("http") { return URL(string: path) }
+        return URL(string: imageCDNBase + path + "?h=\(height)")
+    }
+
     /// platformID device tiers probed against bigriver/subPlayer.aspx.
     /// Each returns "some" URL whose actual format is identified by URL
     /// path patterns (`.flac16/`, `.alac16/`, `.m3u8`, …); different tiers

@@ -9,6 +9,7 @@ struct PersistedPlayback: Codable {
         var title: String?
         var artist: String?
         var show: String?
+        var artworkPath: String?
     }
 
     var tracks: [Track]

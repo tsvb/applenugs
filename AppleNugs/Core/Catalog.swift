@@ -32,8 +32,7 @@ struct ContainerSummary: Identifiable, Hashable {
 
     var imageURL: URL? {
         guard let imagePath else { return nil }
-        if imagePath.lowercased().hasPrefix("http") { return URL(string: imagePath) }
-        return URL(string: NugsConstants.imageCDNBase + imagePath + "?h=400")
+        return NugsConstants.imageURL(path: imagePath)
     }
 }
 
@@ -63,8 +62,14 @@ struct AlbumDetailModel {
     var venue: String?
     var dateText: String?
     var totalRunningTime: String?
+    var imagePath: String?
     var notesHTML: [String]
     var tracks: [TrackEntry]
+
+    var imageURL: URL? {
+        guard let imagePath else { return nil }
+        return NugsConstants.imageURL(path: imagePath)
+    }
 }
 
 struct SearchModel {
@@ -155,6 +160,7 @@ enum Catalog {
             venue: r.str("venue")?.trimmingCharacters(in: .whitespaces),
             dateText: isoDate(rawDate),
             totalRunningTime: r.str("hhmmssTotalRunningTime"),
+            imagePath: r["img"].str("url"),
             notesHTML: r.arr("notes").compactMap { $0.str("note") },
             tracks: tracks)
     }

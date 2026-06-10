@@ -12,6 +12,7 @@ struct QueueTrack: Identifiable, Hashable {
     let title: String?
     let artist: String?
     let show: String?
+    var artworkPath: String? = nil
 }
 
 /// In-memory queue + AVPlayer playback engine. A direct port of the Blazor
@@ -78,6 +79,11 @@ final class PlayerService {
     /// any user-driven track change clears it.
     private var pendingSeekPosition: Double?
     private var lastSavedPosition: Double = 0
+
+    /// Cover art for the system Now Playing widget, keyed by image path.
+    private var artworkCache: [String: NSImage] = [:]
+    private var artworkTask: Task<Void, Never>?
+    private var nowPlayingArtwork: MPMediaItemArtwork?
 
     /// Streams resolved for the current track, best-first. On AVPlayerItem
     /// failure we advance to the next pick — e.g. if a FLAC stream won't
@@ -262,9 +268,11 @@ final class PlayerService {
         playbackError = nil
 
         guard let track = current else {
+            loadArtwork(for: nil)
             pushNowPlayingInfo()
             return
         }
+        loadArtwork(for: track)
         pushNowPlayingInfo()
 
         Task {
@@ -369,6 +377,7 @@ final class PlayerService {
     private func stopPlayback() {
         loadGeneration += 1
         detachItem()
+        loadArtwork(for: nil)
         isPlaying = false
         currentTime = 0
         duration = 0
@@ -433,7 +442,8 @@ final class PlayerService {
         guard let saved = stateStore.load(), !saved.tracks.isEmpty else { return }
         queue = saved.tracks.map {
             QueueTrack(trackId: $0.trackId, title: $0.title,
-                       artist: $0.artist, show: $0.show)
+                       artist: $0.artist, show: $0.show,
+                       artworkPath: $0.artworkPath)
         }
         index = min(max(saved.index, 0), queue.count - 1)
         if saved.position > 1 {
@@ -453,10 +463,40 @@ final class PlayerService {
         stateStore.save(PersistedPlayback(
             tracks: queue.map {
                 PersistedPlayback.Track(trackId: $0.trackId, title: $0.title,
-                                        artist: $0.artist, show: $0.show)
+                                        artist: $0.artist, show: $0.show,
+                                        artworkPath: $0.artworkPath)
             },
             index: index,
             position: currentTime))
+    }
+
+    // --- artwork --------------------------------------------------------------
+
+    private func loadArtwork(for track: QueueTrack?) {
+        artworkTask?.cancel()
+        nowPlayingArtwork = nil
+        guard let path = track?.artworkPath else { return }
+        if let cached = artworkCache[path] {
+            setNowPlayingArtwork(cached)
+            return
+        }
+        guard let url = NugsConstants.imageURL(path: path, height: 600) else { return }
+        artworkTask = Task {
+            guard let (data, _) = try? await URLSession.shared.data(from: url),
+                  let image = NSImage(data: data),
+                  !Task.isCancelled
+            else { return }
+            // Tiny bounded cache — one show's worth of art is one entry.
+            if artworkCache.count > 8 { artworkCache.removeAll() }
+            artworkCache[path] = image
+            guard current?.artworkPath == path else { return }
+            setNowPlayingArtwork(image)
+        }
+    }
+
+    private func setNowPlayingArtwork(_ image: NSImage) {
+        nowPlayingArtwork = MPMediaItemArtwork(boundsSize: image.size) { _ in image }
+        pushNowPlayingInfo()
     }
 
     // --- system media integration --------------------------------------------------
@@ -505,7 +545,7 @@ final class PlayerService {
             center.playbackState = .stopped
             return
         }
-        center.nowPlayingInfo = [
+        var info: [String: Any] = [
             MPMediaItemPropertyTitle: track.title ?? "Unknown track",
             MPMediaItemPropertyArtist: track.artist ?? "",
             MPMediaItemPropertyAlbumTitle: track.show ?? "",
@@ -513,6 +553,10 @@ final class PlayerService {
             MPNowPlayingInfoPropertyElapsedPlaybackTime: currentTime,
             MPNowPlayingInfoPropertyPlaybackRate: isPlaying ? 1.0 : 0.0,
         ]
+        if let nowPlayingArtwork {
+            info[MPMediaItemPropertyArtwork] = nowPlayingArtwork
+        }
+        center.nowPlayingInfo = info
         center.playbackState = isPlaying ? .playing : .paused
     }
 }

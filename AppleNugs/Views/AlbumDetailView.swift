@@ -42,22 +42,28 @@ struct AlbumDetailView: View {
     // --- sections ---------------------------------------------------------------
 
     private func header(_ album: AlbumDetailModel) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text(album.title).font(.title.weight(.semibold))
-            Text(album.artistName).font(.title3).foregroundStyle(.secondary)
-            HStack(spacing: 10) {
-                if let date = album.dateText {
-                    Text(date).monospacedDigit()
-                }
-                if let venue = album.venue {
-                    Text(venue)
-                }
-                if let runtime = album.totalRunningTime {
-                    Text("\(runtime) · \(album.tracks.count) tracks")
-                        .foregroundStyle(.secondary)
-                }
+        HStack(alignment: .top, spacing: 14) {
+            if album.imageURL != nil {
+                CoverArt(url: album.imageURL)
+                    .frame(width: 110)
             }
-            .font(.callout)
+            VStack(alignment: .leading, spacing: 4) {
+                Text(album.title).font(.title.weight(.semibold))
+                Text(album.artistName).font(.title3).foregroundStyle(.secondary)
+                HStack(spacing: 10) {
+                    if let date = album.dateText {
+                        Text(date).monospacedDigit()
+                    }
+                    if let venue = album.venue {
+                        Text(venue)
+                    }
+                    if let runtime = album.totalRunningTime {
+                        Text("\(runtime) · \(album.tracks.count) tracks")
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                .font(.callout)
+            }
         }
     }
 
@@ -148,7 +154,8 @@ struct AlbumDetailView: View {
     private func queueTracks(_ album: AlbumDetailModel) -> [QueueTrack] {
         album.tracks.map {
             QueueTrack(trackId: $0.id, title: $0.title,
-                       artist: album.artistName, show: album.title)
+                       artist: album.artistName, show: album.title,
+                       artworkPath: album.imagePath)
         }
     }
 
