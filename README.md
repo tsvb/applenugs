@@ -98,5 +98,9 @@ port's `audio-interop.js`.
   ALAC → FLAC → MQA → AAC → HLS, and playback falls through on failure.
 - Roadmap parity: this port covers the web app's v0.2 (auth, artist list,
   search, album/artist views, queue + autoplay, shortcuts) plus artist-page
-  pagination. Not yet: persistent now-playing across launches, favorites,
-  history, offline cache.
+  pagination, and its own v0.3: gapless playback (the next track is
+  resolved and parked in the AVQueuePlayer while the current one plays),
+  a 4-hour stream-pick cache, persistent now-playing across launches
+  (restored paused, resumes at the saved position), and cover art in the
+  album header and system Now Playing. Not yet: favorites, history,
+  offline cache.
