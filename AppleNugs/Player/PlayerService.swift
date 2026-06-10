@@ -292,7 +292,11 @@ final class PlayerService {
                 guard let self, item === self.player.currentItem else { return }
                 if item.status == .failed {
                     // Signed URL rejected or format undecodable here — fall
-                    // through to the next available format for this track.
+                    // through to the next available format for this track,
+                    // and drop the cached picks so a retry re-probes.
+                    if let track = self.current {
+                        self.client.invalidateStreams(for: track.trackId)
+                    }
                     self.pickIndex += 1
                     self.loadCurrentPick()
                 }

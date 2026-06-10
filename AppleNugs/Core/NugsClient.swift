@@ -8,6 +8,13 @@ final class NugsClient {
     private let http: URLSession
     private let store: SessionStore
 
+    /// Resolved stream picks per track. Signed CDN URLs rotate on session
+    /// boundaries, so entries expire after the same 4h TTL the web port's
+    /// StreamInspector used. Makes prev/next and gapless preloading cheap —
+    /// without it every track change re-probes all four platform tiers.
+    private var pickCache: [String: (picks: [StreamPick], expiresAt: Date)] = [:]
+    private static let pickTTL: TimeInterval = 4 * 60 * 60
+
     init(store: SessionStore) {
         self.store = store
         let config = URLSessionConfiguration.ephemeral
@@ -163,6 +170,9 @@ final class NugsClient {
     /// preference. The player tries them in order and falls through on
     /// AVPlayer failure, so a bad first choice self-heals.
     func resolveStreams(trackId: String) async throws -> [StreamPick] {
+        if let cached = pickCache[trackId], Date() < cached.expiresAt {
+            return cached.picks
+        }
         let session = try await currentSession()
         var found: [StreamPick] = []
         await withTaskGroup(of: StreamPick?.self) { group in
@@ -187,7 +197,18 @@ final class NugsClient {
         for pick in found.sorted(by: { $0.platformId < $1.platformId }) {
             if seen.insert(pick.format).inserted { unique.append(pick) }
         }
-        return unique.sorted { $0.format.preferenceRank < $1.format.preferenceRank }
+        let ordered = unique.sorted { $0.format.preferenceRank < $1.format.preferenceRank }
+        if !ordered.isEmpty {
+            pickCache[trackId] = (ordered, Date().addingTimeInterval(Self.pickTTL))
+        }
+        return ordered
+    }
+
+    /// Drops a track's cached picks. The player calls this when an item
+    /// fails — a stale signed URL is indistinguishable from an undecodable
+    /// format, so the next attempt should re-probe from scratch.
+    func invalidateStreams(for trackId: String) {
+        pickCache[trackId] = nil
     }
 
     // --- helpers ------------------------------------------------------------
