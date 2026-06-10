@@ -1,0 +1,41 @@
+name: AppleNugs
+options:
+  bundleIdPrefix: com.timvbs
+  deploymentTarget:
+    macOS: "14.0"
+  createIntermediateGroups: true
+
+settings:
+  base:
+    SWIFT_VERSION: "5.0"
+    MACOSX_DEPLOYMENT_TARGET: "14.0"
+
+targets:
+  AppleNugs:
+    type: application
+    platform: macOS
+    sources:
+      - AppleNugs
+    scheme: {}
+    entitlements:
+      path: AppleNugs/AppleNugs.entitlements
+      properties:
+        com.apple.security.app-sandbox: true
+        com.apple.security.network.client: true
+    info:
+      path: AppleNugs/Info.plist
+      properties:
+        CFBundleDisplayName: AppleNugs
+        LSApplicationCategoryType: public.app-category.music
+        NSHumanReadableCopyright: "Personal use against your own nugs.net subscription only."
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.timvbs.applenugs
+        # Ad-hoc signing so the app builds and runs locally without a team.
+        # Switch to Automatic + your team in Xcode if you want a real identity.
+        CODE_SIGN_STYLE: Manual
+        CODE_SIGN_IDENTITY: "-"
+        DEVELOPMENT_TEAM: ""
+        ENABLE_HARDENED_RUNTIME: NO
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor

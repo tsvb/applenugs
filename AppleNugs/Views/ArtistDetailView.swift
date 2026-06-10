@@ -1,0 +1,199 @@
+import SwiftUI
+
+/// Artist landing page (catalog.containersAll): studio releases as a cover
+/// grid, live shows grouped by year (newest expanded). Unlike the web port,
+/// pagination is wired — "Load more" pulls the next 100 containers.
+struct ArtistDetailView: View {
+    let artist: ArtistEntry
+
+    @Environment(AppModel.self) private var app
+
+    @State private var containers: [ContainerSummary] = []
+    @State private var loading = false
+    @State private var error: String?
+    @State private var canLoadMore = false
+    @State private var expandedYears: Set<Int> = []
+
+    private static let pageSize = 100
+
+    private var releases: [ContainerSummary] { containers.filter { !$0.isLiveShow } }
+    private var shows: [ContainerSummary] { containers.filter(\.isLiveShow) }
+
+    private var showsByYear: [(year: Int, shows: [ContainerSummary])] {
+        Dictionary(grouping: shows, by: \.year)
+            .sorted { $0.key > $1.key }
+            .map { (year: $0.key, shows: $0.value.sorted { ($0.date ?? .distantPast) > ($1.date ?? .distantPast) }) }
+    }
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 16) {
+                header
+
+                if !releases.isEmpty {
+                    Text("Releases").font(.title3.weight(.semibold))
+                    releaseGrid
+                }
+
+                if !shows.isEmpty {
+                    Text("Shows").font(.title3.weight(.semibold))
+                    ForEach(showsByYear, id: \.year) { group in
+                        yearSection(group.year, group.shows)
+                    }
+                }
+
+                if canLoadMore {
+                    Button("Load more shows") {
+                        Task { await load(reset: false) }
+                    }
+                    .disabled(loading)
+                }
+
+                if loading && !containers.isEmpty {
+                    ProgressView().controlSize(.small)
+                }
+            }
+            .padding(20)
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .navigationTitle(artist.name)
+        .overlay {
+            if loading && containers.isEmpty {
+                ProgressView()
+            } else if let error, containers.isEmpty {
+                ContentUnavailableView(
+                    "Couldn't load shows",
+                    systemImage: "exclamationmark.triangle",
+                    description: Text(error))
+            }
+        }
+        .task(id: artist.id) { await load(reset: true) }
+    }
+
+    private var header: some View {
+        HStack(spacing: 12) {
+            if !releases.isEmpty {
+                Text("^[\(releases.count) release](inflect: true)")
+            }
+            if !shows.isEmpty {
+                Text("^[\(shows.count) show](inflect: true)")
+            }
+        }
+        .foregroundStyle(.secondary)
+    }
+
+    private var releaseGrid: some View {
+        LazyVGrid(columns: [GridItem(.adaptive(minimum: 140, maximum: 180), spacing: 14)],
+                  alignment: .leading, spacing: 14) {
+            ForEach(releases) { release in
+                NavigationLink(value: Route.album(id: release.id, title: release.title)) {
+                    VStack(alignment: .leading, spacing: 6) {
+                        CoverArt(url: release.imageURL)
+                        Text(release.title)
+                            .font(.callout)
+                            .lineLimit(2)
+                            .multilineTextAlignment(.leading)
+                    }
+                }
+                .buttonStyle(.plain)
+                .help(release.title)
+            }
+        }
+    }
+
+    private func yearSection(_ year: Int, _ shows: [ContainerSummary]) -> some View {
+        DisclosureGroup(isExpanded: yearBinding(year)) {
+            VStack(alignment: .leading, spacing: 2) {
+                ForEach(shows) { show in
+                    NavigationLink(value: Route.album(id: show.id, title: show.venue ?? show.title)) {
+                        HStack(spacing: 10) {
+                            Text(show.dateText ?? "")
+                                .monospacedDigit()
+                                .foregroundStyle(.secondary)
+                                .frame(width: 86, alignment: .leading)
+                            Text(show.venue ?? show.title)
+                                .lineLimit(1)
+                            Spacer(minLength: 0)
+                        }
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .padding(.vertical, 3)
+                }
+            }
+            .padding(.leading, 4)
+        } label: {
+            HStack {
+                Text(String(year)).font(.headline)
+                Text("^[\(shows.count) show](inflect: true)")
+                    .foregroundStyle(.secondary)
+                    .font(.callout)
+            }
+        }
+    }
+
+    private func yearBinding(_ year: Int) -> Binding<Bool> {
+        Binding(
+            get: { expandedYears.contains(year) },
+            set: { open in
+                if open { expandedYears.insert(year) } else { expandedYears.remove(year) }
+            })
+    }
+
+    private func load(reset: Bool) async {
+        if reset {
+            containers = []
+            expandedYears = []
+            canLoadMore = false
+        }
+        loading = true
+        defer { loading = false }
+        do {
+            let json = try await app.client.artistShows(
+                id: artist.id, offset: containers.count + 1, limit: Self.pageSize)
+            let page = Catalog.containers(from: json)
+            containers += page
+            canLoadMore = page.count >= Self.pageSize
+            error = nil
+            // Expand only the newest year by default, like the web port.
+            if reset, let newest = showsByYear.first?.year {
+                expandedYears = [newest]
+            }
+        } catch {
+            self.error = error.localizedDescription
+        }
+    }
+}
+
+/// Square cover-art thumbnail with a placeholder while loading / on miss.
+struct CoverArt: View {
+    let url: URL?
+
+    var body: some View {
+        Group {
+            if let url {
+                AsyncImage(url: url) { phase in
+                    switch phase {
+                    case .success(let image):
+                        image.resizable().aspectRatio(contentMode: .fill)
+                    case .failure:
+                        placeholder
+                    default:
+                        placeholder.overlay(ProgressView().controlSize(.small))
+                    }
+                }
+            } else {
+                placeholder
+            }
+        }
+        .aspectRatio(1, contentMode: .fit)
+        .frame(maxWidth: .infinity)
+        .clipShape(RoundedRectangle(cornerRadius: 6))
+    }
+
+    private var placeholder: some View {
+        Rectangle()
+            .fill(.quaternary)
+            .overlay(Image(systemName: "music.note").foregroundStyle(.secondary))
+    }
+}
