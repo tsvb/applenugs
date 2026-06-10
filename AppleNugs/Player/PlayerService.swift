@@ -1,3 +1,4 @@
+import AppKit
 import AVFoundation
 import Foundation
 import MediaPlayer
@@ -65,10 +66,18 @@ final class PlayerService {
     private static let volumeKey = "playerVolume"
 
     private let client: NugsClient
+    private let stateStore = PlaybackStateStore()
     private let player = AVPlayer()
     private var timeObserver: Any?
     private var statusObservation: NSKeyValueObservation?
     private var endObserver: NSObjectProtocol?
+    private var terminationObserver: NSObjectProtocol?
+
+    /// Position to resume at when a restored queue first starts playing.
+    /// Only meaningful for the track that was current at the last save —
+    /// any user-driven track change clears it.
+    private var pendingSeekPosition: Double?
+    private var lastSavedPosition: Double = 0
 
     /// Streams resolved for the current track, best-first. On AVPlayerItem
     /// failure we advance to the next pick — e.g. if a FLAC stream won't
@@ -91,6 +100,12 @@ final class PlayerService {
             MainActor.assumeIsolated { self?.tick() }
         }
         registerRemoteCommands()
+        restorePersistedState()
+        terminationObserver = NotificationCenter.default.addObserver(
+            forName: NSApplication.willTerminateNotification,
+            object: nil, queue: .main) { [weak self] _ in
+            MainActor.assumeIsolated { self?.persistState() }
+        }
     }
 
     // --- queue operations -------------------------------------------------------
@@ -115,6 +130,7 @@ final class PlayerService {
             startAt(firstNew)
             return false
         }
+        persistState()
         return true
     }
 
@@ -130,6 +146,7 @@ final class PlayerService {
             return false
         }
         queue.insert(contentsOf: tracks, at: index + 1)
+        persistState()
         return true
     }
 
@@ -156,8 +173,10 @@ final class PlayerService {
         } else if wasCurrent {
             index = min(index, queue.count - 1)
             ended = false
+            pendingSeekPosition = nil
             startCurrent()        // play whatever now occupies the slot
         }
+        persistState()
     }
 
     func next() {
@@ -175,12 +194,19 @@ final class PlayerService {
         index = 0
         ended = false
         stopPlayback()
+        persistState()
     }
 
     // --- transport -----------------------------------------------------------
 
     func togglePlayPause() {
-        guard player.currentItem != nil else { return }
+        guard player.currentItem != nil else {
+            // A restored (or finished) queue with nothing loaded yet —
+            // (re)start the current track; pendingSeekPosition resumes
+            // where the last session left off.
+            if current != nil { startCurrent() }
+            return
+        }
         if player.timeControlStatus == .paused {
             player.play()
             isPlaying = true
@@ -192,7 +218,10 @@ final class PlayerService {
     }
 
     func resume() {
-        guard player.currentItem != nil else { return }
+        guard player.currentItem != nil else {
+            if current != nil { startCurrent() }
+            return
+        }
         player.play()
         isPlaying = true
         pushNowPlayingInfo()
@@ -214,16 +243,18 @@ final class PlayerService {
     // --- playback engine --------------------------------------------------------
 
     private func startAt(_ i: Int) {
+        pendingSeekPosition = nil
         index = i
         ended = false
         startCurrent()
+        persistState()
     }
 
     private func startCurrent() {
         loadGeneration += 1
         let generation = loadGeneration
         detachItem()
-        currentTime = 0
+        currentTime = pendingSeekPosition ?? 0
         duration = 0
         bufferedAhead = 0
         nowPick = nil
@@ -280,6 +311,10 @@ final class PlayerService {
         let item = AVPlayerItem(asset: asset)
         observe(item)
         player.replaceCurrentItem(with: item)
+        if let position = pendingSeekPosition {
+            pendingSeekPosition = nil
+            player.seek(to: CMTime(seconds: position, preferredTimescale: 600))
+        }
         player.play()
         isPlaying = true
         loadSpecs(from: asset, format: pick.format)
@@ -317,6 +352,7 @@ final class PlayerService {
             ended = true  // queue finished — next enqueue/play-next restarts playback
             isPlaying = false
             pushNowPlayingInfo()
+            persistState()
         }
     }
 
@@ -359,6 +395,11 @@ final class PlayerService {
             .map { ($0.end - t).seconds }
             .max() ?? 0
 
+        // Keep the on-disk position roughly current without writing 4x/sec.
+        if abs(currentTime - lastSavedPosition) >= 5 {
+            persistState()
+        }
+
         pushNowPlayingInfo()
     }
 
@@ -381,6 +422,41 @@ final class PlayerService {
                 // bit depth implied by the format tier.
                 bitDepth: asbd.mBitsPerChannel > 0 ? Int(asbd.mBitsPerChannel) : format.impliedBitDepth)
         }
+    }
+
+    // --- persistence -----------------------------------------------------------
+
+    /// Restore the last session's queue at launch, paused: the transport and
+    /// dashboard show where you left off, and the first play re-resolves the
+    /// stream and seeks back to the saved position.
+    private func restorePersistedState() {
+        guard let saved = stateStore.load(), !saved.tracks.isEmpty else { return }
+        queue = saved.tracks.map {
+            QueueTrack(trackId: $0.trackId, title: $0.title,
+                       artist: $0.artist, show: $0.show)
+        }
+        index = min(max(saved.index, 0), queue.count - 1)
+        if saved.position > 1 {
+            pendingSeekPosition = saved.position
+            currentTime = saved.position
+        }
+        pushNowPlayingInfo()
+    }
+
+    private func persistState() {
+        guard !queue.isEmpty else {
+            stateStore.clear()
+            lastSavedPosition = 0
+            return
+        }
+        lastSavedPosition = currentTime
+        stateStore.save(PersistedPlayback(
+            tracks: queue.map {
+                PersistedPlayback.Track(trackId: $0.trackId, title: $0.title,
+                                        artist: $0.artist, show: $0.show)
+            },
+            index: index,
+            position: currentTime))
     }
 
     // --- system media integration --------------------------------------------------
