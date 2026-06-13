@@ -15,6 +15,14 @@ struct TransportBar: View {
     private var player: PlayerService { app.player }
 
     var body: some View {
+        if theme.transport == .faceplate {
+            FaceplateTransport()
+        } else {
+            standardBar
+        }
+    }
+
+    private var standardBar: some View {
         HStack(spacing: 16) {
             nowPlayingBlock
                 .frame(width: 230, alignment: .leading)
