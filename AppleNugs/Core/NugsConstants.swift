@@ -11,9 +11,28 @@ enum NugsConstants {
     static let playerReferer = "https://play.nugs.net/"
 
     static let authURL = URL(string: "https://id.nugs.net/connect/token")!
+    static let authorizeURL = URL(string: "https://id.nugs.net/connect/authorize")!
     static let userInfoURL = URL(string: "https://id.nugs.net/connect/userinfo")!
     static let subInfoURL = URL(string: "https://subscriptions.nugs.net/api/v1/me/subscriptions")!
     static let streamAPIBase = "https://streamapi.nugs.net"
+
+    /// OAuth scopes requested by both login paths. The password grant and the
+    /// browser authorization-code grant request the identical set so the issued
+    /// tokens carry the same audience — in particular `nugsnet:legacyapi`, which
+    /// the streamapi.nugs.net catalog/stream calls require.
+    static let oauthScope = "openid profile email nugsnet:api nugsnet:legacyapi offline_access"
+
+    /// Redirect URI for the browser (authorization-code + PKCE) login. This is
+    /// the nugs mobile client's registered native callback — id.nugs.net (Duende
+    /// IdentityServer) whitelists redirect URIs per client, and this pair (our
+    /// public `clientId` + this redirect) is one it already trusts. The authorize
+    /// endpoint redirects it to the login page rather than to /error, confirming
+    /// the whitelist. ASWebAuthenticationSession captures the callback in-process
+    /// by matching `oauthCallbackScheme`, so the scheme is deliberately NOT
+    /// registered in Info.plist — that avoids colliding with the official nugs
+    /// app's URL scheme if it happens to be installed on the same Mac.
+    static let oauthRedirectURI = "nugsnet://oauth2/callback"
+    static let oauthCallbackScheme = "nugsnet"
 
     /// Catalog image paths ("/images/...") resolve against the public CDN
     /// with a /livedownloads prefix. The ?h= query param is a CDN-side

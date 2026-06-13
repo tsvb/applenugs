@@ -53,9 +53,17 @@ struct LoginView: View {
             .buttonStyle(.borderedProminent)
             .disabled(app.isLoggingIn || email.isEmpty || password.isEmpty)
 
+            Button {
+                Task { await app.loginWithBrowser() }
+            } label: {
+                Label("Sign in with browser", systemImage: "globe")
+            }
+            .buttonStyle(.bordered)
+            .disabled(app.isLoggingIn)
+
             Text("""
-                Sign in with your nugs.net email and password. \
-                Apple/Google SSO accounts aren't supported by the password grant. \
+                Sign in with your nugs.net email and password, or use \
+                “Sign in with browser” for Apple, Google, or other SSO/MFA accounts. \
                 Personal use against your own subscription only.
                 """)
                 .font(.caption)

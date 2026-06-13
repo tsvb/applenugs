@@ -27,11 +27,14 @@ final class NugsClient {
 
     // --- auth ---------------------------------------------------------------
 
+    /// Password grant (ROPC). Works only for accounts that have a nugs.net
+    /// password — not for Apple/Google/Facebook/SiriusXM SSO accounts, which
+    /// have no password to POST. Those use `loginWithBrowser()` instead.
     func login(email: String, password: String) async throws {
         let form = [
             "client_id": NugsConstants.clientId,
             "grant_type": "password",
-            "scope": "openid profile email nugsnet:api nugsnet:legacyapi offline_access",
+            "scope": NugsConstants.oauthScope,
             "username": email,
             "password": password,
         ]
@@ -39,8 +42,33 @@ final class NugsClient {
         guard (200..<300).contains(status) else {
             throw NugsError.authFailed(status: status, body: String(data: data, encoding: .utf8) ?? "")
         }
-        let token = try JSONDecoder().decode(TokenResponse.self, from: data)
+        try await completeLogin(with: try JSONDecoder().decode(TokenResponse.self, from: data))
+    }
 
+    /// Authorization Code + PKCE grant via a system browser window. Hands
+    /// authentication to the real id.nugs.net login page, so SSO/MFA accounts
+    /// the password grant can't reach work here. Uses the same public
+    /// `clientId`, so the refresh token it yields refreshes through
+    /// `currentSession()` unchanged.
+    func loginWithBrowser() async throws {
+        let (code, verifier) = try await BrowserAuthService.authorize()
+        let form = [
+            "client_id": NugsConstants.clientId,
+            "grant_type": "authorization_code",
+            "code": code,
+            "redirect_uri": NugsConstants.oauthRedirectURI,
+            "code_verifier": verifier,
+        ]
+        let (data, status) = try await postForm(NugsConstants.authURL, form: form)
+        guard (200..<300).contains(status) else {
+            throw NugsError.authFailed(status: status, body: String(data: data, encoding: .utf8) ?? "")
+        }
+        try await completeLogin(with: try JSONDecoder().decode(TokenResponse.self, from: data))
+    }
+
+    /// Shared tail of both login flows: resolve the user id and subscription,
+    /// then persist. The two grants differ only in how the token is obtained.
+    private func completeLogin(with token: TokenResponse) async throws {
         let userId = try await fetchUserId(accessToken: token.access_token)
         let sub = try await fetchSubInfo(accessToken: token.access_token)
 

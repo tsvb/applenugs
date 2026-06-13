@@ -70,6 +70,7 @@ struct Session {
 
 enum NugsError: LocalizedError {
     case notLoggedIn
+    case loginCancelled
     case authFailed(status: Int, body: String)
     case badResponse(String)
     case http(Int)
@@ -78,6 +79,8 @@ enum NugsError: LocalizedError {
         switch self {
         case .notLoggedIn:
             return "Not logged in."
+        case .loginCancelled:
+            return "Login was cancelled."
         case .authFailed(let status, let body):
             return "Login failed (\(status)): \(body)"
         case .badResponse(let why):

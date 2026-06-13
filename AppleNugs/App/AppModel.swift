@@ -62,6 +62,24 @@ final class AppModel {
         }
     }
 
+    /// Browser-based OAuth login for SSO/MFA accounts. Mirrors `login` but
+    /// drives the system browser; a user-cancelled sheet is not surfaced as an
+    /// error.
+    func loginWithBrowser() async {
+        isLoggingIn = true
+        loginError = nil
+        defer { isLoggingIn = false }
+        do {
+            try await client.loginWithBrowser()
+            let session = try await client.currentSession()
+            sessionState = .loggedIn(plan: session.planDescription)
+        } catch NugsError.loginCancelled {
+            // user dismissed the browser sheet — nothing to report
+        } catch {
+            loginError = error.localizedDescription
+        }
+    }
+
     func logout() {
         client.logout()
         player.clear()
