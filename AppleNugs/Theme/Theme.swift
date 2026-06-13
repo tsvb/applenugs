@@ -87,6 +87,15 @@ struct Theme: Equatable {
         }
     }
 
+    /// Color for the currently-playing emphasis (active row, now-playing glyph).
+    /// Art-driven themes follow the cover color so it matches the rest of the
+    /// chrome; static themes keep their deliberate play-state color (Tape Room
+    /// amber, Shoebox rust, The Receiver tube-teal).
+    func activeEmphasis(art: Color?) -> Color {
+        if case .artDriven = accentMode { return effectiveAccent(art: art) }
+        return palette.playState
+    }
+
     var consumesArtColor: Bool {
         if case .artDriven = accentMode { return true }
         return washStyle != .none

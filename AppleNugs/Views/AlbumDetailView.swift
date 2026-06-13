@@ -200,6 +200,7 @@ private struct TrackRow: View {
     let isCurrent: Bool
 
     @Environment(\.theme) private var theme
+    @Environment(\.artColor) private var artColor
     @State private var hovering = false
 
     var body: some View {
@@ -213,7 +214,7 @@ private struct TrackRow: View {
                     Text(track.title)
                         .font(theme.type.body(13))
                         .fontWeight(isCurrent ? .semibold : .regular)
-                        .foregroundStyle(isCurrent ? theme.palette.playState : theme.palette.textPrimary)
+                        .foregroundStyle(isCurrent ? theme.activeEmphasis(art: artColor) : theme.palette.textPrimary)
                     Spacer(minLength: 8)
                     if let duration = track.durationText {
                         Text(duration)

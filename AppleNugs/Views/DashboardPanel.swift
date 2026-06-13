@@ -146,7 +146,7 @@ struct DashboardPanel: View {
                         } else {
                             Image(systemName: player.isPlaying ? "speaker.wave.2.fill" : "pause.fill")
                                 .font(.caption2)
-                                .foregroundStyle(theme.palette.playState)
+                                .foregroundStyle(theme.activeEmphasis(art: artColor))
                                 .frame(width: 16)
                         }
                     } else {
