@@ -10,6 +10,7 @@ struct ArtistListView: View {
     @State private var filter = ""
     @State private var loading = false
     @State private var error: String?
+    @FocusState private var filterFocused: Bool
 
     private var filtered: [ArtistEntry] {
         guard !filter.isEmpty else { return artists }
@@ -38,31 +39,38 @@ struct ArtistListView: View {
     }
 
     var body: some View {
-        List {
-            ForEach(sections, id: \.letter) { section in
-                Section {
-                    ForEach(section.artists) { artist in
-                        NavigationLink(value: Route.artist(artist)) {
-                            Text(artist.name)
-                                .font(theme.type.body(14))
-                                .foregroundStyle(theme.palette.textPrimary)
-                                .padding(.vertical, 1)
+        VStack(spacing: 0) {
+            filterField
+                .padding(.horizontal, 16)
+                .padding(.top, 12)
+                .padding(.bottom, 6)
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+            List {
+                ForEach(sections, id: \.letter) { section in
+                    Section {
+                        ForEach(section.artists) { artist in
+                            NavigationLink(value: Route.artist(artist)) {
+                                Text(artist.name)
+                                    .font(theme.type.body(14))
+                                    .foregroundStyle(theme.palette.textPrimary)
+                                    .padding(.vertical, 1)
+                            }
+                            .listRowSeparator(.hidden)
                         }
-                        .listRowSeparator(.hidden)
+                    } header: {
+                        Text(section.letter)
+                            .font(theme.type.section(12))
+                            .tracking(theme.caps.contains(.condensedHeaders) ? 1.6 : 0.5)
+                            .foregroundStyle(theme.palette.accent)
                     }
-                } header: {
-                    Text(section.letter)
-                        .font(theme.type.section(12))
-                        .tracking(theme.caps.contains(.condensedHeaders) ? 1.6 : 0.5)
-                        .foregroundStyle(theme.palette.accent)
                 }
             }
+            .listStyle(.inset)
+            .scrollContentBackground(.hidden)
         }
-        .listStyle(.inset)
-        .scrollContentBackground(.hidden)
         .background(theme.palette.base)
         .navigationTitle("Artists")
-        .searchable(text: $filter, placement: .toolbar, prompt: "Filter artists")
         .overlay {
             if loading {
                 ProgressView()
@@ -76,6 +84,41 @@ struct ArtistListView: View {
             }
         }
         .task { await load() }
+    }
+
+    /// A compact, contextual filter that lives just above the list instead of
+    /// stretching across the toolbar into the inspector.
+    private var filterField: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "magnifyingglass")
+                .font(.system(size: 12, weight: .medium))
+                .foregroundStyle(theme.palette.textSecondary)
+            TextField("Filter artists", text: $filter)
+                .textFieldStyle(.plain)
+                .font(theme.type.body(13))
+                .foregroundStyle(theme.palette.textPrimary)
+                .focused($filterFocused)
+            if !filter.isEmpty {
+                Button { filter = "" } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.system(size: 13))
+                        .foregroundStyle(theme.palette.textSecondary)
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 7)
+        .background {
+            RoundedRectangle(cornerRadius: 9, style: .continuous)
+                .fill(theme.palette.raised)
+                .overlay {
+                    RoundedRectangle(cornerRadius: 9, style: .continuous)
+                        .strokeBorder(filterFocused ? theme.palette.accent.opacity(0.7) : theme.palette.hairline,
+                                      lineWidth: 1)
+                }
+        }
+        .frame(maxWidth: 340)
     }
 
     private func load() async {
