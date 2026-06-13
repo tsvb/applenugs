@@ -16,12 +16,49 @@ struct ArtistListView: View {
         return artists.filter { $0.name.localizedCaseInsensitiveContains(filter) }
     }
 
+    /// The catalog is hundreds deep, so group it into A–Z sections (numbers and
+    /// symbols collected under "#", sorted first) and let the sticky letter
+    /// headers carry the rhythm instead of a divider under every row.
+    private var sections: [(letter: String, artists: [ArtistEntry])] {
+        let grouped = Dictionary(grouping: filtered) { artist -> String in
+            guard let first = artist.name.first else { return "#" }
+            let s = String(first).uppercased()
+            return s.first!.isLetter ? s : "#"
+        }
+        return grouped
+            .map { (letter: $0.key,
+                    artists: $0.value.sorted {
+                        $0.name.localizedStandardCompare($1.name) == .orderedAscending
+                    }) }
+            .sorted { lhs, rhs in
+                if lhs.letter == "#" { return true }
+                if rhs.letter == "#" { return false }
+                return lhs.letter < rhs.letter
+            }
+    }
+
     var body: some View {
-        List(filtered) { artist in
-            NavigationLink(value: Route.artist(artist)) {
-                ArtistRow(entry: artist)
+        List {
+            ForEach(sections, id: \.letter) { section in
+                Section {
+                    ForEach(section.artists) { artist in
+                        NavigationLink(value: Route.artist(artist)) {
+                            Text(artist.name)
+                                .font(theme.type.body(14))
+                                .foregroundStyle(theme.palette.textPrimary)
+                                .padding(.vertical, 1)
+                        }
+                        .listRowSeparator(.hidden)
+                    }
+                } header: {
+                    Text(section.letter)
+                        .font(theme.type.section(12))
+                        .tracking(theme.caps.contains(.condensedHeaders) ? 1.6 : 0.5)
+                        .foregroundStyle(theme.palette.accent)
+                }
             }
         }
+        .listStyle(.inset)
         .scrollContentBackground(.hidden)
         .background(theme.palette.base)
         .navigationTitle("Artists")

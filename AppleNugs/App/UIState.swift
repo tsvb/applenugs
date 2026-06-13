@@ -13,11 +13,12 @@ enum Route: Hashable {
 @Observable
 final class UIState {
     enum SidebarItem: Hashable {
+        case home
         case artists
         case search
     }
 
-    var sidebarSelection: SidebarItem? = .artists {
+    var sidebarSelection: SidebarItem? = .home {
         didSet {
             // Switching sections resets the drill-down stack.
             if sidebarSelection != oldValue { navPath = NavigationPath() }

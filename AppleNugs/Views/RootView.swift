@@ -51,6 +51,8 @@ struct RootView: View {
         return VStack(spacing: 0) {
             NavigationSplitView {
                 List(selection: $ui.sidebarSelection) {
+                    Label("Home", systemImage: "house")
+                        .tag(UIState.SidebarItem.home)
                     Label("Artists", systemImage: "music.mic")
                         .tag(UIState.SidebarItem.artists)
                     Label("Search", systemImage: "magnifyingglass")
@@ -99,6 +101,8 @@ struct RootView: View {
     @ViewBuilder
     private var detailRoot: some View {
         switch ui.sidebarSelection {
+        case .home:
+            HomeView()
         case .search:
             SearchView()
         default:
