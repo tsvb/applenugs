@@ -3,6 +3,23 @@ import SwiftUI
 struct RootView: View {
     @Environment(AppModel.self) private var app
     @Environment(UIState.self) private var ui
+    @Environment(ThemeManager.self) private var themes
+    @Environment(\.theme) private var theme
+
+    @State private var artProvider = ArtColorProvider()
+
+    /// The accent the chrome should use right now: the live art color when the
+    /// active theme is art-driven, else nil (so static themes are untouched).
+    private var activeArtColor: Color? {
+        theme.consumesArtColor ? artProvider.color : nil
+    }
+
+    /// Refires the extractor when the track changes, when its art finishes
+    /// loading, or when the theme's appetite for art changes.
+    private var artTaskID: String {
+        let track = app.player.current?.id.uuidString ?? "none"
+        return "\(track)|\(app.player.nowPlayingImage != nil)|\(theme.consumesArtColor)"
+    }
 
     var body: some View {
         Group {
@@ -16,6 +33,14 @@ struct RootView: View {
             case .loggedIn:
                 mainLayout
             }
+        }
+        .themed(theme, art: activeArtColor)
+        .environment(\.artColor, activeArtColor)
+        .task(id: artTaskID) {
+            artProvider.update(
+                image: app.player.nowPlayingImage,
+                key: app.player.current?.artworkPath,
+                enabled: theme.consumesArtColor)
         }
         .task { await app.bootstrap() }
         .onAppear { KeyboardShortcuts.install(app: app, ui: ui) }
@@ -31,6 +56,8 @@ struct RootView: View {
                     Label("Search", systemImage: "magnifyingglass")
                         .tag(UIState.SidebarItem.search)
                 }
+                .scrollContentBackground(.hidden)
+                .background(theme.palette.base)
                 .navigationSplitViewColumnWidth(min: 150, ideal: 180, max: 240)
             } detail: {
                 NavigationStack(path: $ui.navPath) {
@@ -84,6 +111,18 @@ struct RootView: View {
             if case .loggedIn(let plan) = app.sessionState, let plan {
                 Text(plan)
             }
+            Picker("Theme", selection: Binding(
+                get: { themes.selected },
+                set: { newValue in
+                    withAnimation(.easeInOut(duration: 0.35)) { themes.selected = newValue }
+                }
+            )) {
+                ForEach(ThemeID.allCases) { id in
+                    Text(id.displayName).tag(id)
+                }
+            }
+            .pickerStyle(.menu)
+            Divider()
             Button("Log Out") { app.logout() }
         } label: {
             Label("Account", systemImage: "person.circle")

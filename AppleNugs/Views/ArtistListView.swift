@@ -4,6 +4,7 @@ import SwiftUI
 /// The list is cached on AppModel for the app lifetime.
 struct ArtistListView: View {
     @Environment(AppModel.self) private var app
+    @Environment(\.theme) private var theme
 
     @State private var artists: [ArtistEntry] = []
     @State private var filter = ""
@@ -18,9 +19,11 @@ struct ArtistListView: View {
     var body: some View {
         List(filtered) { artist in
             NavigationLink(value: Route.artist(artist)) {
-                Text(artist.name)
+                ArtistRow(entry: artist)
             }
         }
+        .scrollContentBackground(.hidden)
+        .background(theme.palette.base)
         .navigationTitle("Artists")
         .searchable(text: $filter, placement: .toolbar, prompt: "Filter artists")
         .overlay {

@@ -5,6 +5,7 @@ import SwiftUI
 struct SearchView: View {
     @Environment(AppModel.self) private var app
     @Environment(UIState.self) private var ui
+    @Environment(\.theme) private var theme
 
     @State private var query = ""
     @State private var searchedQuery: String?
@@ -57,22 +58,36 @@ struct SearchView: View {
     private func resultsList(_ results: SearchModel) -> some View {
         List {
             if !results.artists.isEmpty {
-                Section("Artists") {
+                Section {
                     ForEach(results.artists) { artist in
                         NavigationLink(value: Route.artist(artist)) {
                             Label(artist.name, systemImage: "music.mic")
                         }
                     }
+                } header: {
+                    sectionHeader("Artists")
                 }
             }
             ForEach(results.sections) { section in
-                Section(section.header) {
+                Section {
                     ForEach(section.items) { item in
                         row(item)
                     }
+                } header: {
+                    sectionHeader(section.header)
                 }
             }
         }
+        .scrollContentBackground(.hidden)
+        .background(theme.palette.base)
+    }
+
+    private func sectionHeader(_ text: String) -> some View {
+        let condensed = theme.caps.contains(.condensedHeaders)
+        return Text(condensed ? text.uppercased() : text)
+            .font(theme.type.section(12))
+            .tracking(condensed ? 1.5 : 0)
+            .foregroundStyle(theme.palette.textSecondary)
     }
 
     @ViewBuilder
@@ -83,13 +98,13 @@ struct SearchView: View {
                 HStack(spacing: 10) {
                     if let date = item.dateText {
                         Text(date)
-                            .monospacedDigit()
-                            .foregroundStyle(.secondary)
+                            .font(theme.type.numeric(12))
+                            .foregroundStyle(theme.palette.textSecondary)
                         Text(item.venue ?? item.name).lineLimit(1)
                     } else {
                         Text(item.name).lineLimit(1)
                         if let artist = item.artistName {
-                            Text("— \(artist)").foregroundStyle(.secondary).lineLimit(1)
+                            Text("— \(artist)").foregroundStyle(theme.palette.textSecondary).lineLimit(1)
                         }
                     }
                 }
@@ -107,7 +122,7 @@ struct SearchView: View {
                         Image(systemName: "play.fill").font(.caption)
                         Text(item.name)
                         if let artist = item.artistName {
-                            Text("— \(artist)").foregroundStyle(.secondary)
+                            Text("— \(artist)").foregroundStyle(theme.palette.textSecondary)
                         }
                     }
                     .contentShape(Rectangle())

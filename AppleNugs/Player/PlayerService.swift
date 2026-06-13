@@ -620,6 +620,14 @@ final class PlayerService {
 
     // --- artwork --------------------------------------------------------------
 
+    /// The cached cover image for the now-playing track, if it has loaded.
+    /// Reused by themed now-playing chips and the album-art color extractor —
+    /// reading the observed cache means views update when art arrives, with no
+    /// extra fetch.
+    var nowPlayingImage: NSImage? {
+        current?.artworkPath.flatMap { artworkCache[$0] }
+    }
+
     private func loadArtwork(for track: QueueTrack?) {
         artworkTask?.cancel()
         nowPlayingArtwork = nil

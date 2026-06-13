@@ -6,6 +6,8 @@ import SwiftUI
 struct DashboardPanel: View {
     @Environment(AppModel.self) private var app
     @Environment(UIState.self) private var ui
+    @Environment(\.theme) private var theme
+    @Environment(\.artColor) private var artColor
 
     private var player: PlayerService { app.player }
 
@@ -16,40 +18,55 @@ struct DashboardPanel: View {
             queueSection
         }
         .listStyle(.sidebar)
+        .scrollContentBackground(.hidden)
+        .background(theme.palette.base)
+    }
+
+    /// Section headers in the theme's display face; condensed themes track them
+    /// out as letterpress small caps.
+    private func sectionHeader(_ text: String) -> some View {
+        let condensed = theme.caps.contains(.condensedHeaders)
+        return Text(condensed ? text.uppercased() : text)
+            .font(theme.type.section(12))
+            .tracking(condensed ? 1.6 : 0)
+            .foregroundStyle(theme.palette.textSecondary)
     }
 
     // --- now playing ---------------------------------------------------------
 
     @ViewBuilder
     private var nowPlayingSection: some View {
-        Section("Now Playing") {
+        Section {
             if let track = player.current {
                 VStack(alignment: .leading, spacing: 3) {
                     Text(track.title ?? "Unknown track")
-                        .font(.callout.weight(.semibold))
+                        .font(theme.type.title(15))
                     if let artist = track.artist {
                         Text(artist).font(.caption)
                     }
                     if let show = track.show {
-                        Text(show).font(.caption).foregroundStyle(.secondary)
+                        Text(show).font(.caption).foregroundStyle(theme.palette.textSecondary)
                     }
                     if player.duration > 0 {
                         Text("\(TransportBar.format(seconds: player.currentTime)) / \(TransportBar.format(seconds: player.duration))")
-                            .font(.caption)
-                            .monospacedDigit()
-                            .foregroundStyle(.secondary)
+                            .font(theme.type.numeric(11))
+                            .foregroundStyle(theme.palette.textSecondary)
                     }
                 }
+                .listRowBackground(
+                    Color.clear.artWash(theme.washStyle, color: artColor))
                 if let error = player.playbackError {
                     Label(error, systemImage: "exclamationmark.triangle")
                         .font(.caption)
                         .foregroundStyle(.red)
                 }
             } else {
-                Text("Idle")
+                Text(theme.copy.dashboardIdle)
                     .font(.caption)
-                    .foregroundStyle(.tertiary)
+                    .foregroundStyle(theme.palette.textIdle)
             }
+        } header: {
+            sectionHeader(theme.copy.dashHeaders.now)
         }
     }
 
@@ -58,7 +75,7 @@ struct DashboardPanel: View {
     @ViewBuilder
     private var qualitySection: some View {
         if let pick = player.nowPick {
-            Section("Quality") {
+            Section {
                 row("Format", pick.format.qualityLabel)
                 row("Platform tier", String(pick.platformId))
                 if let specs = player.specs {
@@ -73,15 +90,17 @@ struct DashboardPanel: View {
                 if player.bufferedAhead > 0 {
                     row("Buffered", String(format: "%.0f s ahead", player.bufferedAhead))
                 }
+            } header: {
+                sectionHeader(theme.copy.dashHeaders.quality)
             }
         }
     }
 
     private func row(_ label: String, _ value: String) -> some View {
         HStack {
-            Text(label).foregroundStyle(.secondary)
+            Text(label).foregroundStyle(theme.palette.textSecondary)
             Spacer()
-            Text(value).monospacedDigit()
+            Text(value).font(theme.type.numeric(11))
         }
         .font(.caption)
     }
@@ -94,7 +113,7 @@ struct DashboardPanel: View {
             if player.queue.isEmpty {
                 Text("Queue is empty")
                     .font(.caption)
-                    .foregroundStyle(.tertiary)
+                    .foregroundStyle(theme.palette.textIdle)
             } else {
                 ForEach(Array(player.queue.enumerated()), id: \.element.id) { i, track in
                     queueRow(i, track)
@@ -102,13 +121,13 @@ struct DashboardPanel: View {
             }
         } header: {
             HStack {
-                Text("Up Next")
+                sectionHeader(theme.copy.dashHeaders.upNext)
                 Spacer()
                 if !player.queue.isEmpty {
                     Button("Clear") { player.clear() }
                         .buttonStyle(.plain)
                         .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(theme.palette.textSecondary)
                 }
             }
         }
@@ -121,15 +140,19 @@ struct DashboardPanel: View {
             } label: {
                 HStack(spacing: 6) {
                     if i == player.index {
-                        Image(systemName: player.isPlaying ? "speaker.wave.2.fill" : "pause.fill")
-                            .font(.caption2)
-                            .foregroundStyle(.tint)
-                            .frame(width: 16)
+                        if theme.caps.contains(.equalizerRows) {
+                            EqualizerBars(isPlaying: player.isPlaying)
+                                .frame(width: 16)
+                        } else {
+                            Image(systemName: player.isPlaying ? "speaker.wave.2.fill" : "pause.fill")
+                                .font(.caption2)
+                                .foregroundStyle(theme.palette.playState)
+                                .frame(width: 16)
+                        }
                     } else {
                         Text(String(i + 1))
-                            .font(.caption2)
-                            .monospacedDigit()
-                            .foregroundStyle(.secondary)
+                            .font(theme.type.numeric(10))
+                            .foregroundStyle(theme.palette.textSecondary)
                             .frame(width: 16)
                     }
                     Text(track.title ?? "Unknown track")

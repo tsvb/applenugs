@@ -8,6 +8,7 @@ struct AlbumDetailView: View {
 
     @Environment(AppModel.self) private var app
     @Environment(UIState.self) private var ui
+    @Environment(\.theme) private var theme
 
     @State private var album: AlbumDetailModel?
     @State private var error: String?
@@ -25,6 +26,7 @@ struct AlbumDetailView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
         }
+        .background(theme.palette.base)
         .navigationTitle(album?.title ?? titleHint ?? "Album")
         .overlay {
             if album == nil && error == nil {
@@ -48,21 +50,23 @@ struct AlbumDetailView: View {
                     .frame(width: 110)
             }
             VStack(alignment: .leading, spacing: 4) {
-                Text(album.title).font(.title.weight(.semibold))
-                Text(album.artistName).font(.title3).foregroundStyle(.secondary)
+                Text(album.title).font(theme.type.hero(26))
+                Text(album.artistName).font(theme.type.title(18)).foregroundStyle(theme.palette.textSecondary)
                 HStack(spacing: 10) {
                     if let date = album.dateText {
-                        Text(date).monospacedDigit()
+                        Text(date).font(theme.type.numeric(12))
                     }
                     if let venue = album.venue {
                         Text(venue)
                     }
                     if let runtime = album.totalRunningTime {
                         Text("\(runtime) · \(album.tracks.count) tracks")
-                            .foregroundStyle(.secondary)
+                            .font(theme.type.numeric(12))
+                            .foregroundStyle(theme.palette.textSecondary)
                     }
                 }
                 .font(.callout)
+                .foregroundStyle(theme.palette.textSecondary)
             }
         }
     }
@@ -104,8 +108,8 @@ struct AlbumDetailView: View {
         if !text.isEmpty {
             DisclosureGroup("Show notes") {
                 Text(text)
-                    .font(.callout)
-                    .foregroundStyle(.secondary)
+                    .font(theme.type.body(13))
+                    .foregroundStyle(theme.palette.textSecondary)
                     .textSelection(.enabled)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.top, 4)
@@ -122,8 +126,11 @@ struct AlbumDetailView: View {
 
         ForEach(groups, id: \.key) { setNum, rows in
             if showHeaders {
-                Text(TrackEntry.setLabel(setNum))
-                    .font(.headline)
+                let label = TrackEntry.setLabel(setNum)
+                Text(theme.caps.contains(.condensedHeaders) ? label.uppercased() : label)
+                    .font(theme.type.section(15))
+                    .tracking(theme.caps.contains(.condensedHeaders) ? 1.4 : 0)
+                    .foregroundStyle(theme.palette.textPrimary)
                     .padding(.top, 6)
             }
             VStack(spacing: 0) {
@@ -192,6 +199,7 @@ private struct TrackRow: View {
     let enqueue: () -> Void
     let isCurrent: Bool
 
+    @Environment(\.theme) private var theme
     @State private var hovering = false
 
     var body: some View {
@@ -199,17 +207,18 @@ private struct TrackRow: View {
             Button(action: play) {
                 HStack(spacing: 8) {
                     Text("\(track.trackNum).")
-                        .monospacedDigit()
-                        .foregroundStyle(.secondary)
+                        .font(theme.type.numeric(12))
+                        .foregroundStyle(theme.palette.textSecondary)
                         .frame(width: 28, alignment: .trailing)
                     Text(track.title)
+                        .font(theme.type.body(13))
                         .fontWeight(isCurrent ? .semibold : .regular)
-                        .foregroundStyle(isCurrent ? AnyShapeStyle(.tint) : AnyShapeStyle(.primary))
+                        .foregroundStyle(isCurrent ? theme.palette.playState : theme.palette.textPrimary)
                     Spacer(minLength: 8)
                     if let duration = track.durationText {
                         Text(duration)
-                            .monospacedDigit()
-                            .foregroundStyle(.secondary)
+                            .font(theme.type.numeric(12))
+                            .foregroundStyle(theme.palette.textSecondary)
                     }
                 }
                 .contentShape(Rectangle())
@@ -231,7 +240,7 @@ private struct TrackRow: View {
         }
         .padding(.vertical, 4)
         .padding(.horizontal, 6)
-        .background(hovering ? AnyShapeStyle(.quaternary.opacity(0.5)) : AnyShapeStyle(.clear),
+        .background(hovering ? theme.palette.raised : .clear,
                     in: RoundedRectangle(cornerRadius: 5))
         .onHover { hovering = $0 }
         .contextMenu {

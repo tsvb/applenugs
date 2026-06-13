@@ -7,6 +7,7 @@ struct ArtistDetailView: View {
     let artist: ArtistEntry
 
     @Environment(AppModel.self) private var app
+    @Environment(\.theme) private var theme
 
     @State private var containers: [ContainerSummary] = []
     @State private var loading = false
@@ -31,12 +32,12 @@ struct ArtistDetailView: View {
                 header
 
                 if !releases.isEmpty {
-                    Text("Releases").font(.title3.weight(.semibold))
+                    sectionTitle("Releases")
                     releaseGrid
                 }
 
                 if !shows.isEmpty {
-                    Text("Shows").font(.title3.weight(.semibold))
+                    sectionTitle("Shows")
                     ForEach(showsByYear, id: \.year) { group in
                         yearSection(group.year, group.shows)
                     }
@@ -56,6 +57,7 @@ struct ArtistDetailView: View {
             .padding(20)
             .frame(maxWidth: .infinity, alignment: .leading)
         }
+        .background(theme.palette.base)
         .navigationTitle(artist.name)
         .overlay {
             if loading && containers.isEmpty {
@@ -79,7 +81,16 @@ struct ArtistDetailView: View {
                 Text("^[\(shows.count) show](inflect: true)")
             }
         }
-        .foregroundStyle(.secondary)
+        .font(theme.type.numeric(12))
+        .foregroundStyle(theme.palette.textSecondary)
+    }
+
+    private func sectionTitle(_ text: String) -> some View {
+        let condensed = theme.caps.contains(.condensedHeaders)
+        return Text(condensed ? text.uppercased() : text)
+            .font(theme.type.section(17))
+            .tracking(condensed ? 1.4 : 0)
+            .foregroundStyle(theme.palette.textPrimary)
     }
 
     private var releaseGrid: some View {
@@ -90,7 +101,8 @@ struct ArtistDetailView: View {
                     VStack(alignment: .leading, spacing: 6) {
                         CoverArt(url: release.imageURL)
                         Text(release.title)
-                            .font(.callout)
+                            .font(theme.type.body(13))
+                            .foregroundStyle(theme.palette.textPrimary)
                             .lineLimit(2)
                             .multilineTextAlignment(.leading)
                     }
@@ -108,10 +120,12 @@ struct ArtistDetailView: View {
                     NavigationLink(value: Route.album(id: show.id, title: show.venue ?? show.title)) {
                         HStack(spacing: 10) {
                             Text(show.dateText ?? "")
-                                .monospacedDigit()
-                                .foregroundStyle(.secondary)
+                                .font(theme.type.numeric(12))
+                                .foregroundStyle(theme.palette.textSecondary)
                                 .frame(width: 86, alignment: .leading)
                             Text(show.venue ?? show.title)
+                                .font(theme.type.body(13))
+                                .foregroundStyle(theme.palette.textPrimary)
                                 .lineLimit(1)
                             Spacer(minLength: 0)
                         }
@@ -124,10 +138,10 @@ struct ArtistDetailView: View {
             .padding(.leading, 4)
         } label: {
             HStack {
-                Text(String(year)).font(.headline)
+                Text(String(year)).font(theme.type.section(16))
                 Text("^[\(shows.count) show](inflect: true)")
-                    .foregroundStyle(.secondary)
-                    .font(.callout)
+                    .font(theme.type.numeric(12))
+                    .foregroundStyle(theme.palette.textSecondary)
             }
         }
     }
@@ -169,6 +183,8 @@ struct ArtistDetailView: View {
 struct CoverArt: View {
     let url: URL?
 
+    @Environment(\.theme) private var theme
+
     var body: some View {
         Group {
             if let url {
@@ -193,7 +209,7 @@ struct CoverArt: View {
 
     private var placeholder: some View {
         Rectangle()
-            .fill(.quaternary)
-            .overlay(Image(systemName: "music.note").foregroundStyle(.secondary))
+            .fill(theme.palette.raised)
+            .overlay(Image(systemName: "music.note").foregroundStyle(theme.palette.accent.opacity(0.7)))
     }
 }

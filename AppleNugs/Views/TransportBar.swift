@@ -4,6 +4,8 @@ import SwiftUI
 /// and the current format badge. Mirrors the web Transport component.
 struct TransportBar: View {
     @Environment(AppModel.self) private var app
+    @Environment(\.theme) private var theme
+    @Environment(\.artColor) private var artColor
 
     /// While the user drags, hold the thumb at the dragged value so the
     /// playback ticks don't yank it back.
@@ -25,50 +27,51 @@ struct TransportBar: View {
 
             if let pick = player.nowPick {
                 Text(pick.format.badge)
-                    .font(.caption2.weight(.semibold))
+                    .font(theme.type.numeric(10).weight(.semibold))
+                    .foregroundStyle(badgeColor(for: pick.format))
                     .padding(.horizontal, 6)
                     .padding(.vertical, 2)
-                    .background(.quaternary, in: RoundedRectangle(cornerRadius: 4))
+                    .background(theme.palette.hairline, in: RoundedRectangle(cornerRadius: 4))
                     .help(pick.format.qualityLabel)
             }
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 10)
-        .background(.bar)
+        .background {
+            theme.palette.raised
+                .overlay { ArtWashBackground(style: theme.washStyle, color: artColor ?? .clear) }
+                .overlay {
+                    if theme.textureOpacity > 0 {
+                        PaperGrain().opacity(theme.textureOpacity).allowsHitTesting(false)
+                    }
+                }
+        }
+    }
+
+    /// Lossless formats get the theme's dedicated lossless tint when it has one;
+    /// everything else rides the accent.
+    private func badgeColor(for format: AudioFormat) -> Color {
+        let lossless: Set<AudioFormat> = [.flac16, .alac16, .mqa24]
+        if lossless.contains(format), let badge = theme.palette.losslessBadge {
+            return badge
+        }
+        return theme.palette.textSecondary
     }
 
     // --- blocks ------------------------------------------------------------------
 
     @ViewBuilder
     private var nowPlayingBlock: some View {
-        if let track = player.current {
-            VStack(alignment: .leading, spacing: 2) {
-                HStack(spacing: 6) {
-                    Text("\(player.index + 1)/\(player.queue.count)")
-                        .font(.caption2)
-                        .monospacedDigit()
-                        .foregroundStyle(.secondary)
-                    Text(track.title ?? "Unknown track")
-                        .font(.callout.weight(.medium))
-                        .lineLimit(1)
-                }
-                Text(meta(for: track))
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
-            }
-        } else {
-            Text("Nothing playing. Press / to search.")
-                .font(.callout)
-                .foregroundStyle(.tertiary)
+        switch theme.transport {
+        case .tapeLabel:
+            TapeLabelCard()
+        case .jCard:
+            JCardStrip()
+        case .standard, .faceplate:
+            // The faceplate's bespoke bar is a later slice; until then The
+            // Receiver shows the standard block in its chassis palette.
+            StandardNowPlaying()
         }
-    }
-
-    private func meta(for track: QueueTrack) -> String {
-        var parts: [String] = []
-        if let artist = track.artist { parts.append(artist) }
-        if let show = track.show { parts.append(show) }
-        return parts.joined(separator: " · ")
     }
 
     private var controls: some View {
@@ -105,8 +108,7 @@ struct TransportBar: View {
     private var seekBlock: some View {
         HStack(spacing: 8) {
             Text(Self.format(seconds: scrubbing ? scrubValue : player.currentTime))
-                .font(.caption)
-                .monospacedDigit()
+                .font(theme.type.numeric(11))
                 .frame(width: 44, alignment: .trailing)
 
             Slider(
@@ -126,9 +128,8 @@ struct TransportBar: View {
             .controlSize(.small)
 
             Text(remainingText)
-                .font(.caption)
-                .monospacedDigit()
-                .foregroundStyle(.secondary)
+                .font(theme.type.numeric(11))
+                .foregroundStyle(theme.palette.textSecondary)
                 .frame(width: 50, alignment: .leading)
         }
         .frame(maxWidth: .infinity)
