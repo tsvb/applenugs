@@ -13,6 +13,7 @@ struct QueueTrack: Identifiable, Hashable {
     let artist: String?
     let show: String?
     var artworkPath: String? = nil
+    var showId: String? = nil
 }
 
 /// In-memory queue + AVQueuePlayer playback engine. A direct port of the

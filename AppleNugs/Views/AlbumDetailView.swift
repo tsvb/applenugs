@@ -162,7 +162,7 @@ struct AlbumDetailView: View {
         album.tracks.map {
             QueueTrack(trackId: $0.id, title: $0.title,
                        artist: album.artistName, show: album.title,
-                       artworkPath: album.imagePath)
+                       artworkPath: album.imagePath, showId: album.id)
         }
     }
 
