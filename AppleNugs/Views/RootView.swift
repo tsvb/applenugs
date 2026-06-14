@@ -51,11 +51,13 @@ struct RootView: View {
         return VStack(spacing: 0) {
             NavigationSplitView {
                 List(selection: $ui.sidebarSelection) {
-                    Label("Home", systemImage: "house")
+                    Text("Home")
                         .tag(UIState.SidebarItem.home)
-                    Label("Artists", systemImage: "music.mic")
+                    Text("Artists")
                         .tag(UIState.SidebarItem.artists)
-                    Label("Search", systemImage: "magnifyingglass")
+                    Text("Favorites")
+                        .tag(UIState.SidebarItem.favorites)
+                    Text("Search")
                         .tag(UIState.SidebarItem.search)
                 }
                 .scrollContentBackground(.hidden)
@@ -103,6 +105,8 @@ struct RootView: View {
         switch ui.sidebarSelection {
         case .home:
             HomeView()
+        case .favorites:
+            FavoritesView()
         case .search:
             SearchView()
         default:
