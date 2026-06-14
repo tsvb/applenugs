@@ -98,7 +98,23 @@ struct AlbumDetailView: View {
                 Label("Queue", systemImage: "plus")
             }
             .disabled(album.tracks.isEmpty)
+
+            saveButton(album)
         }
+    }
+
+    private func saveButton(_ album: AlbumDetailModel) -> some View {
+        let fav = app.favorites.isShowFavorited(albumId)
+        return Button {
+            app.favorites.toggleShow(id: albumId, title: album.title,
+                                     artistName: album.artistName,
+                                     dateText: album.dateText, venue: album.venue,
+                                     imageURL: album.imageURL?.absoluteString)
+        } label: {
+            Label(fav ? "Saved" : "Save", systemImage: fav ? "star.fill" : "star")
+        }
+        .tint(fav ? theme.palette.accent : nil)
+        .help(fav ? "Remove from Favorites" : "Save show to Favorites")
     }
 
     @ViewBuilder

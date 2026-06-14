@@ -74,6 +74,7 @@ struct ArtistDetailView: View {
 
     private var header: some View {
         HStack(spacing: 12) {
+            followButton
             if !releases.isEmpty {
                 Text("^[\(releases.count) release](inflect: true)")
             }
@@ -83,6 +84,19 @@ struct ArtistDetailView: View {
         }
         .font(theme.type.numeric(12))
         .foregroundStyle(theme.palette.textSecondary)
+    }
+
+    private var followButton: some View {
+        let fav = app.favorites.isArtistFavorited(artist.id)
+        return Button {
+            app.favorites.toggleArtist(id: artist.id, name: artist.name)
+        } label: {
+            Label(fav ? "Following" : "Follow", systemImage: fav ? "star.fill" : "star")
+                .font(theme.type.body(12))
+        }
+        .buttonStyle(.bordered)
+        .tint(fav ? theme.palette.accent : theme.palette.textSecondary)
+        .help(fav ? "Unfollow artist" : "Follow artist")
     }
 
     private func sectionTitle(_ text: String) -> some View {
