@@ -32,6 +32,20 @@ enum KeyboardShortcuts {
             return event
         }
 
+        // Arrow-key seek (bare = ±10s, Shift = ±30s). cmd-ctrl-arrows already
+        // own whole-track prev/next and are excluded by the guard above.
+        let shift = event.modifierFlags.contains(.shift)
+        switch event.keyCode {
+        case 123:  // left arrow
+            app.player.seek(by: shift ? -30 : -10)
+            return nil
+        case 124:  // right arrow
+            app.player.seek(by: shift ? 30 : 10)
+            return nil
+        default:
+            break
+        }
+
         switch event.charactersIgnoringModifiers {
         case " ":
             app.player.togglePlayPause()
@@ -44,6 +58,14 @@ enum KeyboardShortcuts {
             return nil
         case "/":
             ui.requestSearchFocus()
+            return nil
+        case "0":
+            app.player.seek(to: 0)
+            return nil
+        case "1", "2", "3", "4", "5", "6", "7", "8", "9":
+            if let n = event.charactersIgnoringModifiers.flatMap(Int.init), app.player.duration > 0 {
+                app.player.seek(to: app.player.duration * Double(n) / 10)
+            }
             return nil
         default:
             return event
