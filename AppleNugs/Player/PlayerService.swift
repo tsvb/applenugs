@@ -293,6 +293,13 @@ final class PlayerService {
         pushNowPlayingInfo()
     }
 
+    /// Relative seek, shared by the skip buttons, keyboard, and Control Center.
+    /// No-op until a duration is known.
+    func seek(by delta: Double) {
+        guard duration > 0 else { return }
+        seek(to: min(max(currentTime + delta, 0), duration))
+    }
+
     // --- playback engine --------------------------------------------------------
 
     private func startAt(_ i: Int) {
@@ -691,6 +698,19 @@ final class PlayerService {
                   let event = event as? MPChangePlaybackPositionCommandEvent
             else { return .commandFailed }
             self.seek(to: event.positionTime)
+            return .success
+        }
+
+        center.skipBackwardCommand.preferredIntervals = [15]
+        center.skipBackwardCommand.addTarget { [weak self] _ in
+            guard let self, self.current != nil else { return .noActionableNowPlayingItem }
+            self.seek(by: -15)
+            return .success
+        }
+        center.skipForwardCommand.preferredIntervals = [30]
+        center.skipForwardCommand.addTarget { [weak self] _ in
+            guard let self, self.current != nil else { return .noActionableNowPlayingItem }
+            self.seek(by: 30)
             return .success
         }
     }
