@@ -23,6 +23,7 @@ struct FaceplateTransport: View {
             volumeLadder
             qualityReadout
                 .frame(width: 130, alignment: .trailing)
+            faceplateStar
         }
         .padding(.horizontal, 18)
         .padding(.vertical, 9)
@@ -172,6 +173,20 @@ struct FaceplateTransport: View {
             parts.append(specs.channels == 2 ? "STEREO" : "\(specs.channels)CH")
         }
         return parts.joined(separator: " · ")
+    }
+
+    private var faceplateStar: some View {
+        let saved = NowPlayingFavorite.isSaved(player.current, favorites: app.favorites)
+        return Button {
+            NowPlayingFavorite.toggle(player.current, favorites: app.favorites)
+        } label: {
+            Image(systemName: saved ? "star.fill" : "star")
+                .font(.system(size: 13, weight: .bold))
+                .foregroundStyle(saved ? theme.palette.accent : theme.palette.textSecondary)
+        }
+        .buttonStyle(.plain)
+        .disabled(player.current?.showId == nil)
+        .help("Save this show to Favorites")
     }
 }
 

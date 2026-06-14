@@ -33,6 +33,8 @@ struct TransportBar: View {
 
             volumeBlock
 
+            nowPlayingStar
+
             if let pick = player.nowPick {
                 Text(pick.format.badge)
                     .font(theme.type.numeric(10).weight(.semibold))
@@ -64,6 +66,20 @@ struct TransportBar: View {
             return badge
         }
         return theme.palette.textSecondary
+    }
+
+    private var nowPlayingStar: some View {
+        let saved = NowPlayingFavorite.isSaved(player.current, favorites: app.favorites)
+        return Button {
+            NowPlayingFavorite.toggle(player.current, favorites: app.favorites)
+        } label: {
+            Image(systemName: saved ? "star.fill" : "star")
+                .font(.system(size: 13))
+                .foregroundStyle(saved ? theme.palette.accent : theme.palette.textSecondary)
+        }
+        .buttonStyle(.plain)
+        .disabled(player.current?.showId == nil)
+        .help("Save this show to Favorites")
     }
 
     // --- blocks ------------------------------------------------------------------
@@ -169,5 +185,27 @@ struct TransportBar: View {
         guard seconds.isFinite, seconds >= 0 else { return "0:00" }
         let total = Int(seconds)
         return String(format: "%d:%02d", total / 60, total % 60)
+    }
+}
+
+/// Shared now-playing → FavShow bridge used by both the standard transport and
+/// the faceplate. A track is favoritable only when it carries a `showId`
+/// (i.e. it was queued from a show, not a single-track search hit).
+@MainActor
+enum NowPlayingFavorite {
+    static func isSaved(_ track: QueueTrack?, favorites: FavoritesStore) -> Bool {
+        guard let id = track?.showId else { return false }
+        return favorites.isShowFavorited(id)
+    }
+
+    static func toggle(_ track: QueueTrack?, favorites: FavoritesStore) {
+        guard let track, let id = track.showId else { return }
+        favorites.toggleShow(
+            id: id,
+            title: track.show ?? track.title ?? "Show",
+            artistName: track.artist ?? "",
+            dateText: nil,
+            venue: nil,
+            imageURL: track.artworkPath.flatMap { NugsConstants.imageURL(path: $0)?.absoluteString })
     }
 }
