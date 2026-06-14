@@ -20,8 +20,9 @@ struct HomeView: View {
             VStack(alignment: .leading, spacing: 30) {
                 greeting.reveal(appeared, 0)
                 if player.current != nil { resumeCard.reveal(appeared, 1) }
-                entryRow.reveal(appeared, 2)
-                if !sample.isEmpty { crate.reveal(appeared, 3) }
+                if !app.favorites.isEmpty { favoritesStrip.reveal(appeared, 2) }
+                entryRow.reveal(appeared, 3)
+                if !sample.isEmpty { crate.reveal(appeared, 4) }
             }
             .padding(.horizontal, 36)
             .padding(.top, 34)
@@ -181,6 +182,62 @@ struct HomeView: View {
                         .contentShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
                     }
                     .buttonStyle(.plain)
+                }
+            }
+        }
+    }
+
+    // --- favorites strip ----------------------------------------------------
+
+    private var favoritesStrip: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack {
+                Text(theme.caps.contains(.condensedHeaders) ? "FAVORITES" : "Favorites")
+                    .font(theme.type.section(15))
+                    .tracking(theme.caps.contains(.condensedHeaders) ? 1.6 : 0)
+                    .foregroundStyle(theme.palette.textPrimary)
+                Spacer()
+                Button("See all ›") { ui.sidebarSelection = .favorites }
+                    .buttonStyle(.plain)
+                    .font(theme.type.body(12))
+                    .foregroundStyle(theme.palette.textSecondary)
+            }
+
+            if !app.favorites.artists.isEmpty {
+                LazyVGrid(columns: [GridItem(.adaptive(minimum: 150, maximum: 240), spacing: 10)],
+                          alignment: .leading, spacing: 10) {
+                    ForEach(app.favorites.artists.prefix(8)) { fav in
+                        NavigationLink(value: Route.artist(ArtistEntry(id: fav.id, name: fav.name))) {
+                            HStack {
+                                Text(fav.name)
+                                    .font(theme.type.body(13))
+                                    .foregroundStyle(theme.palette.textPrimary)
+                                    .lineLimit(1)
+                                Spacer(minLength: 0)
+                            }
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 9)
+                            .background {
+                                RoundedRectangle(cornerRadius: 9, style: .continuous)
+                                    .fill(theme.palette.raised)
+                            }
+                            .contentShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+            }
+
+            if !app.favorites.shows.isEmpty {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(alignment: .top, spacing: 14) {
+                        ForEach(app.favorites.shows.prefix(6)) { show in
+                            NavigationLink(value: Route.album(id: show.id, title: show.title)) {
+                                ShowCard(show: show, width: 132)
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
                 }
             }
         }
