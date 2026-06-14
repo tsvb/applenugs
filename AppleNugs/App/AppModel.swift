@@ -15,6 +15,7 @@ final class AppModel {
 
     let client: NugsClient
     let player: PlayerService
+    let favorites = FavoritesStore()
 
     private(set) var sessionState: SessionState = .unknown
     private(set) var isLoggingIn = false
