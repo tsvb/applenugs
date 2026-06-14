@@ -80,9 +80,13 @@ struct FaceplateTransport: View {
         HStack(spacing: 12) {
             KnurledButton(system: "backward.fill", size: 30, glow: false) { player.previous() }
                 .disabled(!player.hasPrevious)
+            KnurledButton(system: "gobackward.15", size: 26, glow: false) { player.seek(by: -15) }
+                .disabled(player.current == nil)
             KnurledButton(
                 system: player.isPlaying ? "pause.fill" : "play.fill",
                 size: 40, glow: player.isPlaying) { player.togglePlayPause() }
+                .disabled(player.current == nil)
+            KnurledButton(system: "goforward.30", size: 26, glow: false) { player.seek(by: 30) }
                 .disabled(player.current == nil)
             KnurledButton(system: "forward.fill", size: 30, glow: false) { player.next() }
                 .disabled(!player.hasNext)
