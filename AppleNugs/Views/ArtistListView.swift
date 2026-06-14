@@ -57,6 +57,13 @@ struct ArtistListView: View {
                                     .padding(.vertical, 1)
                             }
                             .listRowSeparator(.hidden)
+                            .contextMenu {
+                                let fav = app.favorites.isArtistFavorited(artist.id)
+                                Button(fav ? "Remove from Favorites" : "Add to Favorites",
+                                       systemImage: fav ? "star.slash" : "star") {
+                                    app.favorites.toggleArtist(id: artist.id, name: artist.name)
+                                }
+                            }
                         }
                     } header: {
                         Text(section.letter)

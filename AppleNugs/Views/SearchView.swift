@@ -63,6 +63,13 @@ struct SearchView: View {
                         NavigationLink(value: Route.artist(artist)) {
                             Label(artist.name, systemImage: "music.mic")
                         }
+                        .contextMenu {
+                            let fav = app.favorites.isArtistFavorited(artist.id)
+                            Button(fav ? "Remove from Favorites" : "Add to Favorites",
+                                   systemImage: fav ? "star.slash" : "star") {
+                                app.favorites.toggleArtist(id: artist.id, name: artist.name)
+                            }
+                        }
                     }
                 } header: {
                     sectionHeader("Artists")
@@ -107,6 +114,16 @@ struct SearchView: View {
                             Text("— \(artist)").foregroundStyle(theme.palette.textSecondary).lineLimit(1)
                         }
                     }
+                }
+            }
+            .contextMenu {
+                let fav = app.favorites.isShowFavorited(id)
+                Button(fav ? "Remove from Favorites" : "Add to Favorites",
+                       systemImage: fav ? "star.slash" : "star") {
+                    app.favorites.toggleShow(id: id, title: item.venue ?? item.name,
+                                             artistName: item.artistName ?? "",
+                                             dateText: item.dateText, venue: item.venue,
+                                             imageURL: nil)
                 }
             }
         case .track(let trackId):

@@ -147,6 +147,16 @@ struct ArtistDetailView: View {
                     }
                     .buttonStyle(.plain)
                     .padding(.vertical, 3)
+                    .contextMenu {
+                        let fav = app.favorites.isShowFavorited(show.id)
+                        Button(fav ? "Remove from Favorites" : "Add to Favorites",
+                               systemImage: fav ? "star.slash" : "star") {
+                            app.favorites.toggleShow(id: show.id, title: show.venue ?? show.title,
+                                                     artistName: artist.name,
+                                                     dateText: show.dateText, venue: show.venue,
+                                                     imageURL: show.imageURL?.absoluteString)
+                        }
+                    }
                 }
             }
             .padding(.leading, 4)
