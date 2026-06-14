@@ -592,7 +592,7 @@ final class PlayerService {
         queue = saved.tracks.map {
             QueueTrack(trackId: $0.trackId, title: $0.title,
                        artist: $0.artist, show: $0.show,
-                       artworkPath: $0.artworkPath)
+                       artworkPath: $0.artworkPath, showId: $0.showId)
         }
         index = min(max(saved.index, 0), queue.count - 1)
         if saved.position > 1 {
@@ -613,7 +613,7 @@ final class PlayerService {
             tracks: queue.map {
                 PersistedPlayback.Track(trackId: $0.trackId, title: $0.title,
                                         artist: $0.artist, show: $0.show,
-                                        artworkPath: $0.artworkPath)
+                                        artworkPath: $0.artworkPath, showId: $0.showId)
             },
             index: index,
             position: currentTime))
