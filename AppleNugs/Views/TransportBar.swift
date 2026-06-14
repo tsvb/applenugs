@@ -109,6 +109,14 @@ struct TransportBar: View {
             .help("Previous (p)")
 
             Button {
+                player.seek(by: -15)
+            } label: {
+                Image(systemName: "gobackward.15")
+            }
+            .disabled(player.current == nil)
+            .help("Back 15s (←)")
+
+            Button {
                 player.togglePlayPause()
             } label: {
                 Image(systemName: player.isPlaying ? "pause.fill" : "play.fill")
@@ -117,6 +125,14 @@ struct TransportBar: View {
             }
             .disabled(player.current == nil)
             .help("Play / pause (space)")
+
+            Button {
+                player.seek(by: 30)
+            } label: {
+                Image(systemName: "goforward.30")
+            }
+            .disabled(player.current == nil)
+            .help("Forward 30s (→)")
 
             Button {
                 player.next()
