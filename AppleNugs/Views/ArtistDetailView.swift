@@ -37,6 +37,11 @@ struct ArtistDetailView: View {
                     releaseGrid
                 }
 
+                if !videos.isEmpty {
+                    sectionTitle("Videos")
+                    videoGrid
+                }
+
                 if !shows.isEmpty {
                     sectionTitle("Shows")
                     ForEach(showsByYear, id: \.year) { group in
@@ -82,6 +87,9 @@ struct ArtistDetailView: View {
             if !shows.isEmpty {
                 Text("^[\(shows.count) show](inflect: true)")
             }
+            if !videos.isEmpty {
+                Text("^[\(videos.count) video](inflect: true)")
+            }
         }
         .font(theme.type.numeric(12))
         .foregroundStyle(theme.palette.textSecondary)
@@ -124,6 +132,36 @@ struct ArtistDetailView: View {
                 }
                 .buttonStyle(.plain)
                 .help(release.title)
+            }
+        }
+    }
+
+    /// Per-artist Videos grid. Video posters are 16:9 (wider than the square
+    /// covers), so the adaptive cell is wider. The legacy per-artist list
+    /// carries no video SKU — that lives on the container detail and is
+    /// re-resolved inside VideoDetailView, so the route only needs id/title.
+    /// The context menu mirrors the show-row menu, saving a FavVideo with
+    /// videoSku: 0 (filled in when the video is opened/saved from the detail).
+    private var videoGrid: some View {
+        LazyVGrid(columns: [GridItem(.adaptive(minimum: 200, maximum: 260), spacing: 14)],
+                  alignment: .leading, spacing: 14) {
+            ForEach(videos) { video in
+                NavigationLink(value: Route.video(id: video.id, title: video.title)) {
+                    VideoThumbnail(video: video)
+                }
+                .buttonStyle(.plain)
+                .help(video.title)
+                .contextMenu {
+                    let fav = app.favorites.isVideoFavorited(video.id)
+                    Button(fav ? "Remove from Favorites" : "Add to Favorites",
+                           systemImage: fav ? "star.slash" : "star") {
+                        app.favorites.toggleVideo(
+                            FavVideo(id: video.id, videoSku: 0, title: video.title,
+                                     artistName: video.artistName ?? artist.name,
+                                     dateText: video.dateText, isLive: video.isLive,
+                                     imageURL: video.imageURL?.absoluteString, savedAt: Date()))
+                    }
+                }
             }
         }
     }
