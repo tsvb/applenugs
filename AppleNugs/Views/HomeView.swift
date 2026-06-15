@@ -45,6 +45,13 @@ struct HomeView: View {
                     Task { await app.video.play(Self.debugVideo) }
                 }
             }
+            ToolbarItem(placement: .primaryAction) {
+                Button("Debug: Open Probe Video", systemImage: "rectangle.stack.badge.play") {
+                    ui.open(.video(id: "44463", title: "Probe Video",
+                                   sku: 916156, isLive: false))
+                }
+                .help("Phase 3 debug: navigate to VideoDetailView via Route.video")
+            }
         }
         .sheet(isPresented: $showVideoTest, onDismiss: { app.video.stop() }) {
             videoTestSheet
