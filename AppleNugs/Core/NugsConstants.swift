@@ -16,6 +16,13 @@ enum NugsConstants {
     static let subInfoURL = URL(string: "https://subscriptions.nugs.net/api/v1/me/subscriptions")!
     static let streamAPIBase = "https://streamapi.nugs.net"
 
+    /// Modern REST host for the video browse catalog and live schedule
+    /// (`GET /releases/recent`, `/livestreams`). Reuses the same Bearer token as
+    /// the legacy streamapi host. Spec open-question: `/releases/*` may live on a
+    /// sibling host (`api.nugs.net`); the Phase 0 probe confirmed it sits here, so
+    /// every v1 browse path defaults to this base.
+    static let catalogV1Base = "https://catalog.nugs.net/api/v1"
+
     /// OAuth scopes requested by both login paths. The password grant and the
     /// browser authorization-code grant request the identical set so the issued
     /// tokens carry the same audience — in particular `nugsnet:legacyapi`, which
