@@ -16,6 +16,7 @@ final class UIState {
     enum SidebarItem: Hashable {
         case home
         case artists
+        case videos
         case favorites
         case search
     }
