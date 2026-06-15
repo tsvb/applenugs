@@ -12,6 +12,9 @@ struct HomeView: View {
     @State private var sample: [ArtistEntry] = []
     @State private var artistCount = 0
     @State private var appeared = false
+    #if DEBUG
+    @State private var showVideoTest = false
+    #endif
 
     private var player: PlayerService { app.player }
 
@@ -34,6 +37,19 @@ struct HomeView: View {
         .navigationTitle("Home")
         .task { await loadSample() }
         .onAppear { appeared = true }
+        #if DEBUG
+        .toolbar {
+            ToolbarItem(placement: .primaryAction) {
+                Button("Play test video", systemImage: "play.rectangle") {
+                    showVideoTest = true
+                    Task { await app.video.play(Self.debugVideo) }
+                }
+            }
+        }
+        .sheet(isPresented: $showVideoTest, onDismiss: { app.video.stop() }) {
+            videoTestSheet
+        }
+        #endif
     }
 
     // --- greeting -----------------------------------------------------------
@@ -249,6 +265,47 @@ struct HomeView: View {
         artistCount = all.count
         sample = Array(all.shuffled().prefix(9))
     }
+
+    #if DEBUG
+    /// TEMPORARY Phase-2 verification harness. Removed in Phase 4 once VideosView
+    /// can open VideoDetailView. Uses the Phase-0 probe's known video container.
+    private static let debugVideo = VideoDetail(
+        id: "44463",
+        videoSku: 916156,
+        isLive: false,
+        title: "Test Video",
+        artistName: "Phase 0 Probe",
+        venue: nil,
+        dateText: nil,
+        description: nil,
+        imagePath: nil,
+        chapters: [],
+        liveEvent: nil)
+
+    private var videoTestSheet: some View {
+        VStack(spacing: 0) {
+            if let error = app.video.loadError {
+                Text(error)
+                    .font(theme.type.body(14))
+                    .foregroundStyle(theme.palette.textPrimary)
+                    .padding(40)
+            } else {
+                VideoPlayerSurface(player: app.video.player)
+                    .frame(minWidth: 640, minHeight: 360)
+            }
+            HStack {
+                Text("Audio resumes on close if it was playing.")
+                    .font(theme.type.body(11))
+                    .foregroundStyle(theme.palette.textSecondary)
+                Spacer()
+                Button("Close") { showVideoTest = false }
+            }
+            .padding(12)
+        }
+        .frame(minWidth: 720, minHeight: 460)
+        .background(theme.palette.base)
+    }
+    #endif
 }
 
 // MARK: - Entry tile
