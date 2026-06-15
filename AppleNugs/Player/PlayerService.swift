@@ -286,6 +286,17 @@ final class PlayerService {
         pushNowPlayingInfo()
     }
 
+    /// Arbiter hook for the video player: pause audio if it is playing and
+    /// report whether it was, so the caller can resume it later. Distinct from
+    /// `pause()` only in returning the prior state — keeps the video service
+    /// from poking at `isPlaying` and the transport directly.
+    @discardableResult
+    func pauseForExternalAudio() -> Bool {
+        let wasPlaying = isPlaying
+        if wasPlaying { pause() }
+        return wasPlaying
+    }
+
     func seek(to seconds: Double) {
         let t = CMTime(seconds: max(0, seconds), preferredTimescale: 600)
         player.seek(to: t, toleranceBefore: .zero, toleranceAfter: .zero)
