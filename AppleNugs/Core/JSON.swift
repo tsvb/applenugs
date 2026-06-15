@@ -69,4 +69,13 @@ struct JSON {
         }
         return []
     }
+
+    /// First non-null int among candidate key spellings.
+    func int(_ keys: String...) -> Int? {
+        guard let dict = raw as? [String: Any] else { return nil }
+        for k in keys {
+            if let v = JSON(dict[k]).int { return v }
+        }
+        return nil
+    }
 }

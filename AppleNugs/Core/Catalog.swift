@@ -263,6 +263,190 @@ enum Catalog {
         return SearchModel(artists: artists, sections: sections)
     }
 
+    // --- video parsers ------------------------------------------------------
+
+    /// REST `GET /releases/recent?contentType=video` → recently-added VOD.
+    /// Items may be wrapped in `items`/`releases`; each item is a release object
+    /// (sometimes nested under `release`).
+    static func recentVideos(from json: JSON) -> [VideoSummary] {
+        let items = json.arr("items", "Items", "releases", "Releases", "data")
+        return items.compactMap { videoSummary(fromRelease: $0, isLiveDefault: false) }
+    }
+
+    /// REST `GET /livestreams?itemTypes=sel` → `{ items, offset, limit, total }`.
+    /// Each item carries `skuId`, `startDate`/`endDate`, `has4KOption`, and a
+    /// nested `release { id, title, performanceDate, coverImage, artist{...} }`.
+    static func liveWebcasts(from json: JSON) -> [VideoSummary] {
+        json.arr("items", "Items", "data").compactMap { item in
+            let release = item["release"].raw != nil ? item["release"] : item
+            guard let id = release.str("id", "ID", "containerID", "releaseId")
+                    ?? item.str("id", "ID", "skuId") else { return nil }
+            let start = Catalog.parseTimestamp(item.str("startDate", "StartDate", "eventStartDateStr"))
+            let has4K = (item["has4KOption"].raw as? Bool) ?? (item.int("has4KOption") == 1)
+            return VideoSummary(
+                id: id,
+                title: release.str("title", "Title", "containerInfo") ?? "(untitled)",
+                artistName: release["artist"].str("name", "artistName")
+                    ?? release.str("artistName", "ArtistName"),
+                performanceDate: release.str("performanceDate", "PerformanceDate"),
+                imagePath: videoImagePath(release),
+                isLive: true,
+                eventStart: start,
+                has4K: has4K)
+        }
+    }
+
+    /// Per-artist legacy `catalog.containersAll&videoReleaseType=6` → video
+    /// containers. Mirrors `containers(from:)` but tags each as a video item.
+    static func videoContainers(from json: JSON) -> [VideoSummary] {
+        json.unwrapped.arr("containers", "Containers").compactMap { c in
+            guard let id = c.str("containerID", "ContainerID", "id") else { return nil }
+            return VideoSummary(
+                id: id,
+                title: c.str("containerInfo", "ContainerInfo", "title") ?? "(untitled)",
+                artistName: c.str("artistName", "ArtistName"),
+                performanceDate: c.str("performanceDate", "PerformanceDate"),
+                imagePath: videoImagePath(c) ?? c["img"].str("url"),
+                isLive: false,
+                eventStart: nil,
+                has4K: false)
+        }
+    }
+
+    /// Legacy `catalog.container&containerID=<id>&vdisp=1` → full video detail.
+    /// The video SKU is the `skuID` of the product whose `formatStr` is
+    /// `"VIDEO ON DEMAND"` (VOD) or, in `productFormatList`, `"LIVE HD VIDEO"`.
+    static func videoDetail(from json: JSON, id: String) -> VideoDetail {
+        let r = json.unwrapped
+        let (sku, isLive) = videoSku(in: r)
+
+        let rawDate = r.str("performanceDateFormatted") ?? r.str("performanceDate", "PerformanceDate")
+
+        let chapters = r.arr("videoChapters", "VideoChapters", "chapters").enumerated().compactMap {
+            (idx, ch) -> VideoChapter? in
+            let title = ch.str("chaptername", "chapterName", "title", "chapterTitle", "name", "songTitle")
+                ?? "Chapter \(idx + 1)"
+            let start = chapterSeconds(ch)
+            return VideoChapter(id: ch.str("id", "chapterID") ?? "\(idx)", title: title, startSeconds: start)
+        }
+
+        var liveEvent: LiveEventInfo? = nil
+        if isLive {
+            liveEvent = LiveEventInfo(
+                startsAt: Catalog.parseTimestamp(r.str("eventStartDateStr", "eventStartDate")),
+                endsAt: Catalog.parseTimestamp(r.str("eventEndDateStr", "eventEndDate")),
+                isEventLive: (r["isEventLive"].raw as? Bool) ?? (r.int("isEventLive") == 1))
+        }
+
+        return VideoDetail(
+            id: id,
+            videoSku: sku,
+            isLive: isLive,
+            title: r.str("containerInfo", "ContainerInfo", "videoTitle", "title") ?? "(video)",
+            artistName: r.str("artistName", "ArtistName") ?? "",
+            venue: r.str("venue")?.trimmingCharacters(in: .whitespaces),
+            dateText: isoDate(rawDate),
+            description: r.str("videoDesc", "VideoDesc", "description")
+                ?? joinedNotes(r),
+            imagePath: videoImagePath(r),
+            chapters: chapters,
+            liveEvent: liveEvent)
+    }
+
+    // --- video parsing helpers ----------------------------------------------
+
+    /// Shared release→summary mapping for the REST `/releases/*` shapes.
+    private static func videoSummary(fromRelease item: JSON, isLiveDefault: Bool) -> VideoSummary? {
+        let release = item["release"].raw != nil ? item["release"] : item
+        guard let id = release.str("id", "ID", "containerID", "releaseId")
+                ?? item.str("id", "ID", "containerID") else { return nil }
+        let has4K = (item["has4KOption"].raw as? Bool)
+            ?? (release["has4KOption"].raw as? Bool)
+            ?? (item.int("has4KOption") == 1)
+        return VideoSummary(
+            id: id,
+            title: release.str("title", "Title", "containerInfo") ?? "(untitled)",
+            artistName: release["artist"].str("name", "artistName")
+                ?? release.str("artistName", "ArtistName"),
+            performanceDate: release.str("performanceDate", "PerformanceDate"),
+            imagePath: videoImagePath(release),
+            isLive: isLiveDefault,
+            eventStart: Catalog.parseTimestamp(item.str("startDate", "StartDate")),
+            has4K: has4K)
+    }
+
+    /// Resolve a video poster from the several keys nugs uses across shapes.
+    /// REST shapes nest the absolute URL under `image.url` (preferred);
+    /// `NugsConstants.imageURL(path:)` passes absolute URLs through unchanged.
+    private static func videoImagePath(_ j: JSON) -> String? {
+        j["image"].str("url", "path")
+            ?? j.str("videoImage", "VideoImage", "vodPlayerImage", "coverImage", "CoverImage")
+            ?? j["coverImage"].str("url", "path")
+            ?? j["img"].str("url")
+    }
+
+    /// Scan product arrays for the video product and return (skuID, isLive).
+    /// VOD: a `products[]` entry with `formatStr == "VIDEO ON DEMAND"`.
+    /// Live: a `productFormatList[]` entry with `formatStr == "LIVE HD VIDEO"`.
+    private static func videoSku(in r: JSON) -> (sku: Int, isLive: Bool) {
+        for p in r.arr("products", "Products") {
+            if p.str("formatStr", "FormatStr") == "VIDEO ON DEMAND",
+               let sku = p.int("skuID", "skuId", "SkuID") {
+                return (sku, false)
+            }
+        }
+        for p in r.arr("productFormatList", "ProductFormatList") {
+            if p.str("formatStr", "FormatStr") == "LIVE HD VIDEO",
+               let sku = p.int("skuID", "skuId", "SkuID") {
+                return (sku, true)
+            }
+        }
+        // Some payloads expose the sub video SKU directly.
+        if let sku = r.int("svodskuID", "svodSkuID", "videoSkuID") {
+            let live = (r["isEventLive"].raw as? Bool) ?? (r.int("isEventLive") == 1)
+            return (sku, live)
+        }
+        return (0, false)
+    }
+
+    /// Chapter start time: a numeric `chapterSeconds`/`startSeconds`/`offset`, or
+    /// "h:mm:ss" / "mm:ss" / "m:ss" text in `startTime`.
+    private static func chapterSeconds(_ ch: JSON) -> Double {
+        if let n = ch["chapterSeconds"].raw as? NSNumber { return n.doubleValue }
+        if let n = ch["startSeconds"].raw as? NSNumber { return n.doubleValue }
+        if let n = ch["offset"].raw as? NSNumber { return n.doubleValue }
+        if let n = ch["startTimeSeconds"].raw as? NSNumber { return n.doubleValue }
+        if let s = ch.str("startTime", "start", "time") {
+            let parts = s.split(separator: ":").compactMap { Double($0) }
+            guard !parts.isEmpty else { return 0 }
+            return parts.reduce(0) { $0 * 60 + $1 }
+        }
+        return 0
+    }
+
+    /// Fallback description: join the legacy `notes[].note` strings.
+    private static func joinedNotes(_ r: JSON) -> String? {
+        let notes = r.arr("notes", "Notes").compactMap { $0.str("note", "Note") }
+        return notes.isEmpty ? nil : notes.joined(separator: "\n")
+    }
+
+    /// Full timestamp parsing for REST `/livestreams` event times. Tolerates
+    /// both fractional and whole-second ISO-8601 (with or without "Z").
+    private static let isoTimestamp: ISO8601DateFormatter = {
+        let f = ISO8601DateFormatter()
+        f.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        return f
+    }()
+
+    static func parseTimestamp(_ raw: String?) -> Date? {
+        guard let raw, !raw.isEmpty else { return nil }
+        if let d = isoTimestamp.date(from: raw) { return d }
+        // Retry without fractional seconds.
+        let f = ISO8601DateFormatter()
+        f.formatOptions = [.withInternetDateTime]
+        return f.date(from: raw)
+    }
+
     // --- dates --------------------------------------------------------------
 
     private static let slashShort: DateFormatter = makeFormatter("M/d/yyyy")
