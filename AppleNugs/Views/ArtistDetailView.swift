@@ -14,6 +14,7 @@ struct ArtistDetailView: View {
     @State private var error: String?
     @State private var canLoadMore = false
     @State private var expandedYears: Set<Int> = []
+    @State private var videos: [VideoSummary] = []
 
     private static let pageSize = 100
 
@@ -183,6 +184,8 @@ struct ArtistDetailView: View {
             containers = []
             expandedYears = []
             canLoadMore = false
+            videos = []
+            Task { await loadVideos() }
         }
         loading = true
         defer { loading = false }
@@ -199,6 +202,17 @@ struct ArtistDetailView: View {
             }
         } catch {
             self.error = error.localizedDescription
+        }
+    }
+
+    /// Videos load independently of the paged shows list: a single
+    /// videoReleaseType=6 call. A video failure is swallowed (the section just
+    /// stays empty) so it never blocks the shows/releases the user came for.
+    private func loadVideos() async {
+        do {
+            videos = try await app.client.artistVideos(id: artist.id)
+        } catch {
+            videos = []
         }
     }
 }
