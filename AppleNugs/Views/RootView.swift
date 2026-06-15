@@ -72,9 +72,8 @@ struct RootView: View {
                                 ArtistDetailView(artist: artist)
                             case .album(let id, let title):
                                 AlbumDetailView(albumId: id, titleHint: title)
-                            case .video(let id, let title, let sku, let isLive):
-                                VideoDetailView(videoId: id, titleHint: title,
-                                                skuHint: sku, isLiveHint: isLive)
+                            case .video(let id, let title):
+                                VideoDetailView(videoId: id, titleHint: title)
                             }
                         }
                 }

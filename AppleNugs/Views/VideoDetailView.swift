@@ -8,8 +8,6 @@ import SwiftUI
 struct VideoDetailView: View {
     let videoId: String
     var titleHint: String?
-    var skuHint: Int
-    var isLiveHint: Bool
 
     @Environment(AppModel.self) private var app
     @Environment(\.theme) private var theme
@@ -106,9 +104,15 @@ struct VideoDetailView: View {
     private func actions(_ detail: VideoDetail) -> some View {
         HStack(spacing: 8) {
             Button {
-                Task { await app.video.play(detail) }
+                // If this video is already loaded, toggle play/pause; only do a
+                // cold start (re-resolve + buffer) when it isn't the current item.
+                if app.video.current?.id == detail.id {
+                    app.video.togglePlayPause()
+                } else {
+                    Task { await app.video.play(detail) }
+                }
             } label: {
-                Label(app.video.isPlaying ? "Playing" : "Play",
+                Label(app.video.isPlaying ? "Pause" : "Play",
                       systemImage: app.video.isPlaying ? "pause.fill" : "play.fill")
             }
             .buttonStyle(.borderedProminent)
@@ -171,16 +175,19 @@ struct VideoDetailView: View {
 
     // --- resume -----------------------------------------------------------------
 
+    /// `load()`/`play()` already auto-resume to the saved position on a cold
+    /// start, so this banner is purely a manual *re-jump* affordance: if the
+    /// viewer has since scrubbed elsewhere, it sends them back to the saved
+    /// point. It seeks the already-loaded item — never re-runs `play()`, which
+    /// would re-resolve and re-buffer the stream.
     @ViewBuilder
     private func resumeBanner(_ detail: VideoDetail) -> some View {
         if !detail.isLive,
+           app.video.current?.id == detail.id,
            let saved = app.videoProgress.progress(for: videoId),
            saved.positionSeconds > 5 {
             Button {
-                Task {
-                    await app.video.play(detail)
-                    app.video.seek(to: saved.positionSeconds)
-                }
+                app.video.seek(to: saved.positionSeconds)
             } label: {
                 Label("Resume from \(TransportBar.format(seconds: saved.positionSeconds))",
                       systemImage: "arrow.clockwise")

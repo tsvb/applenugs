@@ -47,8 +47,7 @@ struct HomeView: View {
             }
             ToolbarItem(placement: .primaryAction) {
                 Button("Debug: Open Probe Video", systemImage: "rectangle.stack.badge.play") {
-                    ui.open(.video(id: "44463", title: "Probe Video",
-                                   sku: 916156, isLive: false))
+                    ui.open(.video(id: "44463", title: "Probe Video"))
                 }
                 .help("Phase 3 debug: navigate to VideoDetailView via Route.video")
             }

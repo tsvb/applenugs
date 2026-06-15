@@ -5,7 +5,7 @@ import SwiftUI
 enum Route: Hashable {
     case artist(ArtistEntry)
     case album(id: String, title: String?)
-    case video(id: String, title: String?, sku: Int, isLive: Bool)
+    case video(id: String, title: String?)
 }
 
 /// Window-level UI state: sidebar selection, navigation stack, the dashboard
