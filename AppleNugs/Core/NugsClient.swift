@@ -253,6 +253,53 @@ final class NugsClient {
         return JSON.parse(data).str("streamLink", "StreamLink")
     }
 
+    /// A resolved video stream: a master `.m3u8` URL plus the access flags the
+    /// subscription endpoint reports (used by the UI to show a "not in your
+    /// plan" state without a second request). The bigriver endpoint returns
+    /// these as integers (e.g. 2 / 1), not booleans — Phase 0 confirmed —
+    /// so they're surfaced as `Int?` and a positive value means access granted.
+    struct VideoStream {
+        let url: String
+        let subContentAccess: Int?
+        let stashContentAccess: Int?
+    }
+
+    /// Resolves a video master `.m3u8` via the legacy bigriver path — the same
+    /// DRM-free route the Phase 0 probe confirmed plays in a bare AVPlayer.
+    /// Subscription VOD / sub livestream → `subPlayer.aspx` (read `streamLink`).
+    /// Owned / PPV → `vidPlayer.aspx`; deferred to Phase 7 (returns nil here).
+    func resolveVideoStream(containerId: String, sku: Int, isLive: Bool) async throws -> VideoStream? {
+        let session = try await currentSession()
+        let query = [
+            "skuId": String(sku),
+            "containerID": containerId,
+            "chap": "1",
+            "app": "1",
+            "subscriptionID": session.subscriptionId,
+            "subCostplanIDAccessList": session.planId,
+            "nn_userID": session.userId,
+            "startDateStamp": String(session.startStamp),
+            "endDateStamp": String(session.endStamp),
+        ]
+        let url = URL(string: "\(NugsConstants.streamAPIBase)/bigriver/subPlayer.aspx?\(Self.encode(query))")!
+        var req = URLRequest(url: url)
+        req.setValue("Bearer \(session.accessToken)", forHTTPHeaderField: "Authorization")
+        req.setValue(NugsConstants.legacyUserAgent, forHTTPHeaderField: "User-Agent")
+        let (data, res) = try await http.data(for: req)
+        guard let code = (res as? HTTPURLResponse)?.statusCode, (200..<300).contains(code) else {
+            return nil
+        }
+        let json = JSON.parse(data)
+        guard let link = json.str("streamLink", "StreamLink"), !link.isEmpty else {
+            // PPV/owned playback (vidPlayer.aspx, reads "fileURL") is Phase 7.
+            return nil
+        }
+        return VideoStream(
+            url: link,
+            subContentAccess: json.int("subContentAccess", "SubContentAccess"),
+            stashContentAccess: json.int("stashContentAccess", "StashContentAccess"))
+    }
+
     /// Probes every device tier concurrently, identifies the format of each
     /// returned URL, and returns the distinct picks ordered by native playback
     /// preference. The player tries them in order and falls through on
