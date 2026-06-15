@@ -80,12 +80,8 @@ struct VideosView: View {
                                    artistName: progress.artistName, performanceDate: nil,
                                    imagePath: progress.imageURL, isLive: false,
                                    eventStart: nil, has4K: false)
-        return VStack(alignment: .leading, spacing: 6) {
-            ZStack(alignment: .bottom) {
-                VideoThumbnail(video: summary, width: 220)
-                resumeBar(progress)
-            }
-            .frame(width: 220)
+        return VideoThumbnail(video: summary, width: 220) {
+            resumeBar(progress)
         }
     }
 
@@ -98,8 +94,6 @@ struct VideosView: View {
             }
         }
         .frame(height: 3)
-        .padding(.horizontal, 4)
-        .padding(.bottom, 56) // sit just under the 16:9 poster, above the title block
     }
 
     private func resumeFraction(_ progress: VideoProgress) -> CGFloat {

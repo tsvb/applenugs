@@ -5,15 +5,27 @@ import SwiftUI
 /// line. Used by the Videos grid, the Live & Upcoming row, and (later) the
 /// per-artist Videos section. Clones ShowCard's text block but draws a 16:9
 /// poster instead of the square CoverArt used for audio shows.
-struct VideoThumbnail: View {
+struct VideoThumbnail<PosterAccessory: View>: View {
     @Environment(\.theme) private var theme
     let video: VideoSummary
     var width: CGFloat = 220
+    /// Optional view placed in normal layout flow directly under the poster,
+    /// above the title block (e.g. a Continue Watching progress bar). Kept in
+    /// flow so it never depends on the variable height of the text block.
+    @ViewBuilder var posterAccessory: () -> PosterAccessory
+
+    init(video: VideoSummary, width: CGFloat = 220,
+         @ViewBuilder posterAccessory: @escaping () -> PosterAccessory) {
+        self.video = video
+        self.width = width
+        self.posterAccessory = posterAccessory
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             poster
                 .frame(width: width)
+            posterAccessory()
             Text(video.title)
                 .font(theme.type.body(12))
                 .foregroundStyle(theme.palette.textPrimary)
@@ -100,5 +112,11 @@ struct VideoThumbnail: View {
                 RoundedRectangle(cornerRadius: 4, style: .continuous)
                     .fill(filled ? theme.palette.accent : theme.palette.raised.opacity(0.9))
             }
+    }
+}
+
+extension VideoThumbnail where PosterAccessory == EmptyView {
+    init(video: VideoSummary, width: CGFloat = 220) {
+        self.init(video: video, width: width, posterAccessory: { EmptyView() })
     }
 }
