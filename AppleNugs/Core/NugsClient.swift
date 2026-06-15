@@ -166,6 +166,66 @@ final class NugsClient {
         return try await getJSON(url, bearer: session.accessToken)
     }
 
+    /// REST GET against the modern video catalog host (`catalogV1Base`). Same
+    /// Bearer token and mobile UA as `catalogGet`; differs only in host, path
+    /// shape (`/path?k=v`), and that an empty query yields a clean path.
+    private func catalogV1Get(_ path: String, query: [String: String] = [:]) async throws -> JSON {
+        let session = try await currentSession()
+        let p = path.hasPrefix("/") ? path : "/" + path
+        var s = "\(NugsConstants.catalogV1Base)\(p)"
+        if !query.isEmpty { s += "?\(Self.encode(query))" }
+        guard let url = URL(string: s) else { throw NugsError.badResponse("bad catalogV1 URL: \(s)") }
+        return try await getJSON(url, bearer: session.accessToken)
+    }
+
+    // --- video catalog ------------------------------------------------------
+
+    /// Recently-added VOD (the only artist-independent global video listing).
+    func recentVideos(offset: Int = 0, limit: Int = 30) async throws -> [VideoSummary] {
+        let json = try await catalogV1Get("/releases/recent", query: [
+            "contentType": "video",
+            "catalogFilterMode": "any",
+            "offset": String(offset),
+            "limit": String(limit),
+        ])
+        return Catalog.recentVideos(from: json)
+    }
+
+    /// Live & upcoming webcasts from `<upcomingFrom>` onward.
+    func liveWebcasts(upcomingFrom: Date = Date(), limit: Int = 100) async throws -> [VideoSummary] {
+        let start = ISO8601DateFormatter().string(from: upcomingFrom)
+        let json = try await catalogV1Get("/livestreams", query: [
+            "itemTypes": "sel",
+            "startDate": start,
+            "limit": String(limit),
+        ])
+        return Catalog.liveWebcasts(from: json)
+    }
+
+    /// Per-artist video list (legacy `containersAll` with the video discriminator).
+    func artistVideos(id: String, offset: Int = 1, limit: Int = 100) async throws -> [VideoSummary] {
+        let json = try await catalogGet([
+            "method": "catalog.containersAll",
+            "artistList": id,
+            "videoReleaseType": "6",
+            "startOffset": String(offset),
+            "limit": String(limit),
+            "availType": "1",
+            "vdisp": "1",
+        ])
+        return Catalog.videoContainers(from: json)
+    }
+
+    /// One video container's full detail (legacy `catalog.container&vdisp=1`).
+    func videoDetail(containerId: String) async throws -> VideoDetail {
+        let json = try await catalogGet([
+            "method": "catalog.container",
+            "containerID": containerId,
+            "vdisp": "1",
+        ])
+        return Catalog.videoDetail(from: json, id: containerId)
+    }
+
     // --- streaming ----------------------------------------------------------
 
     /// Resolves the CDN URL for one platformID tier. Returns nil when nugs
