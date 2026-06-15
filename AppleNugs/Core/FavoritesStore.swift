@@ -17,6 +17,17 @@ struct FavShow: Codable, Identifiable, Hashable {
     var savedAt: Date
 }
 
+struct FavVideo: Codable, Identifiable, Hashable {
+    var id: String
+    var videoSku: Int
+    var title: String
+    var artistName: String
+    var dateText: String?
+    var isLive: Bool
+    var imageURL: String?
+    var savedAt: Date
+}
+
 /// Persists followed artists and saved shows as JSON in Application Support —
 /// the same idiom as SessionStore. @Observable, so stars and the Favorites view
 /// update reactively on any toggle. Favorites persist across logout (they are
@@ -26,6 +37,7 @@ struct FavShow: Codable, Identifiable, Hashable {
 final class FavoritesStore {
     private(set) var favArtists: [FavArtist] = []
     private(set) var favShows: [FavShow] = []
+    private(set) var favVideos: [FavVideo] = []
 
     private let fileURL: URL
 
@@ -46,7 +58,10 @@ final class FavoritesStore {
     var shows: [FavShow] {
         favShows.sorted { $0.savedAt > $1.savedAt }
     }
-    var isEmpty: Bool { favArtists.isEmpty && favShows.isEmpty }
+    var videos: [FavVideo] {
+        favVideos.sorted { $0.savedAt > $1.savedAt }
+    }
+    var isEmpty: Bool { favArtists.isEmpty && favShows.isEmpty && favVideos.isEmpty }
 
     // --- artists ------------------------------------------------------------
 
@@ -77,11 +92,41 @@ final class FavoritesStore {
         save()
     }
 
+    // --- videos -------------------------------------------------------------
+
+    func isVideoFavorited(_ id: String) -> Bool { favVideos.contains { $0.id == id } }
+
+    func toggleVideo(_ v: FavVideo) {
+        if let idx = favVideos.firstIndex(where: { $0.id == v.id }) {
+            favVideos.remove(at: idx)
+        } else {
+            var stamped = v
+            stamped.savedAt = Date()
+            favVideos.append(stamped)
+        }
+        save()
+    }
+
     // --- persistence --------------------------------------------------------
 
     private struct Stored: Codable {
         var artists: [FavArtist]
         var shows: [FavShow]
+        var videos: [FavVideo]
+
+        init(artists: [FavArtist], shows: [FavShow], videos: [FavVideo]) {
+            self.artists = artists
+            self.shows = shows
+            self.videos = videos
+        }
+
+        // Tolerate files written before `videos` existed (decode it as empty).
+        init(from decoder: Decoder) throws {
+            let c = try decoder.container(keyedBy: CodingKeys.self)
+            artists = try c.decodeIfPresent([FavArtist].self, forKey: .artists) ?? []
+            shows = try c.decodeIfPresent([FavShow].self, forKey: .shows) ?? []
+            videos = try c.decodeIfPresent([FavVideo].self, forKey: .videos) ?? []
+        }
     }
 
     private func load() {
@@ -89,10 +134,12 @@ final class FavoritesStore {
               let decoded = try? Self.decoder.decode(Stored.self, from: data) else { return }
         favArtists = decoded.artists
         favShows = decoded.shows
+        favVideos = decoded.videos
     }
 
     private func save() {
-        guard let data = try? Self.encoder.encode(Stored(artists: favArtists, shows: favShows)) else { return }
+        let stored = Stored(artists: favArtists, shows: favShows, videos: favVideos)
+        guard let data = try? Self.encoder.encode(stored) else { return }
         try? data.write(to: fileURL, options: .atomic)
         try? FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: fileURL.path)
     }
