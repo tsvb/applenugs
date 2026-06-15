@@ -73,6 +73,11 @@ final class VideoPlayerService {
     /// True while this service owns the system Now Playing / remote commands.
     private var ownsNowPlaying = false
 
+    /// Opaque target tokens returned by `addTarget(handler:)`, kept so the exact
+    /// closures registered on claim can be removed on relinquish — passing
+    /// `self` to `removeTarget` would not match closure-registered handlers.
+    private var remoteCommandTargets: [Any] = []
+
     /// Bumped on each `play` so stale async loads/observers no-op.
     private var loadGeneration = 0
 
@@ -342,25 +347,36 @@ final class VideoPlayerService {
     // --- system media (arbiter-owned) ---------------------------------------
 
     /// Take over Now Playing + the remote command center from audio. Audio's
-    /// own handlers stay registered but are inert while paused; ours override.
+    /// own handlers stay registered but its handlers return early once it is
+    /// paused; ours are the ones acting while a video owns playback. We retain
+    /// each `addTarget` token so relinquish can remove exactly these closures.
     private func claimNowPlaying() {
         guard !ownsNowPlaying else { return }
         ownsNowPlaying = true
         let center = MPRemoteCommandCenter.shared()
-        center.togglePlayPauseCommand.addTarget(handler: remoteToggle)
-        center.playCommand.addTarget(handler: remotePlay)
-        center.pauseCommand.addTarget(handler: remotePause)
-        center.changePlaybackPositionCommand.addTarget(handler: remoteSeek)
+        remoteCommandTargets = [
+            center.togglePlayPauseCommand.addTarget(handler: remoteToggle),
+            center.playCommand.addTarget(handler: remotePlay),
+            center.pauseCommand.addTarget(handler: remotePause),
+            center.changePlaybackPositionCommand.addTarget(handler: remoteSeek),
+        ]
     }
 
     private func relinquishNowPlaying() {
         guard ownsNowPlaying else { return }
         ownsNowPlaying = false
         let center = MPRemoteCommandCenter.shared()
-        center.togglePlayPauseCommand.removeTarget(self, action: nil)
-        center.playCommand.removeTarget(self, action: nil)
-        center.pauseCommand.removeTarget(self, action: nil)
-        center.changePlaybackPositionCommand.removeTarget(self, action: nil)
+        // Tokens align with the commands they were registered on, in order.
+        let commands: [MPRemoteCommand] = [
+            center.togglePlayPauseCommand,
+            center.playCommand,
+            center.pauseCommand,
+            center.changePlaybackPositionCommand,
+        ]
+        for (command, token) in zip(commands, remoteCommandTargets) {
+            command.removeTarget(token)
+        }
+        remoteCommandTargets = []
         // Audio's pushNowPlayingInfo (via resume/pause in stop()) restores its
         // own info; clear ours so a brief gap shows nothing rather than stale.
         MPNowPlayingInfoCenter.default().nowPlayingInfo = nil
