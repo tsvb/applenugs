@@ -55,6 +55,8 @@ struct RootView: View {
                         .tag(UIState.SidebarItem.home)
                     Text("Artists")
                         .tag(UIState.SidebarItem.artists)
+                    Text("Videos")
+                        .tag(UIState.SidebarItem.videos)
                     Text("Favorites")
                         .tag(UIState.SidebarItem.favorites)
                     Text("Search")
@@ -107,6 +109,8 @@ struct RootView: View {
         switch ui.sidebarSelection {
         case .home:
             HomeView()
+        case .videos:
+            VideosView()
         case .favorites:
             FavoritesView()
         case .search:
