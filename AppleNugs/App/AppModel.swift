@@ -16,6 +16,8 @@ final class AppModel {
     let client: NugsClient
     let player: PlayerService
     let favorites = FavoritesStore()
+    let videoProgress = VideoProgressStore()
+    let video: VideoPlayerService
 
     private(set) var sessionState: SessionState = .unknown
     private(set) var isLoggingIn = false
@@ -32,6 +34,8 @@ final class AppModel {
         let store = SessionStore()
         client = NugsClient(store: store)
         player = PlayerService(client: client)
+        video = VideoPlayerService(audio: player, client: client,
+                                   progress: videoProgress, favorites: favorites)
     }
 
     /// Resolve the persisted session at launch (refreshing the token if it
@@ -83,6 +87,7 @@ final class AppModel {
 
     func logout() {
         client.logout()
+        video.stop()
         player.clear()
         cachedArtists = nil
         sessionState = .loggedOut
