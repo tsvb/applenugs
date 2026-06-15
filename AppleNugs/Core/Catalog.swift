@@ -72,6 +72,56 @@ struct AlbumDetailModel {
     }
 }
 
+// --- video catalog models -----------------------------------------------------
+// Purpose-built presentation types for the Videos feature. Kept distinct from
+// ContainerSummary/AlbumDetailModel so the audio catalog path is untouched.
+
+/// A browse-grid / row item: VOD or a live/upcoming webcast.
+struct VideoSummary: Identifiable, Hashable {
+    let id: String              // containerID (legacy) or release id (REST)
+    let title: String
+    let artistName: String?
+    let performanceDate: String?
+    let imagePath: String?
+    let isLive: Bool            // LIVE HD VIDEO vs VIDEO ON DEMAND
+    let eventStart: Date?       // upcoming/live webcasts only
+    let has4K: Bool
+
+    var imageURL: URL? { imagePath.flatMap { NugsConstants.imageURL(path: $0) } }
+    var dateText: String? { Catalog.isoDate(performanceDate) }
+}
+
+/// One tappable chapter marker inside a VideoDetail.
+struct VideoChapter: Identifiable, Hashable {
+    let id: String
+    let title: String
+    let startSeconds: Double
+}
+
+/// Live-webcast scheduling, used to drive pre-event / live / ended states.
+struct LiveEventInfo: Hashable {
+    var startsAt: Date?
+    var endsAt: Date?
+    var isEventLive: Bool
+}
+
+/// VideoDetailView payload, parsed from `catalog.container&vdisp=1`.
+struct VideoDetail {
+    var id: String
+    var videoSku: Int
+    var isLive: Bool
+    var title: String
+    var artistName: String
+    var venue: String?
+    var dateText: String?
+    var description: String?
+    var imagePath: String?
+    var chapters: [VideoChapter]
+    var liveEvent: LiveEventInfo?
+
+    var imageURL: URL? { imagePath.flatMap { NugsConstants.imageURL(path: $0) } }
+}
+
 struct SearchModel {
     struct Item: Identifiable {
         enum Kind {
