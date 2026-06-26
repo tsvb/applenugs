@@ -63,6 +63,7 @@ final class VideoPlayerService {
     private var item: AVPlayerItem?
     private var timeObserver: Any?
     private var statusObservation: NSKeyValueObservation?
+    private var rateObservation: NSKeyValueObservation?
     private var endObserver: NSObjectProtocol?
 
     /// Whether the audio service was playing when this video took over, so
@@ -101,6 +102,20 @@ final class VideoPlayerService {
         timeObserver = player.addPeriodicTimeObserver(
             forInterval: interval, queue: .main) { [weak self] _ in
             MainActor.assumeIsolated { self?.tick() }
+        }
+        // The native AVPlayerView controls drive this player directly, outside
+        // our transport methods. Watch the player's own state so the arbiter
+        // re-claims whenever playback starts while we don't own it (e.g. the
+        // native play button replaying a finished video) — otherwise video
+        // audio would play underneath resumed audio with media keys misrouted.
+        rateObservation = player.observe(\.timeControlStatus, options: [.new]) { [weak self] player, _ in
+            DispatchQueue.main.async {
+                guard let self, self.current != nil, !self.ownsNowPlaying,
+                      player.timeControlStatus == .playing else { return }
+                self.claimArbiterIfNeeded()
+                self.isPlaying = true
+                self.pushNowPlayingInfo()
+            }
         }
     }
 
@@ -322,6 +337,10 @@ final class VideoPlayerService {
                     self.pendingResumeSeek = nil
                     self.pendingLiveEdgeSeek = false
                     self.currentTime = 0
+                    self.isPlaying = false
+                    // The video can't play — hand system media back to audio
+                    // rather than leaving its Now Playing / keys dead on screen.
+                    self.relinquishArbiter()
                 case .readyToPlay:
                     self.applyPendingStartSeek()
                 default:
