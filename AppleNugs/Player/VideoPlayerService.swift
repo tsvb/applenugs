@@ -153,10 +153,10 @@ final class VideoPlayerService {
         applyQuality()
         loadVariants(from: asset, generation: generation)
 
-        // Arbiter: pause audio (remembering its prior state) and take over
-        // the system Now Playing / remote commands.
-        resumeAudioOnStop = audio.pauseForExternalAudio()
-        claimNowPlaying()
+        // Arbiter: take over the system Now Playing / remote commands from
+        // audio. No-op if we already own them, so a re-entrant play() can't
+        // re-capture audio's now-paused state and strand it.
+        claimArbiterIfNeeded()
 
         // Defer the start seek to `.readyToPlay` (see `applyPendingStartSeek`);
         // issuing it now, before the item is ready, would be dropped.
@@ -174,6 +174,9 @@ final class VideoPlayerService {
     func togglePlayPause() {
         guard item != nil else { return }
         if player.timeControlStatus == .paused {
+            // Replaying after the arbiter was relinquished (e.g. the video had
+            // played to its end) must re-take Now Playing from audio.
+            claimArbiterIfNeeded()
             player.play()
             isPlaying = true
         } else {
@@ -204,12 +207,35 @@ final class VideoPlayerService {
     }
 
     func seekToLiveEdge() {
-        guard let item else { return }
-        let end = item.seekableTimeRanges.last?.timeRangeValue
-        let edge = end.map { ($0.start + $0.duration) } ?? player.currentTime()
-        player.seek(to: edge, toleranceBefore: .zero, toleranceAfter: .zero)
+        guard let item, let range = item.seekableTimeRanges.last?.timeRangeValue else {
+            // Seekable range not populated yet — don't seek to the buffer head
+            // and over-claim the live edge; tick() snaps atLiveEdge once it is.
+            return
+        }
+        player.seek(to: range.start + range.duration, toleranceBefore: .zero, toleranceAfter: .zero)
         atLiveEdge = true
         pushNowPlayingInfo()
+    }
+
+    /// Take over system Now Playing + remote commands from audio, unless we
+    /// already own them. Captures whether audio was playing so it can be resumed
+    /// on relinquish; guarding on `ownsNowPlaying` stops a re-entrant claim from
+    /// overwriting that captured state and stranding audio paused.
+    private func claimArbiterIfNeeded() {
+        guard !ownsNowPlaying else { return }
+        resumeAudioOnStop = audio.pauseForExternalAudio()
+        claimNowPlaying()
+    }
+
+    /// Hand system Now Playing + remote commands back to audio (resuming it if
+    /// it had been playing). Idempotent — called from both stop() and the
+    /// natural-end handler, so audio's media integration is restored whether the
+    /// video is dismissed or simply finishes on screen.
+    private func relinquishArbiter() {
+        guard ownsNowPlaying else { return }
+        relinquishNowPlaying()
+        audio.endExternalPlayback(resume: resumeAudioOnStop)
+        resumeAudioOnStop = false
     }
 
     func stop() {
@@ -223,11 +249,7 @@ final class VideoPlayerService {
         isLive = false
         atLiveEdge = false
         loadError = nil
-        relinquishNowPlaying()
-        // Arbiter: clear audio's Now Playing suspension and hand playback back
-        // if it had been playing when this video took over.
-        audio.endExternalPlayback(resume: resumeAudioOnStop)
-        resumeAudioOnStop = false
+        relinquishArbiter()
     }
 
     // --- quality ------------------------------------------------------------
@@ -294,6 +316,12 @@ final class VideoPlayerService {
                 case .failed:
                     self.loadError = item.error?.localizedDescription
                         ?? "This video failed to play."
+                    // Nothing played — drop the deferred seek and don't leave
+                    // currentTime pinned at the resume point (it would falsely
+                    // highlight a "current" chapter for a video that never ran).
+                    self.pendingResumeSeek = nil
+                    self.pendingLiveEdgeSeek = false
+                    self.currentTime = 0
                 case .readyToPlay:
                     self.applyPendingStartSeek()
                 default:
@@ -305,10 +333,13 @@ final class VideoPlayerService {
             forName: AVPlayerItem.didPlayToEndTimeNotification,
             object: item, queue: .main) { [weak self] _ in
             MainActor.assumeIsolated {
-                guard let self, let video = self.current, !self.isLive else { return }
+                guard let self, let video = self.current else { return }
                 self.isPlaying = false
-                self.progress.markFinished(video.id)
-                self.pushNowPlayingInfo()
+                if !self.isLive { self.progress.markFinished(video.id) }
+                // The video is done — relinquish the arbiter even though the view
+                // stays on screen, so audio's Now Playing / media keys aren't
+                // left dead until the user navigates away.
+                self.relinquishArbiter()
             }
         }
     }
