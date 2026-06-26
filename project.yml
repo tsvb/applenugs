@@ -9,6 +9,11 @@ settings:
   base:
     SWIFT_VERSION: "5.0"
     MACOSX_DEPLOYMENT_TARGET: "14.0"
+    # Marketing + build numbers live here; Info.plist references them so a
+    # release is a one-line bump. Increment CURRENT_PROJECT_VERSION for every
+    # build uploaded to App Store Connect.
+    MARKETING_VERSION: "1.0"
+    CURRENT_PROJECT_VERSION: "1"
 
 targets:
   AppleNugs:
@@ -20,22 +25,38 @@ targets:
     entitlements:
       path: AppleNugs/AppleNugs.entitlements
       properties:
+        # Minimal sandbox: outbound network only. No file/mic/camera access —
+        # all persistence stays inside the app's own container.
         com.apple.security.app-sandbox: true
         com.apple.security.network.client: true
     info:
       path: AppleNugs/Info.plist
       properties:
         CFBundleDisplayName: AppleNugs
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         LSApplicationCategoryType: public.app-category.music
-        NSHumanReadableCopyright: "Personal use against your own nugs.net subscription only."
+        LSMinimumSystemVersion: $(MACOSX_DEPLOYMENT_TARGET)
+        NSHumanReadableCopyright: "Personal use against your own nugs.net subscription only. Not affiliated with nugs.net."
+        # Standard HTTPS/TLS only — exempt encryption. Declaring this skips the
+        # export-compliance prompt on every App Store Connect upload.
+        ITSAppUsesNonExemptEncryption: false
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.timvbs.applenugs
-        # Ad-hoc signing so the app builds and runs locally without a team.
-        # Switch to Automatic + your team in Xcode if you want a real identity.
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+        # Hardened runtime is required for Developer ID notarization (the
+        # GitHub-download path) and harmless for the App Store build.
+        ENABLE_HARDENED_RUNTIME: YES
+        # Committed default: ad-hoc signing so the project builds in CI and on
+        # any machine with no Apple team. To produce a distributable build,
+        # override these in Xcode (Signing & Capabilities) or via xcodebuild:
+        #
+        #   App Store:    set CODE_SIGN_STYLE=Automatic, DEVELOPMENT_TEAM=<TEAMID>,
+        #                 "Apple Distribution" identity + an App Store provisioning profile.
+        #   Developer ID: CODE_SIGN_IDENTITY="Developer ID Application: <Name> (TEAMID)",
+        #                 then notarize the export (see DISTRIBUTION.md).
         CODE_SIGN_STYLE: Manual
         CODE_SIGN_IDENTITY: "-"
         DEVELOPMENT_TEAM: ""
-        ENABLE_HARDENED_RUNTIME: NO
-        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
-        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
