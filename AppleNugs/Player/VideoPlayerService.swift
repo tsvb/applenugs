@@ -331,15 +331,19 @@ final class VideoPlayerService {
                 case .failed:
                     self.loadError = item.error?.localizedDescription
                         ?? "This video failed to play."
-                    // Nothing played — drop the deferred seek and don't leave
-                    // currentTime pinned at the resume point (it would falsely
-                    // highlight a "current" chapter for a video that never ran).
-                    self.pendingResumeSeek = nil
-                    self.pendingLiveEdgeSeek = false
+                    // The video can't play. Detach the dead item and clear
+                    // `current` BEFORE relinquishing: leaving it attached to the
+                    // native player controls would let the timeControlStatus
+                    // observer (guarded on `current != nil`) re-claim the arbiter
+                    // and re-pause the audio we're about to hand back. Clearing
+                    // currentTime also avoids a stale "current chapter" highlight;
+                    // loadError still drives the error overlay, and `current ==
+                    // nil` turns the Play button into a retry.
                     self.currentTime = 0
                     self.isPlaying = false
-                    // The video can't play — hand system media back to audio
-                    // rather than leaving its Now Playing / keys dead on screen.
+                    self.loadGeneration += 1   // cancel any in-flight variant load
+                    self.tearDownItem()
+                    self.current = nil
                     self.relinquishArbiter()
                 case .readyToPlay:
                     self.applyPendingStartSeek()
