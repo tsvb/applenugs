@@ -103,6 +103,11 @@ final class PlayerService {
     private var pendingSeekPosition: Double?
     private var lastSavedPosition: Double = 0
 
+    /// True while the video player owns system Now Playing + remote commands.
+    /// Gates this service's Now Playing writes and remote-command handlers so
+    /// audio and video never both drive the system playback UI.
+    private var suspendedForVideo = false
+
     /// Cover art for the system Now Playing widget, keyed by image path.
     private var artworkCache: [String: NSImage] = [:]
     private var artworkTask: Task<Void, Never>?
@@ -287,14 +292,25 @@ final class PlayerService {
     }
 
     /// Arbiter hook for the video player: pause audio if it is playing and
-    /// report whether it was, so the caller can resume it later. Distinct from
-    /// `pause()` only in returning the prior state — keeps the video service
-    /// from poking at `isPlaying` and the transport directly.
+    /// report whether it was, so the caller can resume it later. Also marks
+    /// audio as suspended so it stops writing system Now Playing and stops
+    /// responding to remote commands while video owns playback — otherwise both
+    /// services write the shared MPNowPlayingInfoCenter and a Control Center
+    /// play would resume audio on top of the video.
     @discardableResult
     func pauseForExternalAudio() -> Bool {
+        suspendedForVideo = true
         let wasPlaying = isPlaying
         if wasPlaying { pause() }
         return wasPlaying
+    }
+
+    /// Counterpart to `pauseForExternalAudio`: the external (video) owner has
+    /// relinquished. Clears the suspension — so audio owns Now Playing and the
+    /// remote commands again — and optionally resumes playback.
+    func endExternalPlayback(resume: Bool) {
+        suspendedForVideo = false
+        if resume { self.resume() }
     }
 
     func seek(to seconds: Double) {
@@ -680,32 +696,32 @@ final class PlayerService {
     private func registerRemoteCommands() {
         let center = MPRemoteCommandCenter.shared()
         center.playCommand.addTarget { [weak self] _ in
-            guard let self, self.current != nil else { return .noActionableNowPlayingItem }
+            guard let self, !self.suspendedForVideo, self.current != nil else { return .noActionableNowPlayingItem }
             self.resume()
             return .success
         }
         center.pauseCommand.addTarget { [weak self] _ in
-            guard let self, self.current != nil else { return .noActionableNowPlayingItem }
+            guard let self, !self.suspendedForVideo, self.current != nil else { return .noActionableNowPlayingItem }
             self.pause()
             return .success
         }
         center.togglePlayPauseCommand.addTarget { [weak self] _ in
-            guard let self, self.current != nil else { return .noActionableNowPlayingItem }
+            guard let self, !self.suspendedForVideo, self.current != nil else { return .noActionableNowPlayingItem }
             self.togglePlayPause()
             return .success
         }
         center.nextTrackCommand.addTarget { [weak self] _ in
-            guard let self, self.hasNext else { return .noActionableNowPlayingItem }
+            guard let self, !self.suspendedForVideo, self.hasNext else { return .noActionableNowPlayingItem }
             self.next()
             return .success
         }
         center.previousTrackCommand.addTarget { [weak self] _ in
-            guard let self, self.hasPrevious else { return .noActionableNowPlayingItem }
+            guard let self, !self.suspendedForVideo, self.hasPrevious else { return .noActionableNowPlayingItem }
             self.previous()
             return .success
         }
         center.changePlaybackPositionCommand.addTarget { [weak self] event in
-            guard let self,
+            guard let self, !self.suspendedForVideo,
                   let event = event as? MPChangePlaybackPositionCommandEvent
             else { return .commandFailed }
             self.seek(to: event.positionTime)
@@ -714,19 +730,21 @@ final class PlayerService {
 
         center.skipBackwardCommand.preferredIntervals = [15]
         center.skipBackwardCommand.addTarget { [weak self] _ in
-            guard let self, self.current != nil else { return .noActionableNowPlayingItem }
+            guard let self, !self.suspendedForVideo, self.current != nil else { return .noActionableNowPlayingItem }
             self.seek(by: -15)
             return .success
         }
         center.skipForwardCommand.preferredIntervals = [30]
         center.skipForwardCommand.addTarget { [weak self] _ in
-            guard let self, self.current != nil else { return .noActionableNowPlayingItem }
+            guard let self, !self.suspendedForVideo, self.current != nil else { return .noActionableNowPlayingItem }
             self.seek(by: 30)
             return .success
         }
     }
 
     private func pushNowPlayingInfo() {
+        // Video owns the system playback UI right now — don't clobber it.
+        guard !suspendedForVideo else { return }
         let center = MPNowPlayingInfoCenter.default()
         guard let track = current else {
             center.nowPlayingInfo = nil

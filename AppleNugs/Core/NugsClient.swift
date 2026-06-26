@@ -286,9 +286,12 @@ final class NugsClient {
         req.setValue("Bearer \(session.accessToken)", forHTTPHeaderField: "Authorization")
         req.setValue(NugsConstants.legacyUserAgent, forHTTPHeaderField: "User-Agent")
         let (data, res) = try await http.data(for: req)
-        guard let code = (res as? HTTPURLResponse)?.statusCode, (200..<300).contains(code) else {
-            return nil
-        }
+        let status = (res as? HTTPURLResponse)?.statusCode ?? 0
+        // Reserve a `nil` return for the PPV/owned seam (a 2xx with no
+        // streamLink). A real HTTP failure (expired token, entitlement, server
+        // error) must throw so the caller can distinguish it from "not in your
+        // plan" instead of collapsing both into the same nil.
+        guard (200..<300).contains(status) else { throw NugsError.http(status) }
         let json = JSON.parse(data)
         guard let link = json.str("streamLink", "StreamLink"), !link.isEmpty else {
             // PPV/owned playback (vidPlayer.aspx, reads "fileURL") is Phase 7.

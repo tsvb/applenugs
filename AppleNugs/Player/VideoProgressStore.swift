@@ -25,6 +25,10 @@ final class VideoProgressStore {
 
     private let fileURL: URL
 
+    /// Continue Watching is a recency list — keep it bounded so the file and the
+    /// `recent` sort don't grow without limit.
+    private static let maxItems = 50
+
     init() {
         let dir = FileManager.default
             .urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
@@ -53,6 +57,9 @@ final class VideoProgressStore {
             items[idx] = p
         } else {
             items.append(p)
+        }
+        if items.count > Self.maxItems {
+            items = Array(items.sorted { $0.updatedAt > $1.updatedAt }.prefix(Self.maxItems))
         }
         save()
     }

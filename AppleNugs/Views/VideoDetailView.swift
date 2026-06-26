@@ -258,7 +258,12 @@ struct VideoDetailView: View {
             let loaded = try await app.client.videoDetail(containerId: videoId)
             detail = loaded
             error = nil
-            await app.video.play(loaded)
+            // The `.task(id:)` re-fires when this view is recreated (e.g. on
+            // navigate-back); don't tear down and restart a video that's already
+            // current — only (re)start when it isn't.
+            if app.video.current?.id != loaded.id {
+                await app.video.play(loaded)
+            }
         } catch {
             self.error = error.localizedDescription
         }

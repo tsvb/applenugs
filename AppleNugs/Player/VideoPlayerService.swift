@@ -55,7 +55,6 @@ final class VideoPlayerService {
     private let audio: PlayerService
     private let client: NugsClient
     private let progress: VideoProgressStore
-    private let favorites: FavoritesStore
 
     // --- internals ----------------------------------------------------------
 
@@ -84,11 +83,17 @@ final class VideoPlayerService {
     /// Last position written to disk, to throttle recording to ~5 s.
     private var lastRecordedPosition: Double = 0
 
-    init(audio: PlayerService, client: NugsClient, progress: VideoProgressStore, favorites: FavoritesStore) {
+    /// A start seek deferred until the item is `.readyToPlay` — a VOD resume
+    /// position, or the live-edge sentinel. Seeking right after
+    /// `replaceCurrentItem` (status `.unknown`, empty seekable range) is
+    /// dropped, which would resume at 0; we apply it from the status observer.
+    private var pendingResumeSeek: Double?
+    private var pendingLiveEdgeSeek = false
+
+    init(audio: PlayerService, client: NugsClient, progress: VideoProgressStore) {
         self.audio = audio
         self.client = client
         self.progress = progress
-        self.favorites = favorites
         if let code = UserDefaults.standard.string(forKey: Self.qualityKey) {
             selectedQuality = Self.quality(from: code)
         }
@@ -125,7 +130,12 @@ final class VideoPlayerService {
         }
         guard generation == loadGeneration else { return }
         guard let resolved, let url = URL(string: resolved.url), !resolved.url.isEmpty else {
-            loadError = "This video isn’t included in your plan."
+            // A missing SKU (e.g. a live item whose container detail didn't
+            // carry it) can't resolve at all; distinguish that from a real
+            // entitlement gap so the message isn't misleading.
+            loadError = video.videoSku == 0
+                ? "Couldn’t find a playable stream for this video."
+                : "This video isn’t included in your plan."
             return
         }
 
@@ -148,10 +158,13 @@ final class VideoPlayerService {
         resumeAudioOnStop = audio.pauseForExternalAudio()
         claimNowPlaying()
 
+        // Defer the start seek to `.readyToPlay` (see `applyPendingStartSeek`);
+        // issuing it now, before the item is ready, would be dropped.
         if video.isLive {
-            seekToLiveEdge()
+            pendingLiveEdgeSeek = true
         } else if let saved = progress.progress(for: video.id), saved.positionSeconds > 1 {
-            seek(to: saved.positionSeconds)
+            pendingResumeSeek = saved.positionSeconds
+            currentTime = saved.positionSeconds   // reflect the resume point immediately
         }
         player.play()
         isPlaying = true
@@ -211,11 +224,10 @@ final class VideoPlayerService {
         atLiveEdge = false
         loadError = nil
         relinquishNowPlaying()
-        // Arbiter: hand playback back to audio if it had been playing.
-        if resumeAudioOnStop {
-            resumeAudioOnStop = false
-            audio.resume()
-        }
+        // Arbiter: clear audio's Now Playing suspension and hand playback back
+        // if it had been playing when this video took over.
+        audio.endExternalPlayback(resume: resumeAudioOnStop)
+        resumeAudioOnStop = false
     }
 
     // --- quality ------------------------------------------------------------
@@ -278,9 +290,14 @@ final class VideoPlayerService {
         statusObservation = item.observe(\.status, options: [.new]) { [weak self] item, _ in
             DispatchQueue.main.async {
                 guard let self, item === self.item else { return }
-                if item.status == .failed {
+                switch item.status {
+                case .failed:
                     self.loadError = item.error?.localizedDescription
                         ?? "This video failed to play."
+                case .readyToPlay:
+                    self.applyPendingStartSeek()
+                default:
+                    break
                 }
             }
         }
@@ -296,6 +313,18 @@ final class VideoPlayerService {
         }
     }
 
+    /// Apply a start seek (resume position / live edge) once the item is ready.
+    /// Called from the status observer at `.readyToPlay`.
+    private func applyPendingStartSeek() {
+        if let pos = pendingResumeSeek {
+            pendingResumeSeek = nil
+            seek(to: pos)
+        } else if pendingLiveEdgeSeek {
+            pendingLiveEdgeSeek = false
+            seekToLiveEdge()
+        }
+    }
+
     private func tearDownItem() {
         statusObservation?.invalidate()
         statusObservation = nil
@@ -303,6 +332,8 @@ final class VideoPlayerService {
             NotificationCenter.default.removeObserver(endObserver)
             self.endObserver = nil
         }
+        pendingResumeSeek = nil
+        pendingLiveEdgeSeek = false
         player.pause()
         player.replaceCurrentItem(with: nil)
         item = nil

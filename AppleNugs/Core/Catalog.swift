@@ -279,8 +279,10 @@ enum Catalog {
     static func liveWebcasts(from json: JSON) -> [VideoSummary] {
         json.arr("items", "Items", "data").compactMap { item in
             let release = item["release"].raw != nil ? item["release"] : item
+            // Never fall back to the live `skuId` as the container id — it's a
+            // different namespace and would mis-route videoDetail/resolve.
             guard let id = release.str("id", "ID", "containerID", "releaseId")
-                    ?? item.str("id", "ID", "skuId") else { return nil }
+                    ?? item.str("id", "ID") else { return nil }
             let start = Catalog.parseTimestamp(item.str("startDate", "StartDate", "eventStartDateStr"))
             let has4K = (item["has4KOption"].raw as? Bool) ?? (item.int("has4KOption") == 1)
             return VideoSummary(
@@ -452,6 +454,11 @@ enum Catalog {
     private static let slashShort: DateFormatter = makeFormatter("M/d/yyyy")
     private static let slashFull: DateFormatter = makeFormatter("yyyy/MM/dd")
     private static let iso: DateFormatter = makeFormatter("yyyy-MM-dd")
+    // REST shapes (/releases/recent, /livestreams.release) carry performanceDate
+    // as a zoneless ISO datetime ("2026-05-30T00:00:00"); the legacy paths use
+    // the slash forms. Parse both so isoDate() always returns a clean date.
+    private static let dashDateTime: DateFormatter = makeFormatter("yyyy-MM-dd'T'HH:mm:ss")
+    private static let dashFull: DateFormatter = makeFormatter("yyyy-MM-dd")
 
     private static func makeFormatter(_ format: String) -> DateFormatter {
         let f = DateFormatter()
@@ -463,7 +470,10 @@ enum Catalog {
 
     static func parseDate(_ raw: String?) -> Date? {
         guard let raw else { return nil }
-        return slashShort.date(from: raw) ?? slashFull.date(from: raw)
+        return slashShort.date(from: raw)
+            ?? slashFull.date(from: raw)
+            ?? dashDateTime.date(from: raw)
+            ?? dashFull.date(from: raw)
     }
 
     /// "M/d/yyyy" or "yyyy/MM/dd" → "yyyy-MM-dd"; falls back to the raw string.

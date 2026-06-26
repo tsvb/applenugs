@@ -35,7 +35,7 @@ final class AppModel {
         client = NugsClient(store: store)
         player = PlayerService(client: client)
         video = VideoPlayerService(audio: player, client: client,
-                                   progress: videoProgress, favorites: favorites)
+                                   progress: videoProgress)
     }
 
     /// Resolve the persisted session at launch (refreshing the token if it
