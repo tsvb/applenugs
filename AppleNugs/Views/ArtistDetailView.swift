@@ -1,8 +1,7 @@
 import SwiftUI
 
-/// Artist landing page (catalog.containersAll): studio releases as a cover
-/// grid, live shows grouped by year (newest expanded). Unlike the web port,
-/// pagination is wired — "Load more" pulls the next 100 containers.
+/// Artist landing page (catalog.containersAll): releases + live shows + videos
+/// presented via the CrateHeader / CrateOutline library outline components.
 struct ArtistDetailView: View {
     let artist: ArtistEntry
 
@@ -13,7 +12,6 @@ struct ArtistDetailView: View {
     @State private var loading = false
     @State private var error: String?
     @State private var canLoadMore = false
-    @State private var expandedYears: Set<Int> = []
     @State private var videos: [VideoSummary] = []
 
     private static let pageSize = 100
@@ -21,44 +19,24 @@ struct ArtistDetailView: View {
     private var releases: [ContainerSummary] { containers.filter { !$0.isLiveShow } }
     private var shows: [ContainerSummary] { containers.filter(\.isLiveShow) }
 
-    private var showsByYear: [(year: Int, shows: [ContainerSummary])] {
-        Dictionary(grouping: shows, by: \.year)
-            .sorted { $0.key > $1.key }
-            .map { (year: $0.key, shows: $0.value.sorted { ($0.date ?? .distantPast) > ($1.date ?? .distantPast) }) }
-    }
+    private var albumItems: [CrateItem] { releases.map { CrateItem.album($0, artist: artist.name) } }
+    private var showItems: [CrateItem] { shows.map { CrateItem.show($0, artist: artist.name) } }
+    private var videoItems: [CrateItem] { videos.map { CrateItem.video($0, artist: artist.name) } }
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 16) {
-                header
+            VStack(alignment: .leading, spacing: 12) {
+                CrateHeader(artist: artist,
+                            albumCount: releases.count,
+                            videoCount: videos.count,
+                            showCount: shows.count)
 
-                if !releases.isEmpty {
-                    sectionTitle("Releases")
-                    releaseGrid
-                }
-
-                if !videos.isEmpty {
-                    sectionTitle("Videos")
-                    videoGrid
-                }
-
-                if !shows.isEmpty {
-                    sectionTitle("Shows")
-                    ForEach(showsByYear, id: \.year) { group in
-                        yearSection(group.year, group.shows)
-                    }
-                }
-
-                if canLoadMore {
-                    Button("Load more shows") {
-                        Task { await load(reset: false) }
-                    }
-                    .disabled(loading)
-                }
-
-                if loading && !containers.isEmpty {
-                    ProgressView().controlSize(.small)
-                }
+                CrateOutline(albums: albumItems,
+                             videos: videoItems,
+                             shows: showItems,
+                             canLoadMore: canLoadMore,
+                             loading: loading,
+                             loadMore: { Task { await load(reset: false) } })
             }
             .padding(20)
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -78,149 +56,9 @@ struct ArtistDetailView: View {
         .task(id: artist.id) { await load(reset: true) }
     }
 
-    private var header: some View {
-        HStack(spacing: 12) {
-            followButton
-            if !releases.isEmpty {
-                Text("^[\(releases.count) release](inflect: true)")
-            }
-            if !shows.isEmpty {
-                Text("^[\(shows.count) show](inflect: true)")
-            }
-            if !videos.isEmpty {
-                Text("^[\(videos.count) video](inflect: true)")
-            }
-        }
-        .font(theme.type.numeric(12))
-        .foregroundStyle(theme.palette.textSecondary)
-    }
-
-    private var followButton: some View {
-        let fav = app.favorites.isArtistFavorited(artist.id)
-        return Button {
-            app.favorites.toggleArtist(id: artist.id, name: artist.name)
-        } label: {
-            Label(fav ? "Following" : "Follow", systemImage: fav ? "star.fill" : "star")
-                .font(theme.type.body(12))
-        }
-        .buttonStyle(.bordered)
-        .tint(fav ? theme.palette.accent : theme.palette.textSecondary)
-        .help(fav ? "Unfollow artist" : "Follow artist")
-    }
-
-    private func sectionTitle(_ text: String) -> some View {
-        let condensed = theme.caps.contains(.condensedHeaders)
-        return Text(condensed ? text.uppercased() : text)
-            .font(theme.type.section(17))
-            .tracking(condensed ? 1.4 : 0)
-            .foregroundStyle(theme.palette.textPrimary)
-    }
-
-    private var releaseGrid: some View {
-        LazyVGrid(columns: [GridItem(.adaptive(minimum: 140, maximum: 180), spacing: 14)],
-                  alignment: .leading, spacing: 14) {
-            ForEach(releases) { release in
-                NavigationLink(value: Route.album(id: release.id, title: release.title)) {
-                    VStack(alignment: .leading, spacing: 6) {
-                        CoverArt(url: release.imageURL)
-                        Text(release.title)
-                            .font(theme.type.body(13))
-                            .foregroundStyle(theme.palette.textPrimary)
-                            .lineLimit(2)
-                            .multilineTextAlignment(.leading)
-                    }
-                }
-                .buttonStyle(.plain)
-                .help(release.title)
-            }
-        }
-    }
-
-    /// Per-artist Videos grid. Video posters are 16:9 (wider than the square
-    /// covers), so the adaptive cell is wider. The legacy per-artist list
-    /// carries no video SKU — that lives on the container detail and is
-    /// re-resolved inside VideoDetailView, so the route only needs id/title.
-    /// The context menu mirrors the show-row menu, saving a FavVideo with
-    /// videoSku: 0 (filled in when the video is opened/saved from the detail).
-    private var videoGrid: some View {
-        LazyVGrid(columns: [GridItem(.adaptive(minimum: 200, maximum: 260), spacing: 14)],
-                  alignment: .leading, spacing: 14) {
-            ForEach(videos) { video in
-                NavigationLink(value: Route.video(id: video.id, title: video.title)) {
-                    VideoThumbnail(video: video)
-                }
-                .buttonStyle(.plain)
-                .help(video.title)
-                .contextMenu {
-                    let fav = app.favorites.isVideoFavorited(video.id)
-                    Button(fav ? "Remove from Favorites" : "Add to Favorites",
-                           systemImage: fav ? "star.slash" : "star") {
-                        app.favorites.toggleVideo(
-                            FavVideo(id: video.id, videoSku: 0, title: video.title,
-                                     artistName: video.artistName ?? artist.name,
-                                     dateText: video.dateText, isLive: video.isLive,
-                                     imageURL: video.imageURL?.absoluteString, savedAt: Date()))
-                    }
-                }
-            }
-        }
-    }
-
-    private func yearSection(_ year: Int, _ shows: [ContainerSummary]) -> some View {
-        DisclosureGroup(isExpanded: yearBinding(year)) {
-            VStack(alignment: .leading, spacing: 2) {
-                ForEach(shows) { show in
-                    NavigationLink(value: Route.album(id: show.id, title: show.venue ?? show.title)) {
-                        HStack(spacing: 10) {
-                            Text(show.dateText ?? "")
-                                .font(theme.type.numeric(12))
-                                .foregroundStyle(theme.palette.textSecondary)
-                                .frame(width: 86, alignment: .leading)
-                            Text(show.venue ?? show.title)
-                                .font(theme.type.body(13))
-                                .foregroundStyle(theme.palette.textPrimary)
-                                .lineLimit(1)
-                            Spacer(minLength: 0)
-                        }
-                        .contentShape(Rectangle())
-                    }
-                    .buttonStyle(.plain)
-                    .padding(.vertical, 3)
-                    .contextMenu {
-                        let fav = app.favorites.isShowFavorited(show.id)
-                        Button(fav ? "Remove from Favorites" : "Add to Favorites",
-                               systemImage: fav ? "star.slash" : "star") {
-                            app.favorites.toggleShow(id: show.id, title: show.venue ?? show.title,
-                                                     artistName: artist.name,
-                                                     dateText: show.dateText, venue: show.venue,
-                                                     imageURL: show.imageURL?.absoluteString)
-                        }
-                    }
-                }
-            }
-            .padding(.leading, 4)
-        } label: {
-            HStack {
-                Text(String(year)).font(theme.type.section(16))
-                Text("^[\(shows.count) show](inflect: true)")
-                    .font(theme.type.numeric(12))
-                    .foregroundStyle(theme.palette.textSecondary)
-            }
-        }
-    }
-
-    private func yearBinding(_ year: Int) -> Binding<Bool> {
-        Binding(
-            get: { expandedYears.contains(year) },
-            set: { open in
-                if open { expandedYears.insert(year) } else { expandedYears.remove(year) }
-            })
-    }
-
     private func load(reset: Bool) async {
         if reset {
             containers = []
-            expandedYears = []
             canLoadMore = false
             videos = []
             Task { await loadVideos() }
@@ -234,10 +72,6 @@ struct ArtistDetailView: View {
             containers += page
             canLoadMore = page.count >= Self.pageSize
             error = nil
-            // Expand only the newest year by default, like the web port.
-            if reset, let newest = showsByYear.first?.year {
-                expandedYears = [newest]
-            }
         } catch {
             self.error = error.localizedDescription
         }
@@ -256,6 +90,7 @@ struct ArtistDetailView: View {
 }
 
 /// Square cover-art thumbnail with a placeholder while loading / on miss.
+/// Used by ShowCard, AlbumDetailView, and formerly by the old releaseGrid.
 struct CoverArt: View {
     let url: URL?
 
