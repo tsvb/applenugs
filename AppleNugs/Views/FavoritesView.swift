@@ -17,6 +17,7 @@ struct FavoritesView: View {
                 VStack(alignment: .leading, spacing: 26) {
                     if !favorites.artists.isEmpty { artistsSection }
                     if !favorites.shows.isEmpty { showsSection }
+                    if !favorites.videos.isEmpty { videosSection }
                 }
                 .padding(28)
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -90,6 +91,37 @@ struct FavoritesView: View {
         }
     }
 
+    private var videosSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            sectionTitle("Saved videos")
+            LazyVGrid(columns: [GridItem(.adaptive(minimum: 200, maximum: 260), spacing: 16)],
+                      alignment: .leading, spacing: 20) {
+                ForEach(favorites.videos) { video in
+                    NavigationLink(value: Route.video(id: video.id, title: video.title)) {
+                        VideoThumbnail(video: videoSummary(for: video))
+                    }
+                    .buttonStyle(.plain)
+                    .contextMenu {
+                        Button("Remove from Favorites", systemImage: "star.slash") {
+                            app.favorites.toggleVideo(video)
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    /// Map a saved video onto the `VideoSummary` the shared `VideoThumbnail`
+    /// draws. The poster card shows only title, artist, and the LIVE/4K badges,
+    /// so the fields `FavVideo` doesn't persist (performanceDate, eventStart,
+    /// has4K) are left nil/false. Opening the card re-fetches full detail via
+    /// `Route.video`, so the saved `videoSku` isn't needed to reopen.
+    private func videoSummary(for fav: FavVideo) -> VideoSummary {
+        VideoSummary(id: fav.id, title: fav.title, artistName: fav.artistName,
+                     performanceDate: nil, imagePath: fav.imageURL, isLive: fav.isLive,
+                     eventStart: nil, has4K: false)
+    }
+
     private var emptyState: some View {
         VStack(spacing: 8) {
             Image(systemName: "star")
@@ -98,7 +130,7 @@ struct FavoritesView: View {
             Text("Nothing saved yet")
                 .font(theme.type.hero(22))
                 .foregroundStyle(theme.palette.textPrimary)
-            Text("Star an artist or a show to keep it here.")
+            Text("Star an artist, show, or video to keep it here.")
                 .font(theme.type.body(13))
                 .foregroundStyle(theme.palette.textSecondary)
         }

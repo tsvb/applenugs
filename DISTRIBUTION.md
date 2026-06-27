@@ -115,12 +115,11 @@ codesign -dvvv build/export/AppleNugs.app 2>&1 | grep -i runtime  # → flags in
 
 ## GitHub public release
 
-The repo is currently **private**. Before making it public:
+The shipping app lives on `main`. Before making the repo public:
 
 - Confirm you're comfortable publishing an unofficial nugs.net client (see the
   disclaimer in [README](README.md) and [LICENSE](LICENSE)).
 - There are no secrets in the tree — credentials are entered at runtime and the
   OAuth `client_id` is the public mobile-client value, not a secret.
-- The latest app lives on the `videos` branch; merge it to `main` so the
-  default branch reflects the shipping app, then flip the repo to public and
-  cut a release (attach the notarized `.zip` from Path B).
+- Flip the repo to public, then cut a release (attach the notarized `.zip` from
+  Path B).
