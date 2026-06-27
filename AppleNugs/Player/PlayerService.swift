@@ -396,10 +396,10 @@ final class PlayerService {
         player.removeAllItems()
         currentItem = item
         player.insert(item, after: nil)
-        if let position = pendingSeekPosition {
-            pendingSeekPosition = nil
-            player.seek(to: CMTime(seconds: position, preferredTimescale: 600))
-        }
+        // The resume seek is deferred to `.readyToPlay` (see applyPendingSeek):
+        // seeking now, before the item is ready (status .unknown, empty
+        // seekableTimeRanges), is silently dropped, so playback would resume
+        // at 0 while the UI shows the saved position.
         player.play()
         isPlaying = true
         loadSpecs(from: item.asset, format: pick.format)
@@ -424,7 +424,8 @@ final class PlayerService {
         statusObservation = item.observe(\.status, options: [.new]) { [weak self] item, _ in
             DispatchQueue.main.async {
                 guard let self, item === self.currentItem else { return }
-                if item.status == .failed {
+                switch item.status {
+                case .failed:
                     // Signed URL rejected or format undecodable here — fall
                     // through to the next available format for this track,
                     // and drop the cached picks so a retry re-probes.
@@ -433,9 +434,23 @@ final class PlayerService {
                     }
                     self.pickIndex += 1
                     self.loadCurrentPick()
+                case .readyToPlay:
+                    self.applyPendingSeek()
+                default:
+                    break
                 }
             }
         }
+    }
+
+    /// Apply a deferred resume seek once the item is ready. A seek issued before
+    /// `.readyToPlay` is dropped, so the restore path stashes the saved position
+    /// in `pendingSeekPosition` and lands it here (precise, zero-tolerance).
+    private func applyPendingSeek() {
+        guard let position = pendingSeekPosition else { return }
+        pendingSeekPosition = nil
+        player.seek(to: CMTime(seconds: position, preferredTimescale: 600),
+                    toleranceBefore: .zero, toleranceAfter: .zero)
     }
 
     /// Fired whenever any of our items plays to the end.
