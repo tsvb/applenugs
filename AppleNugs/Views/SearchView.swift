@@ -153,6 +153,7 @@ struct SearchView: View {
                 }
                 .buttonStyle(.borderless)
                 .help("Play next")
+                .accessibilityLabel("Play \(item.name) next")
                 Button {
                     if app.player.enqueue(single) { ui.showToast("Added to queue") }
                 } label: {
@@ -160,6 +161,7 @@ struct SearchView: View {
                 }
                 .buttonStyle(.borderless)
                 .help("Add to queue")
+                .accessibilityLabel("Add \(item.name) to queue")
             }
         }
     }

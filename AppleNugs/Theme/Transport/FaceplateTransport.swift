@@ -19,6 +19,7 @@ struct FaceplateTransport: View {
             controls
             VUMeter(isPlaying: player.isPlaying)
                 .frame(width: 150)
+                .accessibilityHidden(true)
             seekBlock
             volumeLadder
             qualityReadout
@@ -80,16 +81,21 @@ struct FaceplateTransport: View {
         HStack(spacing: 12) {
             KnurledButton(system: "backward.fill", size: 30, glow: false) { player.previous() }
                 .disabled(!player.hasPrevious)
+                .accessibilityLabel("Previous track")
             KnurledButton(system: "gobackward.15", size: 26, glow: false) { player.seek(by: -15) }
                 .disabled(player.current == nil)
+                .accessibilityLabel("Back 15 seconds")
             KnurledButton(
                 system: player.isPlaying ? "pause.fill" : "play.fill",
                 size: 40, glow: player.isPlaying) { player.togglePlayPause() }
                 .disabled(player.current == nil)
+                .accessibilityLabel(player.isPlaying ? "Pause" : "Play")
             KnurledButton(system: "goforward.30", size: 26, glow: false) { player.seek(by: 30) }
                 .disabled(player.current == nil)
+                .accessibilityLabel("Forward 30 seconds")
             KnurledButton(system: "forward.fill", size: 30, glow: false) { player.next() }
                 .disabled(!player.hasNext)
+                .accessibilityLabel("Next track")
         }
     }
 
@@ -114,6 +120,8 @@ struct FaceplateTransport: View {
             .controlSize(.small)
             .tint(theme.palette.accent)
             .disabled(player.duration <= 0)
+            .accessibilityLabel("Playback position")
+            .accessibilityValue(TransportBar.format(seconds: scrubbing ? scrubValue : player.currentTime))
 
             Text(remainingText)
                 .font(theme.type.numeric(11))
@@ -156,6 +164,18 @@ struct FaceplateTransport: View {
                     })
         }
         .frame(width: 76, height: 16)
+        // The drag-on-shapes ladder is invisible to VoiceOver; expose it as a
+        // single adjustable Volume control.
+        .accessibilityElement()
+        .accessibilityLabel("Volume")
+        .accessibilityValue("\(Int((player.volume * 100).rounded())) percent")
+        .accessibilityAdjustableAction { direction in
+            switch direction {
+            case .increment: player.volume = min(1, player.volume + 0.05)
+            case .decrement: player.volume = max(0, player.volume - 0.05)
+            @unknown default: break
+            }
+        }
     }
 
     // --- quality readout ----------------------------------------------------
@@ -191,6 +211,8 @@ struct FaceplateTransport: View {
         .buttonStyle(.plain)
         .disabled(player.current?.showId == nil)
         .help("Save this show to Favorites")
+        .accessibilityLabel("Save show to Favorites")
+        .accessibilityAddTraits(saved ? .isSelected : [])
     }
 }
 

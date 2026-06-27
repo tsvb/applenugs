@@ -80,6 +80,8 @@ struct TransportBar: View {
         .buttonStyle(.plain)
         .disabled(player.current?.showId == nil)
         .help("Save this show to Favorites")
+        .accessibilityLabel("Save show to Favorites")
+        .accessibilityAddTraits(saved ? .isSelected : [])
     }
 
     // --- blocks ------------------------------------------------------------------
@@ -107,6 +109,7 @@ struct TransportBar: View {
             }
             .disabled(!player.hasPrevious)
             .help("Previous (p)")
+            .accessibilityLabel("Previous track")
 
             Button {
                 player.seek(by: -15)
@@ -115,6 +118,7 @@ struct TransportBar: View {
             }
             .disabled(player.current == nil)
             .help("Back 15s (←)")
+            .accessibilityLabel("Back 15 seconds")
 
             Button {
                 player.togglePlayPause()
@@ -131,6 +135,8 @@ struct TransportBar: View {
             }
             .disabled(player.current == nil)
             .help("Play / pause (space)")
+            .accessibilityLabel(player.isPlaying ? "Pause" : "Play")
+            .accessibilityValue(player.isBuffering ? "Buffering" : "")
 
             Button {
                 player.seek(by: 30)
@@ -139,6 +145,7 @@ struct TransportBar: View {
             }
             .disabled(player.current == nil)
             .help("Forward 30s (→)")
+            .accessibilityLabel("Forward 30 seconds")
 
             Button {
                 player.next()
@@ -147,6 +154,7 @@ struct TransportBar: View {
             }
             .disabled(!player.hasNext)
             .help("Next (n)")
+            .accessibilityLabel("Next track")
         }
         .buttonStyle(.borderless)
     }
@@ -172,6 +180,8 @@ struct TransportBar: View {
             }
             .disabled(player.duration <= 0)
             .controlSize(.small)
+            .accessibilityLabel("Playback position")
+            .accessibilityValue(Self.format(seconds: scrubbing ? scrubValue : player.currentTime))
 
             Text(remainingText)
                 .font(theme.type.numeric(11))
@@ -197,9 +207,11 @@ struct TransportBar: View {
             Image(systemName: "speaker.wave.2.fill")
                 .font(.caption)
                 .foregroundStyle(.secondary)
+                .accessibilityHidden(true)
             Slider(value: $player.volume, in: 0...1)
                 .controlSize(.mini)
                 .frame(width: 90)
+                .accessibilityLabel("Volume")
         }
     }
 

@@ -164,6 +164,10 @@ struct DashboardPanel: View {
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(i == player.index
+                ? "Now playing, \(track.title ?? "track")"
+                : "Play \(track.title ?? "track")")
 
             Button {
                 player.remove(at: i)
@@ -173,6 +177,7 @@ struct DashboardPanel: View {
             }
             .buttonStyle(.borderless)
             .help("Remove from queue")
+            .accessibilityLabel("Remove from queue")
         }
     }
 }
