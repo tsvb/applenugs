@@ -57,6 +57,7 @@ struct ArtistDetailView: View {
     }
 
     private func load(reset: Bool) async {
+        if loading && !reset { return }
         if reset {
             containers = []
             canLoadMore = false

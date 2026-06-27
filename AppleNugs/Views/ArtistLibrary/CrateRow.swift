@@ -36,7 +36,7 @@ struct CrateRow: View {
         }
         .buttonStyle(.plain)
         .help(item.title)
-        .accessibilityLabel("\(item.title), \(item.kind.word), \(item.dateText ?? "")")
+        .accessibilityLabel([item.title, item.kind.word, item.dateText].compactMap { $0 }.joined(separator: ", "))
         .contextMenu { favoriteButton }
     }
 
