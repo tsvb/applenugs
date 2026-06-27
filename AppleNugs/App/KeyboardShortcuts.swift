@@ -17,10 +17,11 @@ enum KeyboardShortcuts {
 
     private static func handle(_ event: NSEvent, app: AppModel, ui: UIState) -> NSEvent? {
         let escape: UInt16 = 53
+        let responder = NSApp.keyWindow?.firstResponder
 
         // A focused field's editor is an NSTextView — let keys do their
         // normal thing there, except Esc which blurs (matches the web port).
-        if NSApp.keyWindow?.firstResponder is NSTextView {
+        if responder is NSTextView {
             if event.keyCode == escape {
                 NSApp.keyWindow?.makeFirstResponder(nil)
                 return nil
@@ -32,8 +33,28 @@ enum KeyboardShortcuts {
             return event
         }
 
+        // "/" focuses search from anywhere — no control needs that key.
+        if event.charactersIgnoringModifiers == "/" {
+            ui.requestSearchFocus()
+            return nil
+        }
+
+        // Don't preempt a focused AppKit control: a focused button should still
+        // get Space to activate, a focused slider should get the arrow keys.
+        // (Without this the global monitor ate Space/arrows app-wide.)
+        if responder is NSControl {
+            return event
+        }
+
+        // The transport keys only make sense — and should only be swallowed —
+        // when a track is loaded. Otherwise pass them through so Space/arrows
+        // drive standard navigation instead of being silently consumed.
+        guard app.player.current != nil else {
+            return event
+        }
+
         // Arrow-key seek (bare = ±10s, Shift = ±30s). cmd-ctrl-arrows already
-        // own whole-track prev/next and are excluded by the guard above.
+        // own whole-track prev/next and are excluded by the modifier guard.
         let shift = event.modifierFlags.contains(.shift)
         switch event.keyCode {
         case 123:  // left arrow
@@ -55,9 +76,6 @@ enum KeyboardShortcuts {
             return nil
         case "p":
             app.player.previous()
-            return nil
-        case "/":
-            ui.requestSearchFocus()
             return nil
         case "0":
             app.player.seek(to: 0)
