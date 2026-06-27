@@ -114,18 +114,45 @@ final class FavoritesStore {
         var shows: [FavShow]
         var videos: [FavVideo]
 
+        enum CodingKeys: String, CodingKey { case artists, shows, videos }
+
         init(artists: [FavArtist], shows: [FavShow], videos: [FavVideo]) {
             self.artists = artists
             self.shows = shows
             self.videos = videos
         }
 
-        // Tolerate files written before `videos` existed (decode it as empty).
+        // Decode each collection independently and per-element tolerantly: a
+        // single malformed favorite (or a whole collection that's missing or
+        // not even an array) drops only itself, never the others. Without this,
+        // one bad element — or adding a non-optional field to a Fav* type —
+        // would throw, reset all three collections to empty, and the next
+        // toggle would overwrite favorites.json with that empty state.
         init(from decoder: Decoder) throws {
-            let c = try decoder.container(keyedBy: CodingKeys.self)
-            artists = try c.decodeIfPresent([FavArtist].self, forKey: .artists) ?? []
-            shows = try c.decodeIfPresent([FavShow].self, forKey: .shows) ?? []
-            videos = try c.decodeIfPresent([FavVideo].self, forKey: .videos) ?? []
+            let c = try? decoder.container(keyedBy: CodingKeys.self)
+            artists = Self.lossy(c, .artists)
+            shows = Self.lossy(c, .shows)
+            videos = Self.lossy(c, .videos)
+        }
+
+        private static func lossy<E: Decodable>(
+            _ container: KeyedDecodingContainer<CodingKeys>?, _ key: CodingKeys) -> [E] {
+            guard let container else { return [] }
+            return (try? container.decode(LossyArray<E>.self, forKey: key))?.elements ?? []
+        }
+    }
+
+    /// Decodes a JSON array element-by-element, dropping any element that fails
+    /// to decode rather than aborting the whole array. The per-element wrapper
+    /// never throws, so a bad element is skipped, not propagated.
+    private struct LossyArray<Element: Decodable>: Decodable {
+        let elements: [Element]
+        private struct Wrapper: Decodable {
+            let value: Element?
+            init(from decoder: Decoder) throws { value = try? Element(from: decoder) }
+        }
+        init(from decoder: Decoder) throws {
+            elements = try [Wrapper](from: decoder).compactMap(\.value)
         }
     }
 
