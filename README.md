@@ -3,8 +3,8 @@
 A native macOS client for [nugs.net](https://nugs.net), written in
 Swift/SwiftUI — a port and expansion of
 [nugsdotnet](https://github.com/tsvb/nugsdotnet). Fast search, a real queue,
-gapless playback, video, and keyboard control over your own nugs.net
-subscription.
+gapless playback, video, a Winamp-style artist library, and keyboard control
+over your own nugs.net subscription.
 
 > [!IMPORTANT]
 > **Unofficial and unaffiliated.** AppleNugs is an independent client. It is
@@ -26,6 +26,11 @@ subscription.
 - **Video.** Continue Watching with resume positions, Live & Upcoming, a paged
   on-demand grid, chapters, and a quality cap — audio and video share one
   playback arbiter so they never talk over each other.
+- **Artist library.** Each artist opens as a Winamp-style expandable outline —
+  Albums, Videos, and Shows as collapsible nodes (Videos and Shows grouped by
+  year) rendered as dense, scannable rows under a VU + LCD-style header, instead
+  of a wall of posters. Rows page in on scroll and lazily build per year, so a
+  catalog of hundreds stays fast.
 - **Favorites.** Follow artists and save shows and videos; they surface on a
   Home landing strip and a dedicated Favorites view.
 - **Themes.** Four runtime-swappable looks (Tape Room, Soundboard, Shoebox,
