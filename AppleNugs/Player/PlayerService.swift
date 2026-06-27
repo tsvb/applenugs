@@ -168,12 +168,14 @@ final class PlayerService {
         // .waitingToPlayAtSpecifiedRate on a stall and back to .playing on
         // recovery, which the periodic tick would miss.
         timeControlObservation = player.observe(\.timeControlStatus, options: [.new]) { [weak self] player, _ in
-            DispatchQueue.main.async {
-                guard let self else { return }
-                let buffering = player.timeControlStatus == .waitingToPlayAtSpecifiedRate
-                guard buffering != self.isBuffering else { return }
-                self.isBuffering = buffering
-                self.pushNowPlayingInfo()
+            DispatchQueue.main.async { [weak self] in
+                MainActor.assumeIsolated {
+                    guard let self else { return }
+                    let buffering = player.timeControlStatus == .waitingToPlayAtSpecifiedRate
+                    guard buffering != self.isBuffering else { return }
+                    self.isBuffering = buffering
+                    self.pushNowPlayingInfo()
+                }
             }
         }
     }
