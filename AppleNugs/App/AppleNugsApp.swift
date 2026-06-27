@@ -6,6 +6,14 @@ struct AppleNugsApp: App {
     @State private var ui = UIState()
     @State private var themes = ThemeManager()
 
+    init() {
+        // Size the shared HTTP cache so the nugs CDN's cover art and video
+        // posters are reused across scroll and navigation instead of re-fetched
+        // — AsyncImage loads through URLSession.shared → URLCache.shared, which
+        // defaults to a tiny in-memory cache.
+        URLCache.shared = URLCache(memoryCapacity: 64 << 20, diskCapacity: 256 << 20)
+    }
+
     var body: some Scene {
         WindowGroup {
             RootView()
