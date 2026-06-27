@@ -430,7 +430,7 @@ final class PlayerService {
                     // through to the next available format for this track,
                     // and drop the cached picks so a retry re-probes.
                     if let track = self.current {
-                        self.client.invalidateStreams(for: track.trackId)
+                        Task { await self.client.invalidateStreams(for: track.trackId) }
                     }
                     self.pickIndex += 1
                     self.loadCurrentPick()
@@ -540,7 +540,7 @@ final class PlayerService {
                 if item.status == .failed {
                     // The parked pick failed before playback — swap in the
                     // next format without disturbing the playing track.
-                    self.client.invalidateStreams(for: track.trackId)
+                    Task { await self.client.invalidateStreams(for: track.trackId) }
                     self.discardPreload()
                     self.buildPreload(track: track, picks: picks, startingAt: pickIdx + 1)
                 }

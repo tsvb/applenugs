@@ -1,12 +1,17 @@
 import Foundation
 
 /// Thin client for the unofficial nugs.net API — the Swift port of the C#
-/// NugsClient. Owns an ephemeral URLSession (no cookies, no shared cache)
-/// and the persisted token store. Token refresh happens automatically ~60s
+/// NugsClient. An `actor`: it owns the persisted token store and the stream-pick
+/// cache, both of which are mutated from concurrent tasks (the foreground
+/// resolve and the gapless preload), so isolating them here removes the data
+/// race and serializes token refresh. Token refresh happens automatically ~60s
 /// before expiry, same as the original.
-final class NugsClient {
-    private let http: URLSession
-    private let store: SessionStore
+actor NugsClient {
+    /// `URLSession` is `Sendable` and immutable here, so it stays non-isolated —
+    /// the four concurrent tier probes in `resolveStreams` call `streamURL` off
+    /// the actor and must not serialize on it.
+    private nonisolated let http: URLSession
+    private let store = SessionStore()
 
     /// Resolved stream picks per track. Signed CDN URLs rotate on session
     /// boundaries, so entries expire after the same 4h TTL the web port's
@@ -15,8 +20,12 @@ final class NugsClient {
     private var pickCache: [String: (picks: [StreamPick], expiresAt: Date)] = [:]
     private static let pickTTL: TimeInterval = 4 * 60 * 60
 
-    init(store: SessionStore) {
-        self.store = store
+    /// A single in-flight token refresh shared by all callers, so concurrent
+    /// expired-token requests await one refresh instead of stampeding the token
+    /// endpoint and racing to overwrite session.json.
+    private var refreshTask: Task<Session, Error>?
+
+    init() {
         let config = URLSessionConfiguration.ephemeral
         config.httpCookieAcceptPolicy = .never
         config.httpShouldSetCookies = false
@@ -86,12 +95,29 @@ final class NugsClient {
     }
 
     /// Returns a session with a fresh access token, refreshing if needed.
+    /// Concurrent callers whose token is expired share one refresh via
+    /// `refreshTask` rather than each POSTing their own.
     func currentSession() async throws -> Session {
         guard let state = store.load() else { throw NugsError.notLoggedIn }
         if Date() < state.tokens.expiresAt {
             return try Session(state)
         }
+        if let refreshTask {
+            return try await refreshTask.value
+        }
+        let task = Task<Session, Error> { [self] in try await performRefresh(from: state) }
+        refreshTask = task
+        do {
+            let session = try await task.value
+            refreshTask = nil
+            return session
+        } catch {
+            refreshTask = nil
+            throw error
+        }
+    }
 
+    private func performRefresh(from state: PersistedSession) async throws -> Session {
         let form = [
             "client_id": NugsConstants.clientId,
             "grant_type": "refresh_token",
@@ -229,8 +255,10 @@ final class NugsClient {
     // --- streaming ----------------------------------------------------------
 
     /// Resolves the CDN URL for one platformID tier. Returns nil when nugs
-    /// has no stream for that combination.
-    func streamURL(trackId: String, platformId: Int, session: Session) async throws -> String? {
+    /// has no stream for that combination. Non-isolated so the four tier probes
+    /// run concurrently off the actor; touches only the non-isolated `http` and
+    /// the passed-in `session`.
+    nonisolated func streamURL(trackId: String, platformId: Int, session: Session) async throws -> String? {
         let query = [
             "trackID": trackId,
             "platformID": String(platformId),

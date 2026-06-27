@@ -5,7 +5,12 @@ import Foundation
 /// endpoints and some are pluralized inconsistently, so lookups take a list
 /// of candidate spellings. This owns the shape-dependent digging so model
 /// and view code stays readable.
-struct JSON {
+///
+/// `@unchecked Sendable`: a value type holding a single immutable `let` over the
+/// immutable object tree `JSONSerialization` returns (NSDictionary/NSArray/
+/// NSString/NSNumber). It is only ever read, never mutated, so it is safe to
+/// hand from the `NugsClient` actor back to the main actor.
+struct JSON: @unchecked Sendable {
     let raw: Any?
 
     init(_ raw: Any?) {

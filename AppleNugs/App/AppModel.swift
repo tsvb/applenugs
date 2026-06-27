@@ -31,8 +31,7 @@ final class AppModel {
     }
 
     init() {
-        let store = SessionStore()
-        client = NugsClient(store: store)
+        client = NugsClient()
         player = PlayerService(client: client)
         video = VideoPlayerService(audio: player, client: client,
                                    progress: videoProgress)
@@ -42,7 +41,7 @@ final class AppModel {
     /// has one but it's expired).
     func bootstrap() async {
         guard case .unknown = sessionState else { return }
-        guard client.hasPersistedSession else {
+        guard await client.hasPersistedSession else {
             sessionState = .loggedOut
             return
         }
@@ -86,7 +85,7 @@ final class AppModel {
     }
 
     func logout() {
-        client.logout()
+        Task { await client.logout() }
         video.stop()
         player.clear()
         cachedArtists = nil
