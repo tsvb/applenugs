@@ -29,6 +29,11 @@ actor NugsClient {
         let config = URLSessionConfiguration.ephemeral
         config.httpCookieAcceptPolicy = .never
         config.httpShouldSetCookies = false
+        // Default is 60s/7d; tighten so a hung catalog/auth request — or one
+        // stalled stream-tier probe inside resolveStreams' task group — fails
+        // in 30s instead of leaving the user on a frozen load.
+        config.timeoutIntervalForRequest = 30
+        config.timeoutIntervalForResource = 120
         http = URLSession(configuration: config)
     }
 
