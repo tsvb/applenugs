@@ -150,8 +150,12 @@ final class PlayerService {
         endObserver = NotificationCenter.default.addObserver(
             forName: AVPlayerItem.didPlayToEndTimeNotification,
             object: nil, queue: .main) { [weak self] note in
+            // Send only the ended item's identity across the actor hop — a
+            // `Notification` (and the `AVPlayerItem` it carries) isn't Sendable,
+            // and `itemDidEnd` only needs identity to match the current item.
+            let endedID = (note.object as? AVPlayerItem).map(ObjectIdentifier.init)
             MainActor.assumeIsolated {
-                self?.itemDidEnd(note.object as? AVPlayerItem)
+                self?.itemDidEnd(endedID)
             }
         }
         terminationObserver = NotificationCenter.default.addObserver(
@@ -443,22 +447,28 @@ final class PlayerService {
 
     private func observeCurrent(_ item: AVPlayerItem) {
         statusObservation = item.observe(\.status, options: [.new]) { [weak self] item, _ in
-            DispatchQueue.main.async {
-                guard let self, item === self.currentItem else { return }
-                switch item.status {
-                case .failed:
-                    // Signed URL rejected or format undecodable here — fall
-                    // through to the next available format for this track,
-                    // and drop the cached picks so a retry re-probes.
-                    if let track = self.current {
-                        Task { await self.client.invalidateStreams(for: track.trackId) }
+            // KVO fires on an arbitrary AVFoundation queue, so hop to main. The
+            // inner closure captures `self` weakly itself (rather than closing
+            // over the outer closure's capture, which `@Sendable` checking flags)
+            // and `assumeIsolated` supplies the main-actor isolation it lands on.
+            DispatchQueue.main.async { [weak self] in
+                MainActor.assumeIsolated {
+                    guard let self, item === self.currentItem else { return }
+                    switch item.status {
+                    case .failed:
+                        // Signed URL rejected or format undecodable here — fall
+                        // through to the next available format for this track,
+                        // and drop the cached picks so a retry re-probes.
+                        if let track = self.current {
+                            Task { await self.client.invalidateStreams(for: track.trackId) }
+                        }
+                        self.pickIndex += 1
+                        self.loadCurrentPick()
+                    case .readyToPlay:
+                        self.applyPendingSeek()
+                    default:
+                        break
                     }
-                    self.pickIndex += 1
-                    self.loadCurrentPick()
-                case .readyToPlay:
-                    self.applyPendingSeek()
-                default:
-                    break
                 }
             }
         }
@@ -475,8 +485,8 @@ final class PlayerService {
     }
 
     /// Fired whenever any of our items plays to the end.
-    private func itemDidEnd(_ item: AVPlayerItem?) {
-        guard let item, item === currentItem else { return }
+    private func itemDidEnd(_ itemID: ObjectIdentifier?) {
+        guard let itemID, let currentItem, itemID == ObjectIdentifier(currentItem) else { return }
         if let p = preload, queue.indices.contains(index + 1),
            queue[index + 1].id == p.trackUID {
             // AVQueuePlayer has already advanced into the preloaded item —
@@ -556,14 +566,16 @@ final class PlayerService {
         }
         let item = makeItem(url: url)
         let observation = item.observe(\.status, options: [.new]) { [weak self] item, _ in
-            DispatchQueue.main.async {
-                guard let self, self.preload?.item === item else { return }
-                if item.status == .failed {
-                    // The parked pick failed before playback — swap in the
-                    // next format without disturbing the playing track.
-                    Task { await self.client.invalidateStreams(for: track.trackId) }
-                    self.discardPreload()
-                    self.buildPreload(track: track, picks: picks, startingAt: pickIdx + 1)
+            DispatchQueue.main.async { [weak self] in
+                MainActor.assumeIsolated {
+                    guard let self, self.preload?.item === item else { return }
+                    if item.status == .failed {
+                        // The parked pick failed before playback — swap in the
+                        // next format without disturbing the playing track.
+                        Task { await self.client.invalidateStreams(for: track.trackId) }
+                        self.discardPreload()
+                        self.buildPreload(track: track, picks: picks, startingAt: pickIdx + 1)
+                    }
                 }
             }
         }

@@ -109,12 +109,14 @@ final class VideoPlayerService {
         // native play button replaying a finished video) — otherwise video
         // audio would play underneath resumed audio with media keys misrouted.
         rateObservation = player.observe(\.timeControlStatus, options: [.new]) { [weak self] player, _ in
-            DispatchQueue.main.async {
-                guard let self, self.current != nil, !self.ownsNowPlaying,
-                      player.timeControlStatus == .playing else { return }
-                self.claimArbiterIfNeeded()
-                self.isPlaying = true
-                self.pushNowPlayingInfo()
+            DispatchQueue.main.async { [weak self] in
+                MainActor.assumeIsolated {
+                    guard let self, self.current != nil, !self.ownsNowPlaying,
+                          player.timeControlStatus == .playing else { return }
+                    self.claimArbiterIfNeeded()
+                    self.isPlaying = true
+                    self.pushNowPlayingInfo()
+                }
             }
         }
     }
@@ -325,30 +327,32 @@ final class VideoPlayerService {
 
     private func observe(_ item: AVPlayerItem) {
         statusObservation = item.observe(\.status, options: [.new]) { [weak self] item, _ in
-            DispatchQueue.main.async {
-                guard let self, item === self.item else { return }
-                switch item.status {
-                case .failed:
-                    self.loadError = item.error?.localizedDescription
-                        ?? "This video failed to play."
-                    // The video can't play. Detach the dead item and clear
-                    // `current` BEFORE relinquishing: leaving it attached to the
-                    // native player controls would let the timeControlStatus
-                    // observer (guarded on `current != nil`) re-claim the arbiter
-                    // and re-pause the audio we're about to hand back. Clearing
-                    // currentTime also avoids a stale "current chapter" highlight;
-                    // loadError still drives the error overlay, and `current ==
-                    // nil` turns the Play button into a retry.
-                    self.currentTime = 0
-                    self.isPlaying = false
-                    self.loadGeneration += 1   // cancel any in-flight variant load
-                    self.tearDownItem()
-                    self.current = nil
-                    self.relinquishArbiter()
-                case .readyToPlay:
-                    self.applyPendingStartSeek()
-                default:
-                    break
+            DispatchQueue.main.async { [weak self] in
+                MainActor.assumeIsolated {
+                    guard let self, item === self.item else { return }
+                    switch item.status {
+                    case .failed:
+                        self.loadError = item.error?.localizedDescription
+                            ?? "This video failed to play."
+                        // The video can't play. Detach the dead item and clear
+                        // `current` BEFORE relinquishing: leaving it attached to the
+                        // native player controls would let the timeControlStatus
+                        // observer (guarded on `current != nil`) re-claim the arbiter
+                        // and re-pause the audio we're about to hand back. Clearing
+                        // currentTime also avoids a stale "current chapter" highlight;
+                        // loadError still drives the error overlay, and `current ==
+                        // nil` turns the Play button into a retry.
+                        self.currentTime = 0
+                        self.isPlaying = false
+                        self.loadGeneration += 1   // cancel any in-flight variant load
+                        self.tearDownItem()
+                        self.current = nil
+                        self.relinquishArbiter()
+                    case .readyToPlay:
+                        self.applyPendingStartSeek()
+                    default:
+                        break
+                    }
                 }
             }
         }
