@@ -32,6 +32,8 @@ struct RootView: View {
                 LoginView()
             case .loggedIn:
                 mainLayout
+            case .connectionFailed(let message):
+                connectionFailedView(message)
             }
         }
         .themed(theme, art: activeArtColor)
@@ -44,6 +46,19 @@ struct RootView: View {
         }
         .task { await app.bootstrap() }
         .onAppear { KeyboardShortcuts.install(app: app, ui: ui) }
+    }
+
+    private func connectionFailedView(_ message: String) -> some View {
+        ContentUnavailableView {
+            Label("Couldn't reach nugs.net", systemImage: "wifi.exclamationmark")
+        } description: {
+            Text(message)
+        } actions: {
+            Button("Retry") { Task { await app.retryBootstrap() } }
+                .buttonStyle(.borderedProminent)
+            Button("Sign Out") { app.logout() }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
     private var mainLayout: some View {

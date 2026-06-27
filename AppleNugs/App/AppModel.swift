@@ -11,6 +11,7 @@ final class AppModel {
         case unknown        // checking the persisted session at launch
         case loggedOut
         case loggedIn(plan: String?)
+        case connectionFailed(String)  // have a session but couldn't reach nugs to validate it
     }
 
     let client: NugsClient
@@ -48,9 +49,22 @@ final class AppModel {
         do {
             let session = try await client.currentSession()
             sessionState = .loggedIn(plan: session.planDescription)
-        } catch {
+        } catch NugsError.http(let status) where (400..<500).contains(status) {
+            // The stored refresh token was rejected (revoked/expired) — really
+            // log out so the user re-authenticates.
+            await client.logout()
             sessionState = .loggedOut
+        } catch {
+            // Offline / server / transient error: keep the session and let the
+            // user retry rather than silently dumping them to a login screen.
+            sessionState = .connectionFailed(error.localizedDescription)
         }
+    }
+
+    /// Re-attempt the launch session resolution after a connection failure.
+    func retryBootstrap() async {
+        sessionState = .unknown
+        await bootstrap()
     }
 
     func login(email: String, password: String) async {
