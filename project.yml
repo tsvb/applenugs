@@ -8,6 +8,10 @@ options:
 settings:
   base:
     SWIFT_VERSION: "5.0"
+    # Full data-race checking under the Swift 5 language mode: the codebase is
+    # clean against it, and keeping it on surfaces any new concurrency issue as
+    # a warning now (an error once we move to the Swift 6 language mode).
+    SWIFT_STRICT_CONCURRENCY: "complete"
     MACOSX_DEPLOYMENT_TARGET: "14.0"
     # Marketing + build numbers live here; Info.plist references them so a
     # release is a one-line bump. Increment CURRENT_PROJECT_VERSION for every

@@ -433,12 +433,15 @@ enum Catalog {
     }
 
     /// Full timestamp parsing for REST `/livestreams` event times. Tolerates
-    /// both fractional and whole-second ISO-8601 (with or without "Z").
-    private static let isoTimestamp: ISO8601DateFormatter = {
+    /// both fractional and whole-second ISO-8601 (with or without "Z"). A
+    /// computed property rather than a shared `static let`: `ISO8601DateFormatter`
+    /// isn't `Sendable`, and this is called rarely enough (a handful of event
+    /// times per livestream load) that a fresh formatter per call is free.
+    private static var isoTimestamp: ISO8601DateFormatter {
         let f = ISO8601DateFormatter()
         f.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
         return f
-    }()
+    }
 
     static func parseTimestamp(_ raw: String?) -> Date? {
         guard let raw, !raw.isEmpty else { return nil }

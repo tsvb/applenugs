@@ -3,7 +3,7 @@ import SwiftUI
 // MARK: - Variation axes
 
 /// Which bespoke now-playing treatment a theme uses in the transport bar.
-enum TransportSignature {
+enum TransportSignature: Sendable {
     case standard      // the original text block, token-styled
     case tapeLabel     // Tape Room: art chip + amber under-rule progress
     case jCard         // Shoebox: cassette J-card strip
@@ -11,13 +11,13 @@ enum TransportSignature {
 }
 
 /// Whether the accent is a fixed color or derived from the current cover art.
-enum AccentMode {
+enum AccentMode: Sendable {
     case staticAccent
     case artDriven(fallback: Color)
 }
 
 /// How (if at all) the extracted album-art color washes into the chrome.
-enum WashStyle {
+enum WashStyle: Sendable {
     case none
     case linear        // Soundboard: gradient behind transport + now-playing
     case warmLow       // Shoebox: faint warm wash
@@ -25,7 +25,7 @@ enum WashStyle {
 }
 
 /// Opt-in bespoke behaviors, kept off the host views so nothing forks.
-struct Capabilities: OptionSet {
+struct Capabilities: OptionSet, Sendable {
     let rawValue: Int
     static let artWash          = Capabilities(rawValue: 1 << 0)
     static let equalizerRows    = Capabilities(rawValue: 1 << 1)
@@ -37,7 +37,7 @@ struct Capabilities: OptionSet {
 // MARK: - Token groups
 
 /// Semantic color roles. Views ask for `textSecondary`, never "taupe".
-struct Palette {
+struct Palette: Sendable {
     let base, raised, hairline: Color
     let textPrimary, textSecondary, textIdle: Color
     let accent: Color            // static fallback; art may override at runtime
@@ -47,13 +47,13 @@ struct Palette {
 }
 
 /// Fonts as size-taking closures so a point size is a call, not six stored fonts.
-struct Typography {
-    let hero, title, section: (CGFloat) -> Font
-    let body, numeric: (CGFloat) -> Font
+struct Typography: Sendable {
+    let hero, title, section: @Sendable (CGFloat) -> Font
+    let body, numeric: @Sendable (CGFloat) -> Font
 }
 
 /// Per-theme copy so idle/empty states and section headers carry personality.
-struct IdleCopy {
+struct IdleCopy: Sendable {
     let nowPlaying: String
     let dashboardIdle: String
     let dashHeaders: (now: String, quality: String, upNext: String)
@@ -63,7 +63,7 @@ struct IdleCopy {
 
 /// A complete look, assembled from tokens. Value type read from the environment,
 /// so switching republishes one value and re-renders only the affected subtrees.
-struct Theme: Equatable {
+struct Theme: Equatable, Sendable {
     let id: ThemeID
     let palette: Palette
     let type: Typography
