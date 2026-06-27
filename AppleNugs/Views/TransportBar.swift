@@ -119,9 +119,15 @@ struct TransportBar: View {
             Button {
                 player.togglePlayPause()
             } label: {
-                Image(systemName: player.isPlaying ? "pause.fill" : "play.fill")
-                    .font(.title3)
-                    .frame(width: 24)
+                if player.isBuffering {
+                    ProgressView()
+                        .controlSize(.small)
+                        .frame(width: 24)
+                } else {
+                    Image(systemName: player.isPlaying ? "pause.fill" : "play.fill")
+                        .font(.title3)
+                        .frame(width: 24)
+                }
             }
             .disabled(player.current == nil)
             .help("Play / pause (space)")

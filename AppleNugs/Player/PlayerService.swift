@@ -54,6 +54,13 @@ final class PlayerService {
     private(set) var specs: AudioSpecs?
     private(set) var playbackError: String?
 
+    /// True while the player is stalled / spinning up
+    /// (`timeControlStatus == .waitingToPlayAtSpecifiedRate`) — playback was
+    /// requested but no audio is coming yet. Drives the transport's buffering
+    /// indicator and keeps the system Now Playing clock from advancing as if
+    /// audio were playing.
+    private(set) var isBuffering = false
+
     var volume: Float {
         didSet {
             player.volume = volume
@@ -78,6 +85,7 @@ final class PlayerService {
     private var statusObservation: NSKeyValueObservation?
     private var endObserver: NSObjectProtocol?
     private var terminationObserver: NSObjectProtocol?
+    private var timeControlObservation: NSKeyValueObservation?
 
     /// The item being played (head of the AVQueuePlayer), tracked explicitly
     /// so auto-advance into the preloaded item can be told apart from user
@@ -150,6 +158,19 @@ final class PlayerService {
             forName: NSApplication.willTerminateNotification,
             object: nil, queue: .main) { [weak self] _ in
             MainActor.assumeIsolated { self?.persistState() }
+        }
+        // The periodic time observer is silent while the timebase is stalled, so
+        // track buffering via timeControlStatus: it flips to
+        // .waitingToPlayAtSpecifiedRate on a stall and back to .playing on
+        // recovery, which the periodic tick would miss.
+        timeControlObservation = player.observe(\.timeControlStatus, options: [.new]) { [weak self] player, _ in
+            DispatchQueue.main.async {
+                guard let self else { return }
+                let buffering = player.timeControlStatus == .waitingToPlayAtSpecifiedRate
+                guard buffering != self.isBuffering else { return }
+                self.isBuffering = buffering
+                self.pushNowPlayingInfo()
+            }
         }
     }
 
@@ -766,13 +787,17 @@ final class PlayerService {
             center.playbackState = .stopped
             return
         }
+        // Report the ACTUAL rate: 0 while buffering/stalled so the system
+        // scrubber doesn't advance as if audio were playing. playbackState
+        // still reflects intent (the user asked to play).
+        let actuallyPlaying = player.timeControlStatus == .playing
         var info: [String: Any] = [
             MPMediaItemPropertyTitle: track.title ?? "Unknown track",
             MPMediaItemPropertyArtist: track.artist ?? "",
             MPMediaItemPropertyAlbumTitle: track.show ?? "",
             MPMediaItemPropertyPlaybackDuration: duration,
             MPNowPlayingInfoPropertyElapsedPlaybackTime: currentTime,
-            MPNowPlayingInfoPropertyPlaybackRate: isPlaying ? 1.0 : 0.0,
+            MPNowPlayingInfoPropertyPlaybackRate: actuallyPlaying ? 1.0 : 0.0,
         ]
         if let nowPlayingArtwork {
             info[MPMediaItemPropertyArtwork] = nowPlayingArtwork
