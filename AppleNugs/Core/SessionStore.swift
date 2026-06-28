@@ -110,6 +110,10 @@ private struct KeychainItem {
         let attributes: [String: Any] = [
             kSecValueData as String: data,
             kSecAttrAccessible as String: kSecAttrAccessibleWhenUnlockedThisDeviceOnly,
+            // Human-readable label shown in Keychain Access (and any rare access
+            // prompt) instead of the raw bundle id, so it never reads as a
+            // cryptic "what is this?" item to the user.
+            kSecAttrLabel as String: "AppleNugs login",
         ]
         let updateStatus = SecItemUpdate(baseQuery as CFDictionary, attributes as CFDictionary)
         if updateStatus == errSecSuccess { return true }
