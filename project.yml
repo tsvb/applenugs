@@ -19,6 +19,11 @@ settings:
     MARKETING_VERSION: "1.0"
     CURRENT_PROJECT_VERSION: "1"
 
+packages:
+  Sparkle:
+    url: https://github.com/sparkle-project/Sparkle
+    from: "2.6.0"
+
 targets:
   AppleNugs:
     type: application
@@ -26,6 +31,8 @@ targets:
     sources:
       - AppleNugs
     scheme: {}
+    dependencies:
+      - package: Sparkle
     entitlements:
       path: AppleNugs/AppleNugs.entitlements
       properties:
