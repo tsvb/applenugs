@@ -3,6 +3,15 @@ import SwiftUI
 /// Right-hand inspector: now playing, stream quality, and the up-next queue.
 /// Port of the web DashboardPanel, with the format/spec data coming from the
 /// player's resolved pick + AVFoundation decoder instead of header parsing.
+///
+/// Rendered as a `ScrollView`+`VStack` rather than a `List`: the inspector
+/// content updates every frame during playback (elapsed time, buffer-ahead,
+/// the equalizer animation), and a `List` is `NSTableView`-backed. Live size
+/// churn inside the inspector's split child re-enters the `NSTableView`
+/// delegate, which on macOS 26 aborts with `_postWindowNeedsUpdateConstraints`
+/// when it collides with a window resize / inspector toggle. A `ScrollView`
+/// constrains its content to the column width (so text truncates instead of
+/// overflowing) and has no table delegate to re-enter.
 struct DashboardPanel: View {
     @Environment(AppModel.self) private var app
     @Environment(UIState.self) private var ui
@@ -12,13 +21,16 @@ struct DashboardPanel: View {
     private var player: PlayerService { app.player }
 
     var body: some View {
-        List {
-            nowPlayingSection
-            qualitySection
-            queueSection
+        ScrollView {
+            VStack(alignment: .leading, spacing: 22) {
+                nowPlayingSection
+                qualitySection
+                queueSection
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 14)
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .listStyle(.sidebar)
-        .scrollContentBackground(.hidden)
         .background(theme.palette.base)
     }
 
@@ -36,37 +48,51 @@ struct DashboardPanel: View {
 
     @ViewBuilder
     private var nowPlayingSection: some View {
-        Section {
+        VStack(alignment: .leading, spacing: 6) {
+            sectionHeader(theme.copy.dashHeaders.now)
             if let track = player.current {
                 VStack(alignment: .leading, spacing: 3) {
                     Text(track.title ?? "Unknown track")
                         .font(theme.type.title(15))
+                        .lineLimit(1)
+                        .truncationMode(.tail)
                     if let artist = track.artist {
-                        Text(artist).font(.caption)
+                        Text(artist)
+                            .font(.caption)
+                            .lineLimit(1)
+                            .truncationMode(.tail)
                     }
                     if let show = track.show {
-                        Text(show).font(.caption).foregroundStyle(theme.palette.textSecondary)
+                        Text(show)
+                            .font(.caption)
+                            .foregroundStyle(theme.palette.textSecondary)
+                            .lineLimit(1)
+                            .truncationMode(.tail)
                     }
                     if player.duration > 0 {
                         Text("\(TransportBar.format(seconds: player.currentTime)) / \(TransportBar.format(seconds: player.duration))")
                             .font(theme.type.numeric(11))
                             .foregroundStyle(theme.palette.textSecondary)
+                            .lineLimit(1)
                     }
                 }
-                .listRowBackground(
-                    Color.clear.artWash(theme.washStyle, color: artColor))
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(8)
+                .background(Color.clear.artWash(theme.washStyle, color: artColor))
                 if let error = player.playbackError {
                     Label(error, systemImage: "exclamationmark.triangle")
                         .font(.caption)
                         .foregroundStyle(.red)
+                        .lineLimit(2)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
             } else {
                 Text(theme.copy.dashboardIdle)
                     .font(.caption)
                     .foregroundStyle(theme.palette.textIdle)
+                    .lineLimit(2)
+                    .fixedSize(horizontal: false, vertical: true)
             }
-        } header: {
-            sectionHeader(theme.copy.dashHeaders.now)
         }
     }
 
@@ -75,32 +101,42 @@ struct DashboardPanel: View {
     @ViewBuilder
     private var qualitySection: some View {
         if let pick = player.nowPick {
-            Section {
-                row("Format", pick.format.qualityLabel)
-                row("Platform tier", String(pick.platformId))
-                if let specs = player.specs {
-                    if specs.sampleRate > 0 {
-                        row("Sample rate", String(format: "%.1f kHz", specs.sampleRate / 1000))
-                    }
-                    if let bitDepth = specs.bitDepth {
-                        row("Bit depth", "\(bitDepth)-bit")
-                    }
-                    row("Channels", specs.channels == 2 ? "Stereo" : String(specs.channels))
-                }
-                if player.bufferedAhead > 0 {
-                    row("Buffered", String(format: "%.0f s ahead", player.bufferedAhead))
-                }
-            } header: {
+            VStack(alignment: .leading, spacing: 6) {
                 sectionHeader(theme.copy.dashHeaders.quality)
+                VStack(spacing: 5) {
+                    row("Format", pick.format.qualityLabel)
+                    row("Platform tier", String(pick.platformId))
+                    if let specs = player.specs {
+                        if specs.sampleRate > 0 {
+                            row("Sample rate", String(format: "%.1f kHz", specs.sampleRate / 1000))
+                        }
+                        if let bitDepth = specs.bitDepth {
+                            row("Bit depth", "\(bitDepth)-bit")
+                        }
+                        row("Channels", specs.channels == 2 ? "Stereo" : String(specs.channels))
+                    }
+                    if player.bufferedAhead > 0 {
+                        row("Buffered", String(format: "%.0f s ahead", player.bufferedAhead))
+                    }
+                }
             }
         }
     }
 
+    /// A label/value row. The label keeps its width; the value truncates so the
+    /// row can never demand more width than the inspector column.
     private func row(_ label: String, _ value: String) -> some View {
-        HStack {
-            Text(label).foregroundStyle(theme.palette.textSecondary)
-            Spacer()
-            Text(value).font(theme.type.numeric(11))
+        HStack(spacing: 8) {
+            Text(label)
+                .foregroundStyle(theme.palette.textSecondary)
+                .lineLimit(1)
+                .layoutPriority(1)
+            Spacer(minLength: 8)
+            Text(value)
+                .font(theme.type.numeric(11))
+                .lineLimit(1)
+                .truncationMode(.tail)
+                .multilineTextAlignment(.trailing)
         }
         .font(.caption)
     }
@@ -109,17 +145,7 @@ struct DashboardPanel: View {
 
     @ViewBuilder
     private var queueSection: some View {
-        Section {
-            if player.queue.isEmpty {
-                Text("Queue is empty")
-                    .font(.caption)
-                    .foregroundStyle(theme.palette.textIdle)
-            } else {
-                ForEach(Array(player.queue.enumerated()), id: \.element.id) { i, track in
-                    queueRow(i, track)
-                }
-            }
-        } header: {
+        VStack(alignment: .leading, spacing: 6) {
             HStack {
                 sectionHeader(theme.copy.dashHeaders.upNext)
                 Spacer()
@@ -128,6 +154,17 @@ struct DashboardPanel: View {
                         .buttonStyle(.plain)
                         .font(.caption)
                         .foregroundStyle(theme.palette.textSecondary)
+                }
+            }
+            if player.queue.isEmpty {
+                Text("Queue is empty")
+                    .font(.caption)
+                    .foregroundStyle(theme.palette.textIdle)
+            } else {
+                VStack(spacing: 2) {
+                    ForEach(Array(player.queue.enumerated()), id: \.element.id) { i, track in
+                        queueRow(i, track)
+                    }
                 }
             }
         }
@@ -158,6 +195,7 @@ struct DashboardPanel: View {
                     Text(track.title ?? "Unknown track")
                         .font(.caption)
                         .lineLimit(1)
+                        .truncationMode(.tail)
                         .fontWeight(i == player.index ? .semibold : .regular)
                     Spacer(minLength: 0)
                 }
@@ -179,5 +217,6 @@ struct DashboardPanel: View {
             .help("Remove from queue")
             .accessibilityLabel("Remove from queue")
         }
+        .padding(.vertical, 2)
     }
 }
