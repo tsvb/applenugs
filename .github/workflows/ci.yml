@@ -23,6 +23,9 @@ jobs:
       - name: Generate Xcode project
         run: xcodegen generate
 
+      - name: Verify Sparkle update config
+        run: ./scripts/verify-sparkle-config.sh
+
       - name: Build
         run: |
           xcodebuild \
