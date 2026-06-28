@@ -40,6 +40,12 @@ targets:
         # all persistence stays inside the app's own container.
         com.apple.security.app-sandbox: true
         com.apple.security.network.client: true
+        # Sparkle's installer launcher XPC service communicates via mach lookup.
+        # The -spks (spawner) and -spki (installer) suffixes are Sparkle's convention.
+        # $(PRODUCT_BUNDLE_IDENTIFIER) is expanded by Xcode at signing time.
+        com.apple.security.temporary-exception.mach-lookup.global-name:
+          - "$(PRODUCT_BUNDLE_IDENTIFIER)-spks"
+          - "$(PRODUCT_BUNDLE_IDENTIFIER)-spki"
     info:
       path: AppleNugs/Info.plist
       properties:
@@ -52,6 +58,14 @@ targets:
         # Standard HTTPS/TLS only — exempt encryption. Declaring this skips the
         # export-compliance prompt on every App Store Connect upload.
         ITSAppUsesNonExemptEncryption: false
+        # Sparkle runtime configuration.
+        # SUEnableDownloaderService is omitted: network.client entitlement covers
+        # outbound HTTPS and the downloader XPC is not needed in the sandbox.
+        # SUEnableAutomaticChecks is omitted intentionally: leaving it unset
+        # causes Sparkle to ask the user on first launch ("Check automatically?").
+        SUFeedURL: https://raw.githubusercontent.com/tsvb/applenugs/main/appcast.xml
+        SUPublicEDKey: WKOnGAu8QlsO9cDxBQ8peCSLDuVRTmx+p5MsruHqUFE=
+        SUEnableInstallerLauncherService: true
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.timvbs.applenugs
