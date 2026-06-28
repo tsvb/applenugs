@@ -39,6 +39,9 @@ over your own nugs.net subscription.
   via `MPRemoteCommandCenter`; cover art and now-playing in the system widget.
 - **Live quality dashboard.** Real format, platform tier, sample rate, bit
   depth, channels, and buffer-ahead — read from the decoder, not guessed.
+- **Auto-update.** Built-in Sparkle updater — the app checks for new releases
+  and installs them in place with one click; "Check for Updates…" lives under
+  the app menu.
 
 ## Why native
 

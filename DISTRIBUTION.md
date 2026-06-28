@@ -121,5 +121,62 @@ The shipping app lives on `main`. Before making the repo public:
   disclaimer in [README](README.md) and [LICENSE](LICENSE)).
 - There are no secrets in the tree — credentials are entered at runtime and the
   OAuth `client_id` is the public mobile-client value, not a secret.
-- Flip the repo to public, then cut a release (attach the notarized `.zip` from
-  Path B).
+- Flip the repo to public, then cut a release (attach the notarized DMG from
+  Path B, per the Sparkle release flow below).
+
+## Sparkle auto-update releases
+
+AppleNugs uses [Sparkle](https://sparkle-project.org) for in-app updates. The
+`scripts/sparkle-appcast.sh` helper signs the release artifact and writes
+`appcast.xml`. Every release must follow these steps in order:
+
+1. **Bump `CURRENT_PROJECT_VERSION`** in `project.yml` before every build.
+   Sparkle compares build numbers to decide whether an update is available — a
+   static build number silently disables update detection (the #1 Sparkle
+   footgun). `MARKETING_VERSION` (the human-readable version) is separate and
+   does not affect Sparkle's comparison.
+
+2. **Build → notarize → staple the DMG.** The DMG is the release artifact that
+   Sparkle downloads and mounts. Follow Path B above to produce the notarized
+   `.app`, then package it as a DMG rather than a zip:
+
+   ```sh
+   hdiutil create -volname AppleNugs -srcfolder build/export/AppleNugs.app \
+     -ov -format UDZO build/AppleNugs-vX.Y.dmg
+   xcrun notarytool submit build/AppleNugs-vX.Y.dmg \
+     --apple-id "you@example.com" --team-id TEAMID \
+     --password "abcd-efgh-ijkl-mnop" --wait
+   xcrun stapler staple build/AppleNugs-vX.Y.dmg
+   ```
+
+3. **Let `xcodebuild` sign the nested Sparkle framework and XPC services.**
+   During archive and export, Xcode re-signs every nested bundle automatically.
+   Never run `codesign --deep` by hand — it signs child bundles with the wrong
+   identity and breaks Gatekeeper validation on the Sparkle XPC helpers.
+
+4. **Upload the DMG to the GitHub Release first**, then generate and commit the
+   feed:
+
+   ```sh
+   # Upload the stapled DMG as the GitHub Release asset, then:
+   mkdir -p build/sparkle-enclosure
+   cp build/AppleNugs-vX.Y.dmg build/sparkle-enclosure/
+   scripts/sparkle-appcast.sh build/sparkle-enclosure vX.Y
+   git add appcast.xml && git commit -m "release: vX.Y appcast"
+   git push
+   ```
+
+   The feed must never point at a 404 — uploading the asset before pushing
+   `appcast.xml` guarantees that.
+
+5. **Wait for the feed to resolve.** `appcast.xml` is served from
+   `raw.githubusercontent.com`, which only resolves once the repo is **public**.
+   GitHub's CDN caches raw content for approximately 5 minutes after a push, so
+   "Check for Updates…" may return no update during that window — this is
+   normal.
+
+6. **Guard the EdDSA private key.** The signing key lives in the Keychain on
+   the build machine (see Task 1 setup). Back it up to a secure location.
+   `generate_appcast` must run on the machine that holds the private key; a
+   signature generated on a different machine (or with a different key) will
+   cause Sparkle to reject the update.
