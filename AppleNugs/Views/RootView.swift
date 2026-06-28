@@ -63,58 +63,64 @@ struct RootView: View {
 
     private var mainLayout: some View {
         @Bindable var ui = ui
-        return VStack(spacing: 0) {
-            NavigationSplitView {
-                List(selection: $ui.sidebarSelection) {
-                    Text("Home")
-                        .tag(UIState.SidebarItem.home)
-                    Text("Artists")
-                        .tag(UIState.SidebarItem.artists)
-                    Text("Videos")
-                        .tag(UIState.SidebarItem.videos)
-                    Text("Favorites")
-                        .tag(UIState.SidebarItem.favorites)
-                    Text("Search")
-                        .tag(UIState.SidebarItem.search)
-                }
-                .scrollContentBackground(.hidden)
-                .background(theme.palette.base)
-                .navigationSplitViewColumnWidth(min: 150, ideal: 180, max: 240)
-            } detail: {
-                NavigationStack(path: $ui.navPath) {
-                    detailRoot
-                        .navigationDestination(for: Route.self) { route in
-                            switch route {
-                            case .artist(let artist):
-                                ArtistDetailView(artist: artist)
-                            case .album(let id, let title):
-                                AlbumDetailView(albumId: id, titleHint: title)
-                            case .video(let id, let title):
-                                VideoDetailView(videoId: id, titleHint: title)
-                            }
+        // NavigationSplitView is the top-level content (not nested in a VStack)
+        // so its toolbar is hosted at the window level: trailing items anchor to
+        // the window's right edge and don't fold into the ⋯ overflow when the
+        // sidebar slides in and narrows the detail column. The transport bar is
+        // pinned with safeAreaInset — the idiomatic persistent bottom bar.
+        return NavigationSplitView {
+            List(selection: $ui.sidebarSelection) {
+                Text("Home")
+                    .tag(UIState.SidebarItem.home)
+                Text("Artists")
+                    .tag(UIState.SidebarItem.artists)
+                Text("Videos")
+                    .tag(UIState.SidebarItem.videos)
+                Text("Favorites")
+                    .tag(UIState.SidebarItem.favorites)
+                Text("Search")
+                    .tag(UIState.SidebarItem.search)
+            }
+            .scrollContentBackground(.hidden)
+            .background(theme.palette.base)
+            .navigationSplitViewColumnWidth(min: 150, ideal: 180, max: 240)
+        } detail: {
+            NavigationStack(path: $ui.navPath) {
+                detailRoot
+                    .navigationDestination(for: Route.self) { route in
+                        switch route {
+                        case .artist(let artist):
+                            ArtistDetailView(artist: artist)
+                        case .album(let id, let title):
+                            AlbumDetailView(albumId: id, titleHint: title)
+                        case .video(let id, let title):
+                            VideoDetailView(videoId: id, titleHint: title)
                         }
-                }
-            }
-            .inspector(isPresented: $ui.inspectorOpen) {
-                DashboardPanel()
-                    .inspectorColumnWidth(min: 250, ideal: 300, max: 380)
-            }
-            .toolbar {
-                ToolbarItem(placement: .primaryAction) {
-                    Button {
-                        ui.inspectorOpen.toggle()
-                    } label: {
-                        Label("Dashboard", systemImage: "sidebar.right")
                     }
-                    .help("Toggle the dashboard panel (⌥⌘I)")
-                }
-                ToolbarItem(placement: .primaryAction) {
-                    accountMenu
-                }
             }
-
-            Divider()
-            TransportBar()
+        }
+        .inspector(isPresented: $ui.inspectorOpen) {
+            DashboardPanel()
+                .inspectorColumnWidth(min: 250, ideal: 300, max: 380)
+        }
+        .toolbar {
+            ToolbarItem(placement: .primaryAction) {
+                Button {
+                    ui.inspectorOpen.toggle()
+                } label: {
+                    Label("Dashboard", systemImage: "sidebar.right")
+                }
+                .help("Toggle the dashboard panel (⌥⌘I)")
+            }
+            ToolbarItem(placement: .primaryAction) {
+                accountMenu
+            }
+        }
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            VStack(spacing: 0) {
+                Divider()
+                TransportBar()
+            }
         }
         .overlay(alignment: .bottom) { toastOverlay }
     }
