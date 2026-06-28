@@ -1,5 +1,7 @@
 # AppleNugs
 
+[![CI](https://github.com/tsvb/applenugs/actions/workflows/ci.yml/badge.svg)](https://github.com/tsvb/applenugs/actions/workflows/ci.yml)
+
 A native macOS client for [nugs.net](https://nugs.net), written in
 Swift/SwiftUI — a port and expansion of
 [nugsdotnet](https://github.com/tsvb/nugsdotnet). Fast search, a real queue,
@@ -54,7 +56,7 @@ headers directly, so the whole server tier disappears:
 ┌──────────────────────────────┐    TLS    ┌──────────┐
 │ AppleNugs.app                │ ────────► │ nugs.net │
 │ SwiftUI · AVFoundation       │           └──────────┘
-│ session.json in its sandbox  │
+│ tokens in the macOS Keychain │
 └──────────────────────────────┘
 ```
 
@@ -79,22 +81,27 @@ machine with no Apple Developer team. Producing a signed, notarized build for
 the App Store or for direct download is covered in
 [DISTRIBUTION.md](DISTRIBUTION.md).
 
-Sign in with browser SSO or your nugs.net email and password. Session tokens
-live in the app's sandbox container
-(`~/Library/Containers/com.timvbs.applenugs/Data/Library/Application Support/AppleNugs/`)
-and refresh ~60s before expiry.
+Sign in with browser SSO or your nugs.net email and password. Access and refresh
+tokens are stored in the macOS **Keychain** (the source of truth), with a
+`chmod 600` file fallback inside the app's sandbox container
+(`~/Library/Containers/com.timvbs.applenugs/…`) for unsigned/ad-hoc builds that
+have no Keychain entitlement; a legacy `session.json` is migrated into the
+Keychain on first launch and then removed. Tokens refresh ~60s before expiry.
 
 ## Keyboard shortcuts
 
-| key         | action                     |
-| ----------- | -------------------------- |
-| `/`         | Focus search               |
-| `space`     | Play / pause               |
-| `n` / `p`   | Next / previous track      |
-| `←` / `→`   | Back 15s / forward 30s     |
-| `Esc`       | Blur a focused input       |
-| `⌃⌘→ / ⌃⌘←` | Next / previous (menu)     |
-| `⌥⌘I`       | Toggle the dashboard panel |
+| key         | action                          |
+| ----------- | ------------------------------- |
+| `/`         | Focus search                    |
+| `space`     | Play / pause                    |
+| `n` / `p`   | Next / previous track           |
+| `←` / `→`   | Seek −10s / +10s (⇧ for ∓30s)   |
+| `0`         | Seek to start                   |
+| `1`–`9`     | Seek to 10%–90% of the track    |
+| `Esc`       | Blur a focused input            |
+| `⌃⌘→ / ⌃⌘←` | Next / previous (menu)          |
+| `⌘⇧F`       | Focus search (menu)             |
+| `⌥⌘I`       | Toggle the dashboard panel      |
 
 Plain-letter keys are handled by a window-level event monitor and pass through
 untouched while a text field has focus.

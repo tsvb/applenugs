@@ -113,16 +113,18 @@ spctl -a -vvv -t install build/export/AppleNugs.app   # → "accepted, source=No
 codesign -dvvv build/export/AppleNugs.app 2>&1 | grep -i runtime  # → flags include runtime
 ```
 
-## GitHub public release
+## GitHub releases
 
-The shipping app lives on `main`. Before making the repo public:
+The shipping app lives on `main`, and the repo is public. To cut a release,
+build the notarized DMG (Path B) and publish it via the Sparkle release flow
+below.
 
-- Confirm you're comfortable publishing an unofficial nugs.net client (see the
-  disclaimer in [README](README.md) and [LICENSE](LICENSE)).
-- There are no secrets in the tree — credentials are entered at runtime and the
+Standing notes:
+
+- This is an unofficial nugs.net client — see the disclaimer in
+  [README](README.md) and [LICENSE](LICENSE).
+- There are no secrets in the tree: credentials are entered at runtime and the
   OAuth `client_id` is the public mobile-client value, not a secret.
-- Flip the repo to public, then cut a release (attach the notarized DMG from
-  Path B, per the Sparkle release flow below).
 
 ## Sparkle auto-update releases
 
@@ -175,8 +177,11 @@ AppleNugs uses [Sparkle](https://sparkle-project.org) for in-app updates. The
    "Check for Updates…" may return no update during that window — this is
    normal.
 
-6. **Guard the EdDSA private key.** The signing key lives in the Keychain on
-   the build machine (see Task 1 setup). Back it up to a secure location.
+6. **Guard the EdDSA private key.** The signing key was generated once with
+   Sparkle's `generate_keys` (the public half is `SUPublicEDKey` in
+   `project.yml`); the private half lives in the build machine's login Keychain.
+   Export a backup with `generate_keys -x sparkle-private-key.txt` and store it
+   somewhere safe — losing it means you can never sign another update.
    `generate_appcast` must run on the machine that holds the private key; a
    signature generated on a different machine (or with a different key) will
    cause Sparkle to reject the update.
