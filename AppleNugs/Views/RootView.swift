@@ -140,6 +140,16 @@ struct RootView: View {
         // the inspector's 250pt minimum, so the window could be dragged narrower
         // than sidebar+detail+inspector, clipping the sidebar off the left edge.
         .background(WindowMinSizeUpdater(inspectorOpen: ui.inspectorOpen))
+        // Replay a deep link that arrived before login/bootstrap finished. This
+        // layout only exists once `.loggedIn`, so the task fires exactly when the
+        // app is ready. Goes through the serialized channel so it can't interleave
+        // with a link that arrives at almost the same moment.
+        .task(id: app.isLoggedIn) {
+            if app.isLoggedIn, let link = app.pendingDeepLink {
+                app.pendingDeepLink = nil
+                app.handleDeepLink(link, ui: ui)
+            }
+        }
     }
 
     @ViewBuilder
