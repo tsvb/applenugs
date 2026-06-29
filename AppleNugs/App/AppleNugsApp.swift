@@ -145,23 +145,55 @@ private struct UITestWindowMinimizer: NSViewRepresentable {
 #endif
 
 #if DEBUG
-/// Handles the one lifecycle gap that SwiftUI's App protocol can't cover for
-/// UI tests: on macOS Tahoe, apps launched without a user gesture (as XCUITest
-/// does) start in a "hidden" state. SwiftUI's WindowGroup skips window creation
-/// for hidden apps. `NSApp.unhide` restores normal foreground state so the
-/// window is created and XCTest can query it.
+/// Handles the lifecycle gap that SwiftUI's App protocol can't cover for
+/// UI tests: XCUITest launches the app without a user gesture so it starts
+/// in a background/inactive state. SwiftUI's WindowGroup skips window
+/// creation until the app becomes the active application. We hook every
+/// relevant lifecycle event to coax activation and window-creation out of
+/// both the app itself and SwiftUI's internal scene machinery.
 private class UITestAppDelegate: NSObject, NSApplicationDelegate {
+
+    /// Very early — before SwiftUI even sets up its scene infrastructure.
+    /// Requesting activation here gives the system the maximum lead time to
+    /// grant it before SwiftUI makes its window-creation decision.
+    func applicationWillFinishLaunching(_ notification: Notification) {
+        guard ProcessInfo.processInfo.arguments.contains("-UITEST") else { return }
+        NSApp.unhide(nil)
+        NSApp.activate()
+    }
+
     func applicationDidFinishLaunching(_ notification: Notification) {
         guard ProcessInfo.processInfo.arguments.contains("-UITEST") else { return }
-        // XCUITest launches the app without a user gesture so it starts inactive
-        // (not just hidden). SwiftUI's WindowGroup creates its window in response
-        // to applicationDidBecomeActive, not unhide, so we must become the active
-        // application. NSApp.activate() (macOS 14+) requests activation subject to
-        // system policy; unhide first so there is something to show.
-        DispatchQueue.main.async {
-            NSApp.unhide(nil)
-            NSApp.activate()
+        NSApp.unhide(nil)
+        NSApp.activate()
+    }
+
+    /// Fires when the app actually becomes active — either because our
+    /// activate() above was granted, or because the test's app.activate()
+    /// triggered it. Order any already-created windows to front.
+    func applicationWillBecomeActive(_ notification: Notification) {
+        guard ProcessInfo.processInfo.arguments.contains("-UITEST") else { return }
+        NSApp.windows.forEach { $0.makeKeyAndOrderFront(nil) }
+    }
+
+    func applicationDidBecomeActive(_ notification: Notification) {
+        guard ProcessInfo.processInfo.arguments.contains("-UITEST") else { return }
+        // If SwiftUI hasn't created a window yet, simulate a dock-click reopen.
+        // NSApp.delegate is SwiftUI's internal scene delegate; calling
+        // applicationShouldHandleReopen on it triggers its window-creation path
+        // (the same path that fires when the user clicks the dock icon).
+        if !NSApp.windows.contains(where: { $0.isVisible }) {
+            _ = NSApp.delegate?.applicationShouldHandleReopen?(NSApp, hasVisibleWindows: false)
         }
+        NSApp.windows.forEach { $0.makeKeyAndOrderFront(nil) }
+    }
+
+    /// Called by SwiftUI's delegate in response to the reopen event above (or
+    /// to any dock-icon click). Returning true when there are no visible windows
+    /// tells SwiftUI to create a new window.
+    func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows: Bool) -> Bool {
+        guard ProcessInfo.processInfo.arguments.contains("-UITEST") else { return false }
+        return !hasVisibleWindows
     }
 }
 #endif
