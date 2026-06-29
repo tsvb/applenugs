@@ -10,7 +10,7 @@ struct AppleNugsApp: App {
     @NSApplicationDelegateAdaptor(UITestAppDelegate.self) private var uiTestDelegate
     #endif
 
-    private let updaterController: SPUStandardUpdaterController
+    private let updaterController: SPUStandardUpdaterController?
     @StateObject private var updaterModel: UpdaterViewModel
 
     init() {
@@ -20,18 +20,19 @@ struct AppleNugsApp: App {
         // defaults to a tiny in-memory cache.
         URLCache.shared = URLCache(memoryCapacity: 64 << 20, diskCapacity: 256 << 20)
 
-        // Start Sparkle at launch. With SUEnableAutomaticChecks unset, the
-        // first check prompts the user to enable automatic update checks.
-        // Skip it under UI tests: Sparkle's installer/downloader XPC services
-        // spawn per launch and, across the many rapid launches a test run does,
-        // contend with window-server activation (the flaky "window never appeared").
+        // Skip Sparkle entirely under UI tests. Even SPUStandardUpdaterController
+        // creation (with startingUpdater: false) may touch the Keychain or spawn
+        // XPC helpers that contend with window-server activation and prevent the
+        // app window from appearing when launched without a user gesture.
         #if DEBUG
-        let startUpdater = !ProcessInfo.processInfo.arguments.contains("-UITEST")
-        #else
-        let startUpdater = true
+        if ProcessInfo.processInfo.arguments.contains("-UITEST") {
+            updaterController = nil
+            _updaterModel = StateObject(wrappedValue: UpdaterViewModel(updater: nil))
+            return
+        }
         #endif
         let controller = SPUStandardUpdaterController(
-            startingUpdater: startUpdater, updaterDelegate: nil, userDriverDelegate: nil)
+            startingUpdater: true, updaterDelegate: nil, userDriverDelegate: nil)
         updaterController = controller
         _updaterModel = StateObject(wrappedValue: UpdaterViewModel(updater: controller.updater))
     }
@@ -55,7 +56,7 @@ struct AppleNugsApp: App {
         .commands {
             CommandGroup(after: .appInfo) {
                 Button("Check for Updates…") {
-                    updaterController.checkForUpdates(nil)
+                    updaterController?.checkForUpdates(nil)
                 }
                 .disabled(!updaterModel.canCheckForUpdates)
             }
