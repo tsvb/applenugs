@@ -72,15 +72,21 @@ struct RootView: View {
             List(selection: $ui.sidebarSelection) {
                 Text("Home")
                     .tag(UIState.SidebarItem.home)
+                    .accessibilityIdentifier("sidebar.item.home")
                 Text("Artists")
                     .tag(UIState.SidebarItem.artists)
+                    .accessibilityIdentifier("sidebar.item.artists")
                 Text("Videos")
                     .tag(UIState.SidebarItem.videos)
+                    .accessibilityIdentifier("sidebar.item.videos")
                 Text("Favorites")
                     .tag(UIState.SidebarItem.favorites)
+                    .accessibilityIdentifier("sidebar.item.favorites")
                 Text("Search")
                     .tag(UIState.SidebarItem.search)
+                    .accessibilityIdentifier("sidebar.item.search")
             }
+            .accessibilityIdentifier("sidebar.list")
             .scrollContentBackground(.hidden)
             .background(theme.palette.base)
             .navigationSplitViewColumnWidth(min: 150, ideal: 180, max: 240)
@@ -98,6 +104,13 @@ struct RootView: View {
                         }
                     }
             }
+            // The detail column must declare an honest minimum so it participates
+            // in .windowResizability(.contentMinSize): the enforced window floor is
+            // the SUM of the visible columns' minimums, so a detail reporting ~0
+            // would let the window squeeze the detail and overflow/clip the
+            // sidebar. 480 is the narrowest width the editorial detail content
+            // stays usable at; idealWidth keeps the default-size feel.
+            .frame(minWidth: 480, idealWidth: 760, maxWidth: .infinity)
         }
         .inspector(isPresented: $ui.inspectorOpen) {
             DashboardPanel()
