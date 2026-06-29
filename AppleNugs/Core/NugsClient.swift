@@ -1,11 +1,10 @@
 import Foundation
 
-/// Thin client for the unofficial nugs.net API — the Swift port of the C#
-/// NugsClient. An `actor`: it owns the persisted token store and the stream-pick
-/// cache, both of which are mutated from concurrent tasks (the foreground
-/// resolve and the gapless preload), so isolating them here removes the data
-/// race and serializes token refresh. Token refresh happens automatically ~60s
-/// before expiry, same as the original.
+/// Thin client for the unofficial nugs.net API. An `actor`: it owns the
+/// persisted token store and the stream-pick cache, both of which are mutated
+/// from concurrent tasks (the foreground resolve and the gapless preload), so
+/// isolating them here removes the data race and serializes token refresh.
+/// Tokens refresh automatically ~60s before expiry.
 actor NugsClient {
     /// `URLSession` is `Sendable` and immutable here, so it stays non-isolated —
     /// the four concurrent tier probes in `resolveStreams` call `streamURL` off
@@ -14,9 +13,9 @@ actor NugsClient {
     private let store = SessionStore()
 
     /// Resolved stream picks per track. Signed CDN URLs rotate on session
-    /// boundaries, so entries expire after the same 4h TTL the web port's
-    /// StreamInspector used. Makes prev/next and gapless preloading cheap —
-    /// without it every track change re-probes all four platform tiers.
+    /// boundaries, so entries expire after 4h. Makes prev/next and gapless
+    /// preloading cheap — without it every track change re-probes all four
+    /// platform tiers.
     private var pickCache: [String: (picks: [StreamPick], expiresAt: Date)] = [:]
     private static let pickTTL: TimeInterval = 4 * 60 * 60
 

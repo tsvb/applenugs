@@ -1,7 +1,7 @@
 import AppKit
 
-/// Window-level key handling, ported from audio-interop.js: space toggles
-/// play/pause, n/p skip, "/" focuses search, Esc blurs a focused input.
+/// Window-level key handling: space toggles play/pause, n/p skip, "/" focuses
+/// search, Esc blurs a focused input.
 /// Keys pass through untouched while a text input has focus, so typing in
 /// the search box never triggers transport actions.
 @MainActor

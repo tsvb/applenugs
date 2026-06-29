@@ -3,8 +3,7 @@
 [![CI](https://github.com/tsvb/applenugs/actions/workflows/ci.yml/badge.svg)](https://github.com/tsvb/applenugs/actions/workflows/ci.yml)
 
 A native macOS client for [nugs.net](https://nugs.net), written in
-Swift/SwiftUI — a port and expansion of
-[nugsdotnet](https://github.com/tsvb/nugsdotnet). Fast search, a real queue,
+Swift/SwiftUI. Fast search, a real queue,
 gapless playback, video, a Winamp-style artist library, and keyboard control
 over your own nugs.net subscription.
 
@@ -47,10 +46,10 @@ over your own nugs.net subscription.
 
 ## Why native
 
-The original web port needed an ASP.NET Core proxy for two reasons: CORS, and
+Two nugs.net platform constraints rule out a browser-based client: CORS, and
 the audio CDN's required `Referer`/`User-Agent` headers that browsers won't let
 JavaScript set. A native app has neither problem — `AVURLAsset` carries the
-headers directly, so the whole server tier disappears:
+headers directly, so no proxy tier is needed:
 
 ```
 ┌──────────────────────────────┐    TLS    ┌──────────┐
