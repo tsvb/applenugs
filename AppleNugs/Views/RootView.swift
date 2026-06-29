@@ -105,11 +105,10 @@ struct RootView: View {
                     }
             }
             // The detail column must declare an honest minimum so it participates
-            // in .windowResizability(.contentMinSize): the enforced window floor is
-            // the SUM of the visible columns' minimums, so a detail reporting ~0
-            // would let the window squeeze the detail and overflow/clip the
-            // sidebar. 480 is the narrowest width the editorial detail content
-            // stays usable at; idealWidth keeps the default-size feel.
+            // in the window's enforced minimum: the window floor is the SUM of the
+            // visible columns' minimums, so a detail reporting ~0 would let the
+            // window squeeze the detail and overflow/clip the sidebar. 480 is the
+            // narrowest width the editorial detail content stays usable at.
             .frame(minWidth: 480, idealWidth: 760, maxWidth: .infinity)
         }
         .inspector(isPresented: $ui.inspectorOpen) {
@@ -136,6 +135,11 @@ struct RootView: View {
             }
         }
         .overlay(alignment: .bottom) { toastOverlay }
+        // WindowMinSizeUpdater keeps NSWindow.minSize in sync with the visible
+        // columns. .windowResizability(.contentMinSize) alone does not include
+        // the inspector's 250pt minimum, so the window could be dragged narrower
+        // than sidebar+detail+inspector, clipping the sidebar off the left edge.
+        .background(WindowMinSizeUpdater(inspectorOpen: ui.inspectorOpen))
     }
 
     @ViewBuilder
@@ -190,5 +194,30 @@ struct RootView: View {
                 .transition(.opacity)
                 .allowsHitTesting(false)
         }
+    }
+}
+
+// MARK: - Window minimum size
+
+/// Keeps `NSWindow.minSize` in sync with the visible columns so the user
+/// cannot drag the window narrower than its content requires — the real fix
+/// for the sidebar-clip bug.
+///
+/// `.windowResizability(.contentMinSize)` alone does not include the
+/// Dashboard inspector's 250pt minimum in its calculation, so the window
+/// could be dragged to a width where the inspector pushes the detail column
+/// (and ultimately the sidebar) off the left edge. This struct reaches into
+/// AppKit directly and updates `minSize` whenever the inspector toggles.
+private struct WindowMinSizeUpdater: NSViewRepresentable {
+    var inspectorOpen: Bool
+
+    func makeNSView(context: Context) -> NSView { NSView() }
+
+    func updateNSView(_ nsView: NSView, context: Context) {
+        guard let window = nsView.window else { return }
+        // sidebar min (150) + detail min (480) + inspector min (250 when open)
+        // + 1pt per visible column divider
+        let width: CGFloat = 150 + 480 + (inspectorOpen ? 250 + 1 : 0) + 1
+        window.minSize = CGSize(width: width, height: 600)
     }
 }

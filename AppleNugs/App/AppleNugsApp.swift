@@ -43,23 +43,15 @@ struct AppleNugsApp: App {
                 .environment(ui)
                 .environment(themes)
                 .environment(\.theme, themes.theme)
-                // No hardcoded width floor. Each visible column declares its own
-                // minimum (sidebar 150 + detail 480 + inspector 250, in RootView),
-                // and .windowResizability(.contentMinSize) below sums the
-                // currently-visible columns + dividers into the enforced window
-                // minimum. That floor is content-derived and adapts automatically
-                // when the Dashboard inspector toggles — so the window can never
-                // be narrower than its columns need, and the sidebar can never
-                // overflow/clip past the left edge. (A hardcoded constant here was
-                // the bug: it undershot the real 3-column width, so at the floor
-                // the content overflowed and clipped the sidebar.)
+                // Window minimum width is managed by WindowMinSizeUpdater in
+                // RootView — it sets NSWindow.minSize directly so it correctly
+                // accounts for the inspector column (250pt) when it is open.
                 .frame(minHeight: 600)
                 #if DEBUG
                 .modifier(UITestWindowSize())
                 #endif
         }
         .defaultSize(width: 1320, height: 820)
-        .windowResizability(.contentMinSize)
         .commands {
             CommandGroup(after: .appInfo) {
                 Button("Check for Updates…") {
@@ -130,8 +122,8 @@ private struct UITestWindowSize: ViewModifier {
 }
 
 /// Reaches the hosting `NSWindow` and shrinks it so AppKit clamps it to the
-/// enforced (content-derived) minimum. Only active when `-UITestShrinkWindow`
-/// is passed; inert in all other launches.
+/// enforced minimum (set by `WindowMinSizeUpdater` in RootView). Only active
+/// when `-UITestShrinkWindow` is passed; inert in all other launches.
 private struct UITestWindowMinimizer: NSViewRepresentable {
     func makeNSView(context: Context) -> NSView {
         let probe = NSView()
