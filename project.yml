@@ -30,7 +30,10 @@ targets:
     platform: macOS
     sources:
       - AppleNugs
-    scheme: {}
+    scheme:
+      testTargets:
+        - AppleNugsUITests
+      gatherCoverageData: false
     dependencies:
       - package: Sparkle
     entitlements:
@@ -85,3 +88,31 @@ targets:
         CODE_SIGN_STYLE: Manual
         CODE_SIGN_IDENTITY: "-"
         DEVELOPMENT_TEAM: ""
+
+  # UI tests. `bundle.ui-testing` + a dependency on AppleNugs makes XcodeGen set
+  # TEST_TARGET_NAME=AppleNugs (the app is the test host). The app is driven into
+  # a logged-in stub state via the `-UITEST` launch argument (see AppModel).
+  AppleNugsUITests:
+    type: bundle.ui-testing
+    platform: macOS
+    sources:
+      - AppleNugsUITests
+    dependencies:
+      - target: AppleNugs
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.timvbs.applenugs.uitests
+        GENERATE_INFOPLIST_FILE: YES
+        # UI-test bundles don't run under the app sandbox; no entitlements.
+        # Match the app's ad-hoc signing so XCTest can launch the signed host app.
+        CODE_SIGN_STYLE: Manual
+        CODE_SIGN_IDENTITY: "-"
+        DEVELOPMENT_TEAM: ""
+        ENABLE_HARDENED_RUNTIME: NO
+        # XcodeGen auto-injects BUNDLE_LOADER/TEST_HOST for any test bundle with
+        # a target dependency. For UI tests that setting is wrong — it causes the
+        # test runner to inject into the app process rather than launching it as a
+        # separate window-bearing app, which is why the window never appears.
+        # Explicitly clear both so the generated xcodeproj is clean.
+        BUNDLE_LOADER: ""
+        TEST_HOST: ""

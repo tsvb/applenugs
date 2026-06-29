@@ -8,7 +8,8 @@ import Sparkle
 final class UpdaterViewModel: ObservableObject {
     @Published var canCheckForUpdates = false
 
-    init(updater: SPUUpdater) {
+    init(updater: SPUUpdater?) {
+        guard let updater else { return }
         updater.publisher(for: \.canCheckForUpdates)
             .receive(on: DispatchQueue.main)
             .assign(to: &$canCheckForUpdates)

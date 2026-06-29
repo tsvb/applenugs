@@ -42,6 +42,12 @@ final class AppModel {
     /// has one but it's expired).
     func bootstrap() async {
         guard case .unknown = sessionState else { return }
+        #if DEBUG
+        if AppModel.isUITestRun {
+            loadUITestHarness()
+            return
+        }
+        #endif
         guard await client.hasPersistedSession else {
             sessionState = .loggedOut
             return
@@ -60,6 +66,26 @@ final class AppModel {
             sessionState = .connectionFailed(error.localizedDescription)
         }
     }
+
+    #if DEBUG
+    /// True only when the app is launched by an XCUITest passing `-UITEST`.
+    /// `ProcessInfo.arguments` never contains this in a normal or release
+    /// launch, so every production code path is byte-identical; the whole hook
+    /// is also compiled out of release builds by the surrounding `#if DEBUG`.
+    static let isUITestRun = ProcessInfo.processInfo.arguments.contains("-UITEST")
+
+    /// Land directly in `.loggedIn` with a deterministic stub catalog and NO
+    /// network or Keychain access, so the main layout (the sidebar) renders for
+    /// UI layout tests that cannot perform a real OAuth login.
+    private func loadUITestHarness() {
+        cachedArtists = [
+            ArtistEntry(id: "1", name: "Billy Strings"),
+            ArtistEntry(id: "2", name: "Goose"),
+            ArtistEntry(id: "3", name: "Umphrey's McGee"),
+        ]
+        sessionState = .loggedIn(plan: "UITest")
+    }
+    #endif
 
     /// Re-attempt the launch session resolution after a connection failure.
     func retryBootstrap() async {
