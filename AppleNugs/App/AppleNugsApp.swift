@@ -152,8 +152,14 @@ private struct UITestWindowMinimizer: NSViewRepresentable {
 private class UITestAppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         guard ProcessInfo.processInfo.arguments.contains("-UITEST") else { return }
+        // XCUITest launches the app without a user gesture so it starts inactive
+        // (not just hidden). SwiftUI's WindowGroup creates its window in response
+        // to applicationDidBecomeActive, not unhide, so we must become the active
+        // application. NSApp.activate() (macOS 14+) requests activation subject to
+        // system policy; unhide first so there is something to show.
         DispatchQueue.main.async {
             NSApp.unhide(nil)
+            NSApp.activate()
         }
     }
 }
