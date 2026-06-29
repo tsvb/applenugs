@@ -25,7 +25,11 @@ struct AppleNugsApp: App {
         // Skip it under UI tests: Sparkle's installer/downloader XPC services
         // spawn per launch and, across the many rapid launches a test run does,
         // contend with window-server activation (the flaky "window never appeared").
+        #if DEBUG
         let startUpdater = !ProcessInfo.processInfo.arguments.contains("-UITEST")
+        #else
+        let startUpdater = true
+        #endif
         let controller = SPUStandardUpdaterController(
             startingUpdater: startUpdater, updaterDelegate: nil, userDriverDelegate: nil)
         updaterController = controller
@@ -50,7 +54,9 @@ struct AppleNugsApp: App {
                 // the bug: it undershot the real 3-column width, so at the floor
                 // the content overflowed and clipped the sidebar.)
                 .frame(minHeight: 600)
+                #if DEBUG
                 .modifier(UITestWindowSize())
+                #endif
         }
         .defaultSize(width: 1320, height: 820)
         .windowResizability(.contentMinSize)
@@ -105,6 +111,7 @@ struct AppleNugsApp: App {
     }
 }
 
+#if DEBUG
 /// In UI tests only, park the window at its ENFORCED minimum size so layout
 /// regressions are tested at the real window-minimum layer — the layer where the
 /// sidebar-clip bug actually lives. Launched with `-UITestShrinkWindow`, it asks
@@ -116,20 +123,12 @@ struct AppleNugsApp: App {
 /// approach, which HID this bug: a fixed content frame squeezes the columns to
 /// fit, whereas a real window at its minimum lets the content keep its intrinsic
 /// size and overflow — which is precisely the failure being guarded against.
-///
-/// A strict no-op in normal/release runs: compiled out of release, and inert
-/// unless `-UITestShrinkWindow` is present.
 private struct UITestWindowSize: ViewModifier {
     func body(content: Content) -> some View {
-        #if DEBUG
         content.background(UITestWindowMinimizer())
-        #else
-        content
-        #endif
     }
 }
 
-#if DEBUG
 /// Reaches the hosting `NSWindow` and shrinks it so AppKit clamps it to the
 /// enforced (content-derived) minimum. Only active when `-UITestShrinkWindow`
 /// is passed; inert in all other launches.
