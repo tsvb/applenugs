@@ -32,6 +32,7 @@ targets:
       - AppleNugs
     scheme:
       testTargets:
+        - AppleNugsTests
         - AppleNugsUITests
       gatherCoverageData: false
     dependencies:
@@ -53,6 +54,14 @@ targets:
       path: AppleNugs/Info.plist
       properties:
         CFBundleDisplayName: AppleNugs
+        # Deep-link scheme. `applenugs://` only — the OAuth `nugsnet` scheme is
+        # deliberately left unregistered (see NugsConstants) to avoid clashing
+        # with the official nugs.net app. Handles
+        # applenugs://show/<date>?artist=…&song=…&venue=…&media=audio|video
+        CFBundleURLTypes:
+          - CFBundleURLName: com.timvbs.applenugs.deeplink
+            CFBundleURLSchemes:
+              - applenugs
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         LSApplicationCategoryType: public.app-category.music
@@ -88,6 +97,29 @@ targets:
         CODE_SIGN_STYLE: Manual
         CODE_SIGN_IDENTITY: "-"
         DEVELOPMENT_TEAM: ""
+
+  # Unit tests (logic only). Deliberately a STANDALONE test bundle: no
+  # `dependencies: [target: AppleNugs]`, so XcodeGen sets no TEST_HOST and the
+  # tests run without launching (and code-signing) the host app — which would
+  # otherwise trigger AppModel.bootstrap()/Keychain access on every test run.
+  # The pure, app-type-free logic under test (DeepLink + DeepLinkMatch) is
+  # compiled directly into this bundle via the explicit source-file entry below.
+  AppleNugsTests:
+    type: bundle.unit-test
+    platform: macOS
+    sources:
+      - AppleNugsTests
+      - path: AppleNugs/Core/DeepLink.swift
+        # Compiled into the test bundle too (not @testable-imported) so the
+        # logic tests stay host-free. DeepLink.swift is pure Foundation.
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.timvbs.applenugs.tests
+        GENERATE_INFOPLIST_FILE: YES
+        CODE_SIGN_STYLE: Manual
+        CODE_SIGN_IDENTITY: "-"
+        DEVELOPMENT_TEAM: ""
+        ENABLE_HARDENED_RUNTIME: NO
 
   # UI tests. `bundle.ui-testing` + a dependency on AppleNugs makes XcodeGen set
   # TEST_TARGET_NAME=AppleNugs (the app is the test host). The app is driven into

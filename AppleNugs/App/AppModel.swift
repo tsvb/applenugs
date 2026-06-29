@@ -24,6 +24,18 @@ final class AppModel {
     private(set) var isLoggingIn = false
     var loginError: String?
 
+    /// A deep link received while logged out / still booting — replayed once
+    /// logged in (drained by RootView's main layout). Single slot: if two links
+    /// arrive before login the most recent wins (newest user intent). See
+    /// `receiveDeepLink` / `handleDeepLink` and DeepLinkRouter.
+    var pendingDeepLink: DeepLink?
+
+    /// Serializes deep-link handling. handle() has many awaits (catalog fetches),
+    /// each releasing the MainActor; without serialization two links — or a link
+    /// racing the post-login drain — could interleave their navigate+play steps
+    /// and leave the nav stack and the player queue showing different shows.
+    private var deepLinkTask: Task<Void, Never>?
+
     private var cachedArtists: [ArtistEntry]?
 
     var isLoggedIn: Bool {
@@ -138,5 +150,28 @@ final class AppModel {
         let parsed = Catalog.artists(from: try await client.allArtists())
         cachedArtists = parsed
         return parsed
+    }
+
+    // MARK: - deep links
+
+    /// Entry point from `.onOpenURL`: act now if logged in, else stash for the
+    /// post-login drain (RootView's main layout).
+    func receiveDeepLink(_ link: DeepLink, ui: UIState) {
+        guard isLoggedIn else { pendingDeepLink = link; return }
+        handleDeepLink(link, ui: ui)
+    }
+
+    /// Run the router for one link, chained after any in-flight link so the
+    /// previous link's navigation + playback finish before the next begins.
+    /// Re-checks login at the last moment (a logout can land between receipt and
+    /// execution) and re-stashes rather than running against a logged-out client.
+    func handleDeepLink(_ link: DeepLink, ui: UIState) {
+        let previous = deepLinkTask
+        deepLinkTask = Task { [weak self] in
+            await previous?.value
+            guard let self else { return }
+            guard self.isLoggedIn else { self.pendingDeepLink = link; return }
+            await DeepLinkRouter.handle(link, app: self, ui: ui)
+        }
     }
 }
