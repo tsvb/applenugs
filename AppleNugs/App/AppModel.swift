@@ -19,6 +19,7 @@ final class AppModel {
     let favorites = FavoritesStore()
     let videoProgress = VideoProgressStore()
     let video: VideoPlayerService
+    let downloads: DownloadStore
 
     private(set) var sessionState: SessionState = .unknown
     private(set) var isLoggingIn = false
@@ -36,6 +37,9 @@ final class AppModel {
         player = PlayerService(client: client)
         video = VideoPlayerService(audio: player, client: client,
                                    progress: videoProgress)
+        downloads = DownloadStore(client: client)
+        // Local files take precedence over network stream resolution.
+        player.downloads = downloads
     }
 
     /// Resolve the persisted session at launch (refreshing the token if it

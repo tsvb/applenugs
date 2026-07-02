@@ -85,6 +85,13 @@ final class PlayerService {
 
     private let client: NugsClient
     private let stateStore = PlaybackStateStore()
+
+    /// Offline library, injected by AppModel. When a track has a local file,
+    /// it becomes the (only) initial pick; stream resolution is the fallback.
+    var downloads: DownloadStore?
+    /// True while the current picks are the local file — lets the failure
+    /// path fall back to network resolution instead of giving up.
+    private var usingLocalPick = false
     private let player = AVQueuePlayer()
     private var timeObserver: Any?
     private var statusObservation: NSKeyValueObservation?
@@ -459,6 +466,22 @@ final class PlayerService {
         loadArtwork(for: track)
         pushNowPlayingInfo()
 
+        // Downloaded tracks play from disk with no network round-trip; the
+        // failure path in loadCurrentPick falls back to stream resolution.
+        if let local = downloads?.localURL(trackId: track.trackId) {
+            let format = downloads?.manifest.track(id: track.trackId)?.formatRaw
+                .flatMap(AudioFormat.init(rawValue:)) ?? .unknown
+            usingLocalPick = true
+            picks = [StreamPick(url: local.absoluteString, platformId: 0, format: format)]
+            pickIndex = 0
+            loadCurrentPick()
+            return
+        }
+        usingLocalPick = false
+        resolveNetworkStreams(for: track, generation: generation)
+    }
+
+    private func resolveNetworkStreams(for track: QueueTrack, generation: Int) {
         Task {
             do {
                 let resolved = try await client.resolveStreams(trackId: track.trackId)
@@ -479,6 +502,13 @@ final class PlayerService {
 
     private func loadCurrentPick() {
         guard pickIndex < picks.count else {
+            // A dead local file (corrupt, half-written) shouldn't strand the
+            // track — fall back to streaming as if it weren't downloaded.
+            if usingLocalPick, let track = current {
+                usingLocalPick = false
+                resolveNetworkStreams(for: track, generation: loadGeneration)
+                return
+            }
             playbackError = "Every available stream format failed to play."
             isPlaying = false
             return
