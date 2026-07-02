@@ -100,14 +100,10 @@ open AppleNugs.xcodeproj   # select the AppleNugs-iOS scheme,
 ```
 
 A team selected in Xcode is wiped by the next `xcodegen generate`. To make it
-stick, create a gitignored `local.yml` next to `project.yml`:
+stick, export your team ID before generating (e.g. in `~/.zshrc`):
 
-```yaml
-targets:
-  AppleNugs-iOS:
-    settings:
-      base:
-        DEVELOPMENT_TEAM: YOUR_TEAM_ID
+```sh
+export APPLENUGS_TEAM_ID=YOUR_TEAM_ID   # then: xcodegen generate
 ```
 
 or headless against the simulator:
