@@ -76,6 +76,11 @@ struct IOSRootView: View {
             NavigationStack {
                 DownloadsView()
                     .navigationTitle("Downloads")
+                    .toolbar {
+                        ToolbarItem(placement: .confirmationAction) {
+                            Button("Done") { offlineShown = false }
+                        }
+                    }
                     .safeAreaInset(edge: .bottom, spacing: 0) {
                         if app.player.current != nil {
                             VStack(spacing: 0) {

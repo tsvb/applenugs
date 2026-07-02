@@ -105,7 +105,12 @@ struct DashboardPanel: View {
                 sectionHeader(theme.copy.dashHeaders.quality)
                 VStack(spacing: 5) {
                     row("Format", pick.format.qualityLabel)
-                    row("Platform tier", String(pick.platformId))
+                    // platformId 0 is the local-file sentinel, not a tier.
+                    if pick.platformId > 0 {
+                        row("Platform tier", String(pick.platformId))
+                    } else {
+                        row("Source", "Downloaded file")
+                    }
                     if let specs = player.specs {
                         if specs.sampleRate > 0 {
                             row("Sample rate", String(format: "%.1f kHz", specs.sampleRate / 1000))

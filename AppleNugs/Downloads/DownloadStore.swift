@@ -45,7 +45,11 @@ final class DownloadStore {
         var request: ShowDownloadRequest
         var remaining: Set<String>          // trackIds still transferring
         var completed: [String: (fileName: String, bytes: Int64, formatRaw: String?)] = [:]
+        /// Which download attempt this is — stale resolution loops from a
+        /// cancelled/failed attempt check it and stand down.
+        var generation: Int = 0
     }
+    private var downloadGeneration = 0
     /// trackId → owning containerID for routing manager callbacks.
     private var trackOwner: [String: String] = [:]
     /// trackId → chosen pick metadata, captured at fetch time.
@@ -69,6 +73,24 @@ final class DownloadStore {
         if let data = try? Data(contentsOf: manifestURL),
            let decoded = try? JSONDecoder().decode(DownloadManifest.self, from: data) {
             manifest = decoded
+        }
+
+        // Bulk audio has no business in iCloud/device backups.
+        var noBackup = dir
+        var values = URLResourceValues()
+        values.isExcludedFromBackup = true
+        try? noBackup.setResourceValues(values)
+
+        // Reconcile disk with the manifest: show directories without a
+        // manifest entry are half-finished downloads from a dead run.
+        let known = Set(manifest.shows.map(\.containerID))
+        if let entries = try? FileManager.default.contentsOfDirectory(
+            at: dir, includingPropertiesForKeys: [.isDirectoryKey]) {
+            for entry in entries
+            where (try? entry.resourceValues(forKeys: [.isDirectoryKey]).isDirectory) == true
+                && !known.contains(entry.lastPathComponent) {
+                try? FileManager.default.removeItem(at: entry)
+            }
         }
 
         manager = DownloadManager(
@@ -114,17 +136,22 @@ final class DownloadStore {
 
     // --- commands ---------------------------------------------------------------
 
-    /// Download a whole show. No-op while the same show is in flight.
+    /// Download a whole show. No-op while the same show is in flight or
+    /// already downloaded (delete first to re-download).
     func download(_ request: ShowDownloadRequest) {
-        guard inFlight[request.containerID] == nil, !request.tracks.isEmpty else { return }
+        guard inFlight[request.containerID] == nil, !request.tracks.isEmpty,
+              manifest.show(id: request.containerID) == nil else { return }
         failures[request.containerID] = nil
 
         let dir = root.appendingPathComponent(request.containerID, isDirectory: true)
         try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
 
+        downloadGeneration += 1
+        let generation = downloadGeneration
         inFlight[request.containerID] = PendingShow(
             request: request,
-            remaining: Set(request.tracks.map(\.trackId)))
+            remaining: Set(request.tracks.map(\.trackId)),
+            generation: generation)
         for track in request.tracks {
             trackOwner[track.trackId] = request.containerID
             trackProgress[track.trackId] = 0
@@ -134,9 +161,13 @@ final class DownloadStore {
         // to the background session, which parallelizes on its own.
         Task { [weak self] in
             for track in request.tracks {
-                guard let self, self.inFlight[request.containerID] != nil else { return }
+                guard let self,
+                      self.inFlight[request.containerID]?.generation == generation else { return }
                 do {
                     let picks = try await self.client.resolveStreams(trackId: track.trackId)
+                    // Re-check after the await: the attempt may have been
+                    // cancelled/failed while resolution was in flight.
+                    guard self.inFlight[request.containerID]?.generation == generation else { return }
                     guard let pick = bestDownloadablePick(picks),
                           let url = URL(string: pick.url) else {
                         self.transferFinished(
@@ -147,6 +178,7 @@ final class DownloadStore {
                     self.pendingPicks[track.trackId] = pick
                     self.manager.fetch(trackId: track.trackId, from: url)
                 } catch {
+                    guard self.inFlight[request.containerID]?.generation == generation else { return }
                     self.transferFinished(trackId: track.trackId, result: .failure(error))
                 }
             }
@@ -157,6 +189,7 @@ final class DownloadStore {
     /// in-flight download of that show).
     func delete(containerID: String) {
         if var pending = inFlight.removeValue(forKey: containerID) {
+            manager.cancel(trackIds: pending.remaining)
             for trackId in pending.remaining {
                 trackOwner[trackId] = nil
                 trackProgress[trackId] = nil
@@ -177,7 +210,14 @@ final class DownloadStore {
         trackProgress[trackId] = nil
         let pick = pendingPicks.removeValue(forKey: trackId)
         guard let containerID = trackOwner.removeValue(forKey: trackId),
-              var pending = inFlight[containerID] else { return }
+              var pending = inFlight[containerID] else {
+            // No owner: a ghost from a superseded/cancelled attempt. Its
+            // parked file would otherwise sit in the inbox forever.
+            if case .success(let parked) = result {
+                try? FileManager.default.removeItem(at: parked)
+            }
+            return
+        }
         pending.remaining.remove(trackId)
 
         switch result {
@@ -225,6 +265,7 @@ final class DownloadStore {
     /// One failed track fails the show: cancel its siblings, clean up, record
     /// the message so the UI can offer retry.
     private func failShow(containerID: String, pending: PendingShow, message: String) {
+        manager.cancel(trackIds: pending.remaining)
         for trackId in pending.remaining {
             trackOwner[trackId] = nil
             trackProgress[trackId] = nil

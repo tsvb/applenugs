@@ -627,6 +627,9 @@ final class PlayerService {
         picks = p.picks
         pickIndex = p.pickIndex
         nowPick = p.pick
+        // Keep the local/network flag honest across gapless transitions so
+        // a failing local file still falls back to streaming.
+        usingLocalPick = URL(string: p.pick.url)?.isFileURL == true
         playbackError = nil
         currentTime = 0
         duration = 0

@@ -14,7 +14,11 @@ struct AlbumDetailView: View {
     @State private var error: String?
     #if os(iOS)
     @State private var confirmRemoveDownload = false
+    @State private var downloadFailureShown = false
     #endif
+    /// Parsed once when the album loads — HTML parsing is too heavy to run
+    /// on every body evaluation (download progress ticks re-render this view).
+    @State private var notesText = ""
 
     var body: some View {
         ScrollView {
@@ -102,10 +106,17 @@ struct AlbumDetailView: View {
             }
             .disabled(album.tracks.isEmpty)
 
-            saveButton(album)
+            // Five labeled buttons overflow iPhone widths; the secondary
+            // actions go icon-only there (labels stay for accessibility).
+            Group {
+                saveButton(album)
 
+                #if os(iOS)
+                downloadButton(album)
+                #endif
+            }
             #if os(iOS)
-            downloadButton(album)
+            .labelStyle(.iconOnly)
             #endif
         }
     }
@@ -125,10 +136,20 @@ struct AlbumDetailView: View {
             .disabled(album.tracks.isEmpty)
 
         case .downloading(let fraction):
-            ProgressView(value: fraction)
-                .frame(width: 52)
-                .accessibilityLabel("Downloading show")
-                .accessibilityValue("\(Int(fraction * 100)) percent")
+            HStack(spacing: 6) {
+                ProgressView(value: fraction)
+                    .frame(width: 44)
+                    .accessibilityLabel("Downloading show")
+                    .accessibilityValue("\(Int(fraction * 100)) percent")
+                Button {
+                    app.downloads.delete(containerID: albumId)
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .foregroundStyle(theme.palette.textSecondary)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Cancel download")
+            }
 
         case .downloaded:
             Button {
@@ -146,12 +167,18 @@ struct AlbumDetailView: View {
             }
 
         case .failed(let message):
+            // Tooltips don't exist on touch — the tap explains and retries.
             Button {
-                app.downloads.download(downloadRequest(album))
+                downloadFailureShown = true
             } label: {
-                Label("Retry download", systemImage: "exclamationmark.arrow.circlepath")
+                Label("Download failed", systemImage: "exclamationmark.arrow.circlepath")
             }
-            .help(message)
+            .alert("Download failed", isPresented: $downloadFailureShown) {
+                Button("Retry") { app.downloads.download(downloadRequest(album)) }
+                Button("OK", role: .cancel) {}
+            } message: {
+                Text(message)
+            }
         }
     }
 
@@ -184,8 +211,7 @@ struct AlbumDetailView: View {
 
     @ViewBuilder
     private func notes(_ album: AlbumDetailModel) -> some View {
-        let text = album.notesHTML.map(Self.plainText(fromHTML:)).joined(separator: "\n\n")
-            .trimmingCharacters(in: .whitespacesAndNewlines)
+        let text = notesText
         if !text.isEmpty {
             DisclosureGroup("Show notes") {
                 Text(text)
@@ -251,6 +277,9 @@ struct AlbumDetailView: View {
         do {
             let json = try await app.client.album(id: albumId)
             album = Catalog.album(from: json, id: albumId)
+            notesText = (album?.notesHTML ?? []).map(Self.plainText(fromHTML:))
+                .joined(separator: "\n\n")
+                .trimmingCharacters(in: .whitespacesAndNewlines)
             error = nil
         } catch {
             self.error = error.localizedDescription
