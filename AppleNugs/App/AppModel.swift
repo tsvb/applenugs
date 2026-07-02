@@ -84,6 +84,19 @@ final class AppModel {
             ArtistEntry(id: "3", name: "Umphrey's McGee"),
         ]
         sessionState = .loggedIn(plan: "UITest")
+        // Opt-in stub queue (separate flag so existing tests see no transport
+        // content change): parks tracks without network or playback, making
+        // the transport bar render for layout tests/screenshots.
+        if ProcessInfo.processInfo.arguments.contains("-UITestSeedQueue") {
+            player.seedUITestQueue([
+                QueueTrack(trackId: "t1", title: "Away From the Mire",
+                           artist: "Billy Strings", show: "2024-03-14 Capitol Theatre, Port Chester, NY",
+                           artworkPath: nil, showId: "s1"),
+                QueueTrack(trackId: "t2", title: "Dust in a Baggie",
+                           artist: "Billy Strings", show: "2024-03-14 Capitol Theatre, Port Chester, NY",
+                           artworkPath: nil, showId: "s1"),
+            ])
+        }
     }
     #endif
 

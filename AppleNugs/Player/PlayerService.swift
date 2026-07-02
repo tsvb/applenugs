@@ -765,6 +765,17 @@ final class PlayerService {
     /// backgrounding, where willTerminate is not guaranteed to fire.
     func persistNow() { persistState() }
 
+    #if DEBUG
+    /// UITest-only: park a queue without resolving streams or starting
+    /// playback, so transport UI renders under the `-UITestSeedQueue` flag.
+    func seedUITestQueue(_ tracks: [QueueTrack], at index: Int = 0) {
+        guard AppModel.isUITestRun else { return }
+        queue = tracks
+        self.index = min(max(0, index), max(0, tracks.count - 1))
+        ended = false
+    }
+    #endif
+
     private func persistState() {
         guard !queue.isEmpty else {
             stateStore.clear()

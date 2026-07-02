@@ -27,6 +27,7 @@ struct TransportBar: View {
     }
 
     private var standardBar: some View {
+        #if os(macOS)
         HStack(spacing: 16) {
             nowPlayingBlock
                 .frame(width: 230, alignment: .leading)
@@ -51,15 +52,95 @@ struct TransportBar: View {
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 10)
-        .background {
-            theme.palette.raised
-                .overlay { ArtWashBackground(style: theme.washStyle, color: artColor ?? .clear) }
-                .overlay {
-                    if theme.textureOpacity > 0 {
-                        PaperGrain().opacity(theme.textureOpacity).allowsHitTesting(false)
+        .background { barBackground }
+        #else
+        compactBar
+        #endif
+    }
+
+    #if os(iOS)
+    /// Interim compact bar for iPhone width: art + title + transport, with a
+    /// hairline progress track underneath. No seek slider, volume (hardware
+    /// buttons), star, or format badge — Phase C's mini-player + full-screen
+    /// now-playing replaces this.
+    private var compactBar: some View {
+        VStack(spacing: 0) {
+            GeometryReader { geo in
+                ZStack(alignment: .leading) {
+                    theme.palette.hairline
+                    theme.palette.accent
+                        .frame(width: geo.size.width * progressFraction)
+                }
+            }
+            .frame(height: 2)
+            .accessibilityHidden(true)
+
+            HStack(spacing: 12) {
+                ArtChip(image: player.nowPlayingImage,
+                        fallbackText: player.current?.artist ?? "?",
+                        size: 36)
+
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(player.current?.title ?? "")
+                        .font(theme.type.body(13).weight(.medium))
+                        .foregroundStyle(theme.palette.textPrimary)
+                        .lineLimit(1)
+                    Text(player.current?.show ?? player.current?.artist ?? "")
+                        .font(theme.type.body(11))
+                        .foregroundStyle(theme.palette.textSecondary)
+                        .lineLimit(1)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+                Button {
+                    player.togglePlayPause()
+                } label: {
+                    if player.isBuffering {
+                        ProgressView()
+                            .controlSize(.small)
+                            .frame(width: 28)
+                    } else {
+                        Image(systemName: player.isPlaying ? "pause.fill" : "play.fill")
+                            .font(.title3)
+                            .frame(width: 28)
                     }
                 }
+                .buttonStyle(.plain)
+                .foregroundStyle(theme.palette.textPrimary)
+                .disabled(player.current == nil)
+                .accessibilityLabel(player.isPlaying ? "Pause" : "Play")
+
+                Button {
+                    player.next()
+                } label: {
+                    Image(systemName: "forward.fill")
+                        .frame(width: 24)
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(theme.palette.textPrimary)
+                .disabled(!player.hasNext)
+                .accessibilityLabel("Next track")
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 8)
         }
+        .background { barBackground }
+    }
+
+    private var progressFraction: Double {
+        guard player.duration > 0 else { return 0 }
+        return min(max(player.currentTime / player.duration, 0), 1)
+    }
+    #endif
+
+    private var barBackground: some View {
+        theme.palette.raised
+            .overlay { ArtWashBackground(style: theme.washStyle, color: artColor ?? .clear) }
+            .overlay {
+                if theme.textureOpacity > 0 {
+                    PaperGrain().opacity(theme.textureOpacity).allowsHitTesting(false)
+                }
+            }
     }
 
     /// Lossless formats get the theme's dedicated lossless tint when it has one;

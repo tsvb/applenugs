@@ -66,11 +66,31 @@ struct IOSRootView: View {
 
     private var mainLayout: some View {
         @Bindable var ui = ui
-        // The stack binds to the same navPath the shared views append Routes
-        // to (UIState.open(_:)), so in-content pushes navigate here exactly
-        // as they do in the Mac shell's detail column.
+        // One tab per Mac sidebar section. All tabs share the single
+        // UIState.navPath (only the visible tab's stack is live, and UIState
+        // resets the path whenever the section changes, so a background
+        // tab can never hold stale path entries).
+        return TabView(selection: $ui.sidebarSelection) {
+            tab(.home, "Home", systemImage: "house") { HomeView() }
+            tab(.artists, "Artists", systemImage: "music.mic") { ArtistListView() }
+            tab(.search, "Search", systemImage: "magnifyingglass") { SearchView() }
+            // Library hosts Favorites now; Phase E adds the Downloads segment.
+            tab(.favorites, "Library", systemImage: "star") { FavoritesView() }
+            tab(.videos, "Videos", systemImage: "play.rectangle") { VideosView() }
+        }
+        .overlay(alignment: .bottom) { toastOverlay }
+    }
+
+    /// One tab: its own NavigationStack over the shared navPath, the shared
+    /// Route destinations (so in-content pushes via UIState.open(_:) work
+    /// exactly as in the Mac shell's detail column), and the account menu.
+    private func tab<Content: View>(
+        _ item: UIState.SidebarItem, _ title: String, systemImage: String,
+        @ViewBuilder content: @escaping () -> Content
+    ) -> some View {
+        @Bindable var ui = ui
         return NavigationStack(path: $ui.navPath) {
-            sectionRoot
+            content()
                 .navigationDestination(for: Route.self) { route in
                     switch route {
                     case .artist(let artist):
@@ -82,50 +102,21 @@ struct IOSRootView: View {
                     }
                 }
                 .toolbar {
-                    ToolbarItem(placement: .topBarLeading) { sectionMenu }
                     ToolbarItem(placement: .topBarTrailing) { accountMenu }
                 }
+                // Inset per tab (not on the TabView) so the bar docks above
+                // the tab bar instead of covering it.
+                .safeAreaInset(edge: .bottom, spacing: 0) {
+                    if app.player.current != nil {
+                        VStack(spacing: 0) {
+                            Divider()
+                            TransportBar()
+                        }
+                    }
+                }
         }
-        .safeAreaInset(edge: .bottom, spacing: 0) {
-            VStack(spacing: 0) {
-                Divider()
-                TransportBar()
-            }
-        }
-        .overlay(alignment: .bottom) { toastOverlay }
-    }
-
-    @ViewBuilder
-    private var sectionRoot: some View {
-        switch ui.sidebarSelection {
-        case .home:
-            HomeView()
-        case .videos:
-            VideosView()
-        case .favorites:
-            FavoritesView()
-        case .search:
-            SearchView()
-        default:
-            ArtistListView()
-        }
-    }
-
-    /// Crude stand-in for the Mac sidebar until Phase B's tab bar: a menu
-    /// that swaps the visible section (UIState resets navPath on change).
-    private var sectionMenu: some View {
-        @Bindable var ui = ui
-        return Menu {
-            Picker("Section", selection: $ui.sidebarSelection) {
-                Text("Home").tag(UIState.SidebarItem?.some(.home))
-                Text("Artists").tag(UIState.SidebarItem?.some(.artists))
-                Text("Videos").tag(UIState.SidebarItem?.some(.videos))
-                Text("Favorites").tag(UIState.SidebarItem?.some(.favorites))
-                Text("Search").tag(UIState.SidebarItem?.some(.search))
-            }
-        } label: {
-            Label("Browse", systemImage: "line.3.horizontal")
-        }
+        .tabItem { Label(title, systemImage: systemImage) }
+        .tag(UIState.SidebarItem?.some(item))
     }
 
     private var accountMenu: some View {
