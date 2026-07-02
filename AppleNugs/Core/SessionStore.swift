@@ -109,7 +109,11 @@ private struct KeychainItem {
     func write(_ data: Data) -> Bool {
         let attributes: [String: Any] = [
             kSecValueData as String: data,
-            kSecAttrAccessible as String: kSecAttrAccessibleWhenUnlockedThisDeviceOnly,
+            // AfterFirstUnlock (not WhenUnlocked): on iOS the token refresh
+            // must succeed while the phone is locked during background
+            // playback. Inert on the macOS file-based login keychain.
+            // Sent with every SecItemUpdate, so existing items self-heal.
+            kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly,
             // Human-readable label shown in Keychain Access (and any rare access
             // prompt) instead of the raw bundle id, so it never reads as a
             // cryptic "what is this?" item to the user.

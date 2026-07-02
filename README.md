@@ -99,6 +99,17 @@ open AppleNugs.xcodeproj   # select the AppleNugs-iOS scheme,
                            # set your team under Signing & Capabilities, ⌘R
 ```
 
+A team selected in Xcode is wiped by the next `xcodegen generate`. To make it
+stick, create a gitignored `local.yml` next to `project.yml`:
+
+```yaml
+targets:
+  AppleNugs-iOS:
+    settings:
+      base:
+        DEVELOPMENT_TEAM: YOUR_TEAM_ID
+```
+
 or headless against the simulator:
 
 ```sh

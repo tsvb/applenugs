@@ -122,6 +122,11 @@ final class PlayerService {
     /// audio and video never both drive the system playback UI.
     private var suspendedForVideo = false
 
+    /// True only between an audio-session interruption pausing playback and
+    /// that interruption ending — the gate that keeps `.shouldResume` from
+    /// restarting audio the user paused themselves (iOS only; inert on macOS).
+    private var pausedByInterruption = false
+
     /// Cover art for the system Now Playing widget, keyed by image path.
     private var artworkCache: [String: PlatformImage] = [:]
     private var artworkTask: Task<Void, Never>?
@@ -178,7 +183,11 @@ final class PlayerService {
         }
         #if os(iOS)
         // Phone call / Siri / another app taking the session: pause, and
-        // resume only when the system says the interruption ended resumably.
+        // resume only when (a) the system says the interruption ended
+        // resumably AND (b) it was this interruption that paused us.
+        // `.shouldResume` alone only reflects the interrupting app's
+        // deactivation mode — acting on it unconditionally would restart
+        // audio the user had explicitly paused (or play under a video).
         interruptionObserver = NotificationCenter.default.addObserver(
             forName: AVAudioSession.interruptionNotification,
             object: AVAudioSession.sharedInstance(), queue: .main) { [weak self] note in
@@ -190,9 +199,20 @@ final class PlayerService {
                 guard let self else { return }
                 switch type {
                 case .began:
-                    if self.isPlaying { self.pause() }
-                case .ended where options.contains(.shouldResume):
-                    self.resume()
+                    // Best-effort "were we playing": the system pauses the
+                    // player before delivering the notification, and tick()
+                    // may already have observed that — check both signals.
+                    let wasPlaying = self.isPlaying || self.player.rate != 0
+                    if wasPlaying && !self.suspendedForVideo {
+                        self.pausedByInterruption = true
+                        self.pause()
+                    }
+                case .ended:
+                    if self.pausedByInterruption, !self.suspendedForVideo,
+                       options.contains(.shouldResume) {
+                        self.resume()
+                    }
+                    self.pausedByInterruption = false
                 default:
                     break
                 }
@@ -298,8 +318,7 @@ final class PlayerService {
            currentItem != nil, player.currentItem === currentItem {
             player.advanceToNextItem()
             adoptPreload(p)
-            startPlayback()
-            isPlaying = true
+            isPlaying = startPlayback()
         } else {
             startAt(index + 1)
         }
@@ -322,12 +341,22 @@ final class PlayerService {
 
     /// The single choke point for starting the AVQueuePlayer: on iOS the
     /// audio session must be (re)activated before playback so background
-    /// audio and Now Playing ownership are granted to this app.
-    private func startPlayback() {
+    /// audio and Now Playing ownership are granted to this app. Returns
+    /// whether playback actually started, so callers keep `isPlaying` (and
+    /// therefore Control Center) honest when activation fails — e.g. during
+    /// an ongoing call.
+    @discardableResult
+    private func startPlayback() -> Bool {
         #if os(iOS)
-        try? AVAudioSession.sharedInstance().setActive(true)
+        do {
+            try AVAudioSession.sharedInstance().setActive(true)
+        } catch {
+            playbackError = "Audio session unavailable: \(error.localizedDescription)"
+            return false
+        }
         #endif
         player.play()
+        return true
     }
 
     func togglePlayPause() {
@@ -339,8 +368,7 @@ final class PlayerService {
             return
         }
         if player.timeControlStatus == .paused {
-            startPlayback()
-            isPlaying = true
+            isPlaying = startPlayback()
         } else {
             player.pause()
             isPlaying = false
@@ -353,8 +381,7 @@ final class PlayerService {
             if current != nil { startCurrent() }
             return
         }
-        startPlayback()
-        isPlaying = true
+        isPlaying = startPlayback()
         pushNowPlayingInfo()
     }
 
@@ -373,6 +400,9 @@ final class PlayerService {
     @discardableResult
     func pauseForExternalAudio() -> Bool {
         suspendedForVideo = true
+        // Video now owns playback — a pending interruption-resume must not
+        // fire underneath it once the interruption ends.
+        pausedByInterruption = false
         let wasPlaying = isPlaying
         if wasPlaying { pause() }
         return wasPlaying
@@ -473,8 +503,7 @@ final class PlayerService {
         // seeking now, before the item is ready (status .unknown, empty
         // seekableTimeRanges), is silently dropped, so playback would resume
         // at 0 while the UI shows the saved position.
-        startPlayback()
-        isPlaying = true
+        isPlaying = startPlayback()
         loadSpecs(from: item.asset, format: pick.format)
         schedulePreload()
         pushNowPlayingInfo()

@@ -1,4 +1,5 @@
 name: AppleNugs
+
 options:
   bundleIdPrefix: com.timvbs
   deploymentTarget:
@@ -102,11 +103,11 @@ targets:
   # iOS app (iPhone-first; personal install via Xcode — see DISTRIBUTION.md).
   # Shares all sources except AppleNugs/macOS. No Sparkle (macOS-only); no
   # entitlements (plain Keychain needs none, and there is no iOS sandbox opt-in).
-  # No app icon build setting until iOS icon idioms are added in Phase F.
+  # App icon: a flattened single-size 1024 universal entry for now; proper
+  # iOS icon artwork lands in Phase F.
   AppleNugs-iOS:
     type: application
     platform: iOS
-    deploymentTarget: "17.0"
     sources:
       - path: AppleNugs
         excludes:
@@ -140,10 +141,11 @@ targets:
         ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
         # iPhone only for v1; iPad runs the iPhone layout in compatibility mode.
         TARGETED_DEVICE_FAMILY: "1"
-        # Personal install: select your team in Xcode (or pass DEVELOPMENT_TEAM)
-        # and let Xcode manage the profile. CI builds with CODE_SIGNING_ALLOWED=NO.
+        # Personal install: set APPLENUGS_TEAM_ID in your shell before running
+        # xcodegen (persists across regenerations), or select the team in Xcode
+        # each time. Expands to empty when unset — CI/simulator unaffected.
         CODE_SIGN_STYLE: Automatic
-        DEVELOPMENT_TEAM: ""
+        DEVELOPMENT_TEAM: ${APPLENUGS_TEAM_ID}
 
   # UI tests. `bundle.ui-testing` + a dependency on AppleNugs makes XcodeGen set
   # TEST_TARGET_NAME=AppleNugs (the app is the test host). The app is driven into

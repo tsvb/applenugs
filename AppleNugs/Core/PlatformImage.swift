@@ -12,9 +12,14 @@ typealias PlatformImage = UIImage
 
 extension PlatformImage {
     /// A CGImage suitable for one-shot pixel analysis (dominant color).
+    /// The macOS branch keeps the TIFF round-trip the original extractor
+    /// used, so the bytes fed to the color math are identical to pre-port
+    /// builds (a direct cgImage(forProposedRect:) can decode ±1 LSB apart).
     var cgImageForAnalysis: CGImage? {
         #if os(macOS)
-        return cgImage(forProposedRect: nil, context: nil, hints: nil)
+        guard let tiff = tiffRepresentation,
+              let rep = NSBitmapImageRep(data: tiff) else { return nil }
+        return rep.cgImage
         #else
         return cgImage
         #endif

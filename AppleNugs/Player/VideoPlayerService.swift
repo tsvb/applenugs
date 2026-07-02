@@ -1,3 +1,6 @@
+#if os(iOS)
+import AVFAudio
+#endif
 import AVFoundation
 import Foundation
 import MediaPlayer
@@ -183,9 +186,24 @@ final class VideoPlayerService {
             pendingResumeSeek = saved.positionSeconds
             currentTime = saved.positionSeconds   // reflect the resume point immediately
         }
-        player.play()
-        isPlaying = true
+        isPlaying = startPlayback()
         pushNowPlayingInfo()
+    }
+
+    /// Same choke point as PlayerService.startPlayback(): on iOS the audio
+    /// session must be (re)activated before playback — video relies on the
+    /// shared session exactly as audio does.
+    @discardableResult
+    private func startPlayback() -> Bool {
+        #if os(iOS)
+        do {
+            try AVAudioSession.sharedInstance().setActive(true)
+        } catch {
+            return false
+        }
+        #endif
+        player.play()
+        return true
     }
 
     func togglePlayPause() {
@@ -194,8 +212,7 @@ final class VideoPlayerService {
             // Replaying after the arbiter was relinquished (e.g. the video had
             // played to its end) must re-take Now Playing from audio.
             claimArbiterIfNeeded()
-            player.play()
-            isPlaying = true
+            isPlaying = startPlayback()
         } else {
             player.pause()
             isPlaying = false
