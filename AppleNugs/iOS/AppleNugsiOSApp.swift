@@ -34,11 +34,3 @@ struct AppleNugsiOSApp: App {
         }
     }
 }
-
-/// Placeholder so the target links before Task 6 lands the real shell.
-/// Replaced by AppleNugs/iOS/IOSRootView.swift.
-struct IOSRootView: View {
-    var body: some View {
-        Text("AppleNugs")
-    }
-}
