@@ -147,6 +147,29 @@ targets:
         CODE_SIGN_STYLE: Automatic
         DEVELOPMENT_TEAM: ${APPLENUGS_TEAM_ID}
 
+  # Pure-logic unit tests: host-free (no app dependency, no @testable) — the
+  # files under test compile directly into the bundle, so tests run without
+  # launching the app. Keep only Foundation-clean files in this list.
+  AppleNugsTests:
+    type: bundle.unit-test
+    platform: macOS
+    sources:
+      - AppleNugsTests
+      - AppleNugs/Core/Models.swift
+      - AppleNugs/Downloads/DownloadManifest.swift
+      - AppleNugs/Downloads/StreamPickDownload.swift
+    scheme:
+      testTargets:
+        - AppleNugsTests
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.timvbs.applenugs.tests
+        GENERATE_INFOPLIST_FILE: YES
+        CODE_SIGN_STYLE: Manual
+        CODE_SIGN_IDENTITY: "-"
+        DEVELOPMENT_TEAM: ""
+        ENABLE_HARDENED_RUNTIME: NO
+
   # UI tests. `bundle.ui-testing` + a dependency on AppleNugs makes XcodeGen set
   # TEST_TARGET_NAME=AppleNugs (the app is the test host). The app is driven into
   # a logged-in stub state via the `-UITEST` launch argument (see AppModel).
