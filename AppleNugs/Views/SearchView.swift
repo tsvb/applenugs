@@ -19,6 +19,7 @@ struct SearchView: View {
             TextField("Search shows, artists, songs", text: $query)
                 .textFieldStyle(.roundedBorder)
                 .focused($fieldFocused)
+                .submitLabel(.search)
                 .onSubmit { Task { await run() } }
                 .padding([.horizontal, .top], 16)
                 .padding(.bottom, 10)
@@ -26,8 +27,25 @@ struct SearchView: View {
             resultsBody
         }
         .navigationTitle("Search")
-        .onAppear { fieldFocused = true }
+        .onAppear {
+            // Auto-focus serves the Mac's "/" flow. On iOS it would slam the
+            // keyboard over the tab bar the moment the tab opens.
+            #if os(macOS)
+            fieldFocused = true
+            #endif
+        }
         .onChange(of: ui.searchFocusTick) { fieldFocused = true }
+        .scrollDismissesKeyboard(.immediately)
+        .toolbar {
+            #if os(iOS)
+            // Escape hatch while the keyboard is up (no tap-outside dismissal
+            // in SwiftUI, and the tab bar is hidden behind the keyboard).
+            ToolbarItemGroup(placement: .keyboard) {
+                Spacer()
+                Button("Done") { fieldFocused = false }
+            }
+            #endif
+        }
     }
 
     @ViewBuilder
