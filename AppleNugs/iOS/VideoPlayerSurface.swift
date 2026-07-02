@@ -11,6 +11,9 @@ struct VideoPlayerSurface: UIViewControllerRepresentable {
         let vc = AVPlayerViewController()
         vc.player = player
         vc.allowsPictureInPicturePlayback = true
+        // Concert videos keep playing in PiP when the user swipes home,
+        // matching how the audio side keeps playing in the background.
+        vc.canStartPictureInPictureAutomaticallyFromInline = true
         return vc
     }
 
