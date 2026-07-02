@@ -4,11 +4,27 @@ import SwiftUI
 @main
 struct AppleNugsiOSApp: App {
     @State private var app = AppModel()
-    @State private var ui = UIState()
+    @State private var ui: UIState
     @State private var themes = ThemeManager()
     @Environment(\.scenePhase) private var scenePhase
 
     init() {
+        // Launch-arg tab selection for layout screenshots under -UITEST
+        // (simctl cannot tap; XCUITest on iOS is future work).
+        let ui = UIState()
+        #if DEBUG
+        if let i = ProcessInfo.processInfo.arguments.firstIndex(of: "-UITestTab"),
+           ProcessInfo.processInfo.arguments.indices.contains(i + 1) {
+            switch ProcessInfo.processInfo.arguments[i + 1] {
+            case "artists": ui.sidebarSelection = .artists
+            case "search": ui.sidebarSelection = .search
+            case "favorites": ui.sidebarSelection = .favorites
+            case "videos": ui.sidebarSelection = .videos
+            default: break
+            }
+        }
+        #endif
+        _ui = State(initialValue: ui)
         // Same CDN-artwork cache sizing as the Mac entry point: AsyncImage
         // loads through URLSession.shared → URLCache.shared, which defaults
         // to a tiny in-memory cache.

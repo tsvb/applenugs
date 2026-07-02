@@ -219,6 +219,16 @@ private struct TrackRow: View {
     @Environment(\.artColor) private var artColor
     @State private var hovering = false
 
+    /// Touch has no hover: on iOS the per-row actions are always visible
+    /// (the context menu still offers them via long-press as well).
+    private var rowActionsVisible: Bool {
+        #if os(iOS)
+        true
+        #else
+        hovering
+        #endif
+    }
+
     var body: some View {
         HStack(spacing: 8) {
             Button(action: play) {
@@ -253,7 +263,7 @@ private struct TrackRow: View {
                 .help("Add to queue")
             }
             .buttonStyle(.borderless)
-            .opacity(hovering ? 1 : 0)
+            .opacity(rowActionsVisible ? 1 : 0)
         }
         .padding(.vertical, 4)
         .padding(.horizontal, 6)

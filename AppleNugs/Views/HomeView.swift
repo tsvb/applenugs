@@ -64,6 +64,18 @@ struct HomeView: View {
 
     // --- continue listening (the hero) --------------------------------------
 
+    // Compact metrics on iPhone: the desktop sizes (96pt art + 48pt glyph)
+    // starve the title column below ~140pt at compact width.
+    #if os(iOS)
+    private var resumeArtSize: CGFloat { 64 }
+    private var resumeTitleSize: CGFloat { 18 }
+    private var resumeGlyphSize: CGFloat { 40 }
+    #else
+    private var resumeArtSize: CGFloat { 96 }
+    private var resumeTitleSize: CGFloat { 24 }
+    private var resumeGlyphSize: CGFloat { 48 }
+    #endif
+
     @ViewBuilder
     private var resumeCard: some View {
         if let track = player.current {
@@ -73,7 +85,7 @@ struct HomeView: View {
                 HStack(spacing: 18) {
                     ArtChip(image: player.nowPlayingImage,
                             fallbackText: track.artist ?? track.title ?? "?",
-                            size: 96)
+                            size: resumeArtSize)
                         .shadow(color: (artColor ?? theme.palette.accent).opacity(0.45), radius: 22, y: 6)
 
                     VStack(alignment: .leading, spacing: 5) {
@@ -82,7 +94,7 @@ struct HomeView: View {
                             .tracking(1.8)
                             .foregroundStyle(theme.palette.textSecondary)
                         Text(track.title ?? "Unknown track")
-                            .font(theme.type.hero(24))
+                            .font(theme.type.hero(resumeTitleSize))
                             .foregroundStyle(theme.palette.textPrimary)
                             .lineLimit(1)
                         Text(NowPlayingMeta.line(track))
@@ -93,7 +105,7 @@ struct HomeView: View {
                     }
                     Spacer(minLength: 8)
                     Image(systemName: player.isPlaying ? "pause.circle.fill" : "play.circle.fill")
-                        .font(.system(size: 48))
+                        .font(.system(size: resumeGlyphSize))
                         .foregroundStyle(theme.effectiveAccent(art: artColor))
                         .symbolRenderingMode(.hierarchical)
                 }
