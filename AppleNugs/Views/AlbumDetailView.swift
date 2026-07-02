@@ -12,6 +12,9 @@ struct AlbumDetailView: View {
 
     @State private var album: AlbumDetailModel?
     @State private var error: String?
+    #if os(iOS)
+    @State private var confirmRemoveDownload = false
+    #endif
 
     var body: some View {
         ScrollView {
@@ -100,8 +103,70 @@ struct AlbumDetailView: View {
             .disabled(album.tracks.isEmpty)
 
             saveButton(album)
+
+            #if os(iOS)
+            downloadButton(album)
+            #endif
         }
     }
+
+    #if os(iOS)
+    /// Offline download state machine: idle → live progress → downloaded
+    /// (tap to remove) / failed (tap to retry). Mac stays streaming-only.
+    @ViewBuilder
+    private func downloadButton(_ album: AlbumDetailModel) -> some View {
+        switch app.downloads.state(for: albumId) {
+        case .none:
+            Button {
+                app.downloads.download(downloadRequest(album))
+            } label: {
+                Label("Download", systemImage: "arrow.down.circle")
+            }
+            .disabled(album.tracks.isEmpty)
+
+        case .downloading(let fraction):
+            ProgressView(value: fraction)
+                .frame(width: 52)
+                .accessibilityLabel("Downloading show")
+                .accessibilityValue("\(Int(fraction * 100)) percent")
+
+        case .downloaded:
+            Button {
+                confirmRemoveDownload = true
+            } label: {
+                Label("Downloaded", systemImage: "arrow.down.circle.fill")
+            }
+            .tint(theme.palette.accent)
+            .confirmationDialog("Remove this show's downloaded files?",
+                                isPresented: $confirmRemoveDownload,
+                                titleVisibility: .visible) {
+                Button("Remove Download", role: .destructive) {
+                    app.downloads.delete(containerID: albumId)
+                }
+            }
+
+        case .failed(let message):
+            Button {
+                app.downloads.download(downloadRequest(album))
+            } label: {
+                Label("Retry download", systemImage: "exclamationmark.arrow.circlepath")
+            }
+            .help(message)
+        }
+    }
+
+    private func downloadRequest(_ album: AlbumDetailModel) -> ShowDownloadRequest {
+        ShowDownloadRequest(
+            containerID: albumId,
+            title: album.title,
+            artist: album.artistName,
+            artworkPath: album.imagePath,
+            tracks: album.tracks.map {
+                .init(trackId: $0.id, title: $0.title,
+                      artist: album.artistName, durationText: $0.durationText)
+            })
+    }
+    #endif
 
     private func saveButton(_ album: AlbumDetailModel) -> some View {
         let fav = app.favorites.isShowFavorited(albumId)

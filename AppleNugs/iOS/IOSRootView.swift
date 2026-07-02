@@ -78,8 +78,7 @@ struct IOSRootView: View {
             tab(.home, "Home", systemImage: "house") { HomeView() }
             tab(.artists, "Artists", systemImage: "music.mic") { ArtistListView() }
             tab(.search, "Search", systemImage: "magnifyingglass") { SearchView() }
-            // Library hosts Favorites now; Phase E adds the Downloads segment.
-            tab(.favorites, "Library", systemImage: "star") { FavoritesView() }
+            tab(.favorites, "Library", systemImage: "star") { LibraryView() }
             tab(.videos, "Videos", systemImage: "play.rectangle") { VideosView() }
         }
         .overlay(alignment: .bottom) { toastOverlay }
