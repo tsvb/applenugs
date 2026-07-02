@@ -9,7 +9,7 @@ struct AppleNugsiOSApp: App {
     @Environment(\.scenePhase) private var scenePhase
 
     init() {
-        // Launch-arg tab selection for layout screenshots under -UITEST
+        // Launch-arg tab/theme selection for layout screenshots under -UITEST
         // (simctl cannot tap; XCUITest on iOS is future work).
         let ui = UIState()
         #if DEBUG
@@ -23,6 +23,13 @@ struct AppleNugsiOSApp: App {
             default: break
             }
         }
+        let themes = ThemeManager()
+        if let i = ProcessInfo.processInfo.arguments.firstIndex(of: "-UITestTheme"),
+           ProcessInfo.processInfo.arguments.indices.contains(i + 1),
+           let id = ThemeID(rawValue: ProcessInfo.processInfo.arguments[i + 1]) {
+            themes.selected = id
+        }
+        _themes = State(initialValue: themes)
         #endif
         _ui = State(initialValue: ui)
         // Same CDN-artwork cache sizing as the Mac entry point: AsyncImage

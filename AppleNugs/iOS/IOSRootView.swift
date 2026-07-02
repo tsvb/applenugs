@@ -11,6 +11,10 @@ struct IOSRootView: View {
     @Environment(\.theme) private var theme
 
     @State private var artProvider = ArtColorProvider()
+    // Starts presented under -UITestShowNowPlaying so layout screenshots can
+    // reach the full-screen player without a tap (simctl cannot tap).
+    @State private var nowPlayingPresented =
+        ProcessInfo.processInfo.arguments.contains("-UITestShowNowPlaying")
 
     /// The accent the chrome should use right now: the live art color when the
     /// active theme is art-driven, else nil (so static themes are untouched).
@@ -79,6 +83,9 @@ struct IOSRootView: View {
             tab(.videos, "Videos", systemImage: "play.rectangle") { VideosView() }
         }
         .overlay(alignment: .bottom) { toastOverlay }
+        .fullScreenCover(isPresented: $nowPlayingPresented) {
+            NowPlayingScreen()
+        }
     }
 
     /// One tab: its own NavigationStack over the shared navPath, the shared
@@ -112,6 +119,11 @@ struct IOSRootView: View {
                             Divider()
                             TransportBar()
                         }
+                        // Buttons inside the bar win over this container tap.
+                        .contentShape(Rectangle())
+                        .onTapGesture { nowPlayingPresented = true }
+                        .accessibilityAddTraits(.isButton)
+                        .accessibilityHint("Opens full-screen now playing")
                     }
                 }
         }
