@@ -16,7 +16,11 @@ struct TransportBar: View {
 
     var body: some View {
         if theme.transport == .faceplate {
+            #if os(macOS)
             FaceplateTransport()
+            #else
+            standardBar   // placeholder until Phase C's TouchFaceplate
+            #endif
         } else {
             standardBar
         }
