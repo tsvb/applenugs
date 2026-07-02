@@ -656,12 +656,22 @@ final class PlayerService {
         let track = queue[index + 1]
         let generation = loadGeneration
         preloadTask = Task {
-            guard let resolved = try? await client.resolveStreams(trackId: track.trackId),
-                  !resolved.isEmpty else { return }
+            // A downloaded next track preloads from disk — offline gapless
+            // works and no cellular data is spent on an owned file.
+            let picks: [StreamPick]
+            if let local = downloads?.localURL(trackId: track.trackId) {
+                let format = downloads?.manifest.track(id: track.trackId)?.formatRaw
+                    .flatMap(AudioFormat.init(rawValue:)) ?? .unknown
+                picks = [StreamPick(url: local.absoluteString, platformId: 0, format: format)]
+            } else {
+                guard let resolved = try? await client.resolveStreams(trackId: track.trackId),
+                      !resolved.isEmpty else { return }
+                picks = resolved
+            }
             guard !Task.isCancelled, generation == loadGeneration,
                   queue.indices.contains(index + 1), queue[index + 1].id == track.id
             else { return }
-            buildPreload(track: track, picks: resolved, startingAt: 0)
+            buildPreload(track: track, picks: picks, startingAt: 0)
         }
     }
 

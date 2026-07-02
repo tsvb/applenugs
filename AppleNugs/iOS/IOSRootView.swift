@@ -15,6 +15,8 @@ struct IOSRootView: View {
     // reach the full-screen player without a tap (simctl cannot tap).
     @State private var nowPlayingPresented =
         ProcessInfo.processInfo.arguments.contains("-UITestShowNowPlaying")
+    /// Offline library sheet reachable from the connection-failed screen.
+    @State private var offlineShown = false
 
     /// The accent the chrome should use right now: the live art color when the
     /// active theme is art-driven, else nil (so static themes are untouched).
@@ -63,9 +65,28 @@ struct IOSRootView: View {
         } actions: {
             Button("Retry") { Task { await app.retryBootstrap() } }
                 .buttonStyle(.borderedProminent)
+            // The whole point of downloads is being reachable right here.
+            if !app.downloads.manifest.shows.isEmpty {
+                Button("Listen Offline") { offlineShown = true }
+            }
             Button("Sign Out") { app.logout() }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .sheet(isPresented: $offlineShown) {
+            NavigationStack {
+                DownloadsView()
+                    .navigationTitle("Downloads")
+                    .safeAreaInset(edge: .bottom, spacing: 0) {
+                        if app.player.current != nil {
+                            VStack(spacing: 0) {
+                                Divider()
+                                TransportBar()
+                            }
+                        }
+                    }
+            }
+            .presentationBackground(theme.palette.base)
+        }
     }
 
     private var mainLayout: some View {
