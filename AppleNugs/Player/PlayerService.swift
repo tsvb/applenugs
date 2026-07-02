@@ -1,4 +1,9 @@
+#if os(macOS)
 import AppKit
+#else
+import AVFAudio
+import UIKit
+#endif
 import AVFoundation
 import Foundation
 import MediaPlayer
@@ -85,6 +90,7 @@ final class PlayerService {
     private var statusObservation: NSKeyValueObservation?
     private var endObserver: NSObjectProtocol?
     private var terminationObserver: NSObjectProtocol?
+    private var interruptionObserver: NSObjectProtocol?
     private var timeControlObservation: NSKeyValueObservation?
 
     /// The item being played (head of the AVQueuePlayer), tracked explicitly
@@ -117,7 +123,7 @@ final class PlayerService {
     private var suspendedForVideo = false
 
     /// Cover art for the system Now Playing widget, keyed by image path.
-    private var artworkCache: [String: NSImage] = [:]
+    private var artworkCache: [String: PlatformImage] = [:]
     private var artworkTask: Task<Void, Never>?
     private var nowPlayingArtwork: MPMediaItemArtwork?
 
@@ -158,11 +164,41 @@ final class PlayerService {
                 self?.itemDidEnd(endedID)
             }
         }
+        #if os(macOS)
+        let terminateNotification = NSApplication.willTerminateNotification
+        #else
+        // Best-effort only on iOS — the scene-phase observer in the app entry
+        // is the reliable persistence trigger there.
+        let terminateNotification = UIApplication.willTerminateNotification
+        #endif
         terminationObserver = NotificationCenter.default.addObserver(
-            forName: NSApplication.willTerminateNotification,
+            forName: terminateNotification,
             object: nil, queue: .main) { [weak self] _ in
             MainActor.assumeIsolated { self?.persistState() }
         }
+        #if os(iOS)
+        // Phone call / Siri / another app taking the session: pause, and
+        // resume only when the system says the interruption ended resumably.
+        interruptionObserver = NotificationCenter.default.addObserver(
+            forName: AVAudioSession.interruptionNotification,
+            object: AVAudioSession.sharedInstance(), queue: .main) { [weak self] note in
+            let type = (note.userInfo?[AVAudioSessionInterruptionTypeKey] as? UInt)
+                .flatMap(AVAudioSession.InterruptionType.init)
+            let options = (note.userInfo?[AVAudioSessionInterruptionOptionKey] as? UInt)
+                .map(AVAudioSession.InterruptionOptions.init) ?? []
+            MainActor.assumeIsolated {
+                guard let self else { return }
+                switch type {
+                case .began:
+                    if self.isPlaying { self.pause() }
+                case .ended where options.contains(.shouldResume):
+                    self.resume()
+                default:
+                    break
+                }
+            }
+        }
+        #endif
         // The periodic time observer is silent while the timebase is stalled, so
         // track buffering via timeControlStatus: it flips to
         // .waitingToPlayAtSpecifiedRate on a stall and back to .playing on
@@ -262,7 +298,7 @@ final class PlayerService {
            currentItem != nil, player.currentItem === currentItem {
             player.advanceToNextItem()
             adoptPreload(p)
-            player.play()
+            startPlayback()
             isPlaying = true
         } else {
             startAt(index + 1)
@@ -284,6 +320,16 @@ final class PlayerService {
 
     // --- transport -----------------------------------------------------------
 
+    /// The single choke point for starting the AVQueuePlayer: on iOS the
+    /// audio session must be (re)activated before playback so background
+    /// audio and Now Playing ownership are granted to this app.
+    private func startPlayback() {
+        #if os(iOS)
+        try? AVAudioSession.sharedInstance().setActive(true)
+        #endif
+        player.play()
+    }
+
     func togglePlayPause() {
         guard player.currentItem != nil else {
             // A restored (or finished) queue with nothing loaded yet —
@@ -293,7 +339,7 @@ final class PlayerService {
             return
         }
         if player.timeControlStatus == .paused {
-            player.play()
+            startPlayback()
             isPlaying = true
         } else {
             player.pause()
@@ -307,7 +353,7 @@ final class PlayerService {
             if current != nil { startCurrent() }
             return
         }
-        player.play()
+        startPlayback()
         isPlaying = true
         pushNowPlayingInfo()
     }
@@ -427,7 +473,7 @@ final class PlayerService {
         // seeking now, before the item is ready (status .unknown, empty
         // seekableTimeRanges), is silently dropped, so playback would resume
         // at 0 while the UI shows the saved position.
-        player.play()
+        startPlayback()
         isPlaying = true
         loadSpecs(from: item.asset, format: pick.format)
         schedulePreload()
@@ -686,6 +732,10 @@ final class PlayerService {
         pushNowPlayingInfo()
     }
 
+    /// External persistence hook: the iOS scene-phase observer calls this on
+    /// backgrounding, where willTerminate is not guaranteed to fire.
+    func persistNow() { persistState() }
+
     private func persistState() {
         guard !queue.isEmpty else {
             stateStore.clear()
@@ -709,7 +759,7 @@ final class PlayerService {
     /// Reused by themed now-playing chips and the album-art color extractor —
     /// reading the observed cache means views update when art arrives, with no
     /// extra fetch.
-    var nowPlayingImage: NSImage? {
+    var nowPlayingImage: PlatformImage? {
         current?.artworkPath.flatMap { artworkCache[$0] }
     }
 
@@ -724,7 +774,7 @@ final class PlayerService {
         guard let url = NugsConstants.imageURL(path: path, height: 600) else { return }
         artworkTask = Task {
             guard let (data, _) = try? await URLSession.shared.data(from: url),
-                  let image = NSImage(data: data),
+                  let image = PlatformImage(data: data),
                   !Task.isCancelled
             else { return }
             // Tiny bounded cache — one show's worth of art is one entry.
@@ -735,7 +785,7 @@ final class PlayerService {
         }
     }
 
-    private func setNowPlayingArtwork(_ image: NSImage) {
+    private func setNowPlayingArtwork(_ image: PlatformImage) {
         nowPlayingArtwork = MPMediaItemArtwork(boundsSize: image.size) { _ in image }
         pushNowPlayingInfo()
     }

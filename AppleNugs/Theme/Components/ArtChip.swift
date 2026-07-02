@@ -4,14 +4,14 @@ import SwiftUI
 /// MonogramTile otherwise, with a thin theme keyline.
 struct ArtChip: View {
     @Environment(\.theme) private var theme
-    let image: NSImage?
+    let image: PlatformImage?
     let fallbackText: String
     var size: CGFloat = 40
 
     var body: some View {
         Group {
             if let image {
-                Image(nsImage: image)
+                Image(platformImage: image)
                     .resizable()
                     .aspectRatio(contentMode: .fill)
                     .frame(width: size, height: size)

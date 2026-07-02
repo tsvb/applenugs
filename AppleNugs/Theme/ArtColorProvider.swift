@@ -1,4 +1,3 @@
-import AppKit
 import CoreImage
 import Observation
 import SwiftUI
@@ -18,7 +17,7 @@ final class ArtColorProvider {
 
     /// Resolve the color for the current art. `enabled` is the active theme's
     /// `consumesArtColor`, so static themes pay nothing.
-    func update(image: NSImage?, key: String?, enabled: Bool) {
+    func update(image: PlatformImage?, key: String?, enabled: Bool) {
         task?.cancel()
         guard enabled else {
             set(nil)
@@ -49,10 +48,8 @@ final class ArtColorProvider {
 
     nonisolated private static let ciContext = CIContext(options: [.workingColorSpace: NSNull()])
 
-    nonisolated private static func dominantColor(of image: NSImage) -> Color? {
-        guard let tiff = image.tiffRepresentation,
-              let rep = NSBitmapImageRep(data: tiff),
-              let cg = rep.cgImage else { return nil }
+    nonisolated private static func dominantColor(of image: PlatformImage) -> Color? {
+        guard let cg = image.cgImageForAnalysis else { return nil }
 
         let ci = CIImage(cgImage: cg)
         guard let filter = CIFilter(name: "CIAreaAverage", parameters: [
@@ -66,16 +63,30 @@ final class ArtColorProvider {
             bounds: CGRect(x: 0, y: 0, width: 1, height: 1),
             format: .RGBA8, colorSpace: nil)
 
-        let raw = NSColor(
-            srgbRed: CGFloat(px[0]) / 255, green: CGFloat(px[1]) / 255,
-            blue: CGFloat(px[2]) / 255, alpha: 1)
-        guard let dev = raw.usingColorSpace(.deviceRGB) else { return nil }
-
-        var h: CGFloat = 0, s: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
-        dev.getHue(&h, saturation: &s, brightness: &b, alpha: &a)
+        let (h, s, b) = Self.hsb(
+            r: CGFloat(px[0]) / 255, g: CGFloat(px[1]) / 255, b: CGFloat(px[2]) / 255)
         // Clamp so a muddy or dark cover still yields a legible, lively tint.
         let clampedS = max(s, 0.5)
         let clampedB = min(max(b, 0.5), 0.66)
         return Color(hue: Double(h), saturation: Double(clampedS), brightness: Double(clampedB))
+    }
+
+    /// RGB→HSB without NSColor/UIColor so the math is identical on both
+    /// platforms (and no device color-space conversion is involved).
+    nonisolated private static func hsb(r: CGFloat, g: CGFloat, b: CGFloat)
+        -> (h: CGFloat, s: CGFloat, b: CGFloat) {
+        let maxV = max(r, g, b), minV = min(r, g, b)
+        let delta = maxV - minV
+        var h: CGFloat = 0
+        if delta > 0 {
+            switch maxV {
+            case r: h = ((g - b) / delta).truncatingRemainder(dividingBy: 6) / 6
+            case g: h = ((b - r) / delta + 2) / 6
+            default: h = ((r - g) / delta + 4) / 6
+            }
+            if h < 0 { h += 1 }
+        }
+        let s = maxV == 0 ? 0 : delta / maxV
+        return (h, s, maxV)
     }
 }
