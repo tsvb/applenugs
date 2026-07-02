@@ -22,7 +22,11 @@ struct ArtistListView: View {
     /// headers carry the rhythm instead of a divider under every row.
     private var sections: [(letter: String, artists: [ArtistEntry])] {
         let grouped = Dictionary(grouping: filtered) { artist -> String in
-            guard let first = artist.name.first else { return "#" }
+            // Trim first: catalog names occasionally carry leading whitespace,
+            // which would misfile them under "#".
+            guard let first = artist.name.trimmingCharacters(in: .whitespaces).first else {
+                return "#"
+            }
             let s = String(first).uppercased()
             return s.first!.isLetter ? s : "#"
         }
@@ -79,6 +83,17 @@ struct ArtistListView: View {
         }
         .background(theme.palette.base)
         .navigationTitle("Artists")
+        .scrollDismissesKeyboard(.immediately)
+        .toolbar {
+            #if os(iOS)
+            // Escape hatch while the keyboard covers the tab bar (SwiftUI
+            // has no tap-outside dismissal) — same treatment as SearchView.
+            ToolbarItemGroup(placement: .keyboard) {
+                Spacer()
+                Button("Done") { filterFocused = false }
+            }
+            #endif
+        }
         .overlay {
             if loading {
                 ProgressView()
@@ -106,6 +121,7 @@ struct ArtistListView: View {
                 .font(theme.type.body(13))
                 .foregroundStyle(theme.palette.textPrimary)
                 .focused($filterFocused)
+                .submitLabel(.done)
             if !filter.isEmpty {
                 Button { filter = "" } label: {
                     Image(systemName: "xmark.circle.fill")
