@@ -59,38 +59,28 @@ struct TransportBar: View {
     }
 
     #if os(iOS)
-    /// Interim compact bar for iPhone width: art + title + transport, with a
-    /// hairline progress track underneath. No seek slider, volume (hardware
-    /// buttons), star, or format badge — Phase C's mini-player + full-screen
-    /// now-playing replaces this.
+    /// Compact bar for iPhone width: the theme's signature now-playing block
+    /// (tape label / J-card / standard) + play/next, with a hairline progress
+    /// track on top. Tape Room's label card carries its own under-rule
+    /// counter, so the hairline is skipped there. Tap opens the full-screen
+    /// now-playing (wired by the shell).
     private var compactBar: some View {
         VStack(spacing: 0) {
-            GeometryReader { geo in
-                ZStack(alignment: .leading) {
-                    theme.palette.hairline
-                    theme.palette.accent
-                        .frame(width: geo.size.width * progressFraction)
+            if theme.transport != .tapeLabel {
+                GeometryReader { geo in
+                    ZStack(alignment: .leading) {
+                        theme.palette.hairline
+                        theme.palette.accent
+                            .frame(width: geo.size.width * progressFraction)
+                    }
                 }
+                .frame(height: 2)
+                .accessibilityHidden(true)
             }
-            .frame(height: 2)
-            .accessibilityHidden(true)
 
             HStack(spacing: 12) {
-                ArtChip(image: player.nowPlayingImage,
-                        fallbackText: player.current?.artist ?? "?",
-                        size: 36)
-
-                VStack(alignment: .leading, spacing: 1) {
-                    Text(player.current?.title ?? "")
-                        .font(theme.type.body(13).weight(.medium))
-                        .foregroundStyle(theme.palette.textPrimary)
-                        .lineLimit(1)
-                    Text(player.current?.show ?? player.current?.artist ?? "")
-                        .font(theme.type.body(11))
-                        .foregroundStyle(theme.palette.textSecondary)
-                        .lineLimit(1)
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
+                compactNowPlayingBlock
+                    .frame(maxWidth: .infinity, alignment: .leading)
 
                 Button {
                     player.togglePlayPause()
@@ -130,6 +120,25 @@ struct TransportBar: View {
     private var progressFraction: Double {
         guard player.duration > 0 else { return 0 }
         return min(max(player.currentTime / player.duration, 0), 1)
+    }
+
+    /// The same per-theme signature switch the Mac bar uses, with an art chip
+    /// added for the chip-less standard block so the bar still reads at 36pt.
+    @ViewBuilder
+    private var compactNowPlayingBlock: some View {
+        switch theme.transport {
+        case .tapeLabel:
+            TapeLabelCard()
+        case .jCard:
+            JCardStrip()
+        case .standard, .faceplate:
+            HStack(spacing: 10) {
+                ArtChip(image: player.nowPlayingImage,
+                        fallbackText: player.current?.artist ?? player.current?.title ?? "?",
+                        size: 36)
+                StandardNowPlaying()
+            }
+        }
     }
     #endif
 

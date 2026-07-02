@@ -63,6 +63,7 @@ struct SearchView: View {
                         NavigationLink(value: Route.artist(artist)) {
                             Label(artist.name, systemImage: "music.mic")
                         }
+                        .themedListRow()
                         .contextMenu {
                             let fav = app.favorites.isArtistFavorited(artist.id)
                             Button(fav ? "Remove from Favorites" : "Add to Favorites",
@@ -79,6 +80,7 @@ struct SearchView: View {
                 Section {
                     ForEach(section.items) { item in
                         row(item)
+                            .themedListRow()
                     }
                 } header: {
                     sectionHeader(section.header)

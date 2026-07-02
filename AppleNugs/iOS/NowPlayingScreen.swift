@@ -41,18 +41,41 @@ struct StandardNowPlayingScreen: View {
             artwork
                 .padding(.horizontal, 36)
 
+            // Tape Room: the label card's "tape counter" under-rule rides
+            // directly beneath the reel (in addition to the scrubber below).
+            if theme.transport == .tapeLabel {
+                tapeCounter
+                    .padding(.horizontal, 72)
+            }
+
             VStack(spacing: 5) {
-                Text(player.current?.title ?? "Nothing playing")
-                    .font(theme.type.hero(22))
-                    .foregroundStyle(theme.palette.textPrimary)
-                    .lineLimit(2)
-                    .multilineTextAlignment(.center)
-                if let track = player.current {
-                    Text(NowPlayingMeta.line(track))
-                        .font(theme.type.title(14))
-                        .foregroundStyle(theme.palette.textSecondary)
+                HStack(spacing: 8) {
+                    if theme.caps.contains(.equalizerRows) {
+                        EqualizerBars(isPlaying: player.isPlaying)
+                    }
+                    Text(player.current?.title ?? "Nothing playing")
+                        .font(theme.type.hero(22))
+                        .foregroundStyle(theme.palette.textPrimary)
                         .lineLimit(2)
                         .multilineTextAlignment(.center)
+                }
+                if let track = player.current {
+                    // Shoebox liner-note treatment: typed-out tracked caps,
+                    // as on its J-card spine.
+                    if theme.transport == .jCard {
+                        Text(NowPlayingMeta.line(track).uppercased())
+                            .font(theme.type.numeric(11))
+                            .tracking(0.9)
+                            .foregroundStyle(theme.palette.textSecondary)
+                            .lineLimit(2)
+                            .multilineTextAlignment(.center)
+                    } else {
+                        Text(NowPlayingMeta.line(track))
+                            .font(theme.type.title(14))
+                            .foregroundStyle(theme.palette.textSecondary)
+                            .lineLimit(2)
+                            .multilineTextAlignment(.center)
+                    }
                 }
             }
             .padding(.horizontal, 24)
@@ -168,6 +191,23 @@ struct StandardNowPlayingScreen: View {
             .font(theme.type.numeric(11))
             .foregroundStyle(theme.palette.textSecondary)
         }
+    }
+
+    private var tapeCounter: some View {
+        GeometryReader { geo in
+            ZStack(alignment: .leading) {
+                Capsule().fill(theme.palette.hairline)
+                Capsule().fill(theme.palette.accent)
+                    .frame(width: geo.size.width * counterProgress)
+            }
+        }
+        .frame(height: 2)
+        .accessibilityHidden(true)
+    }
+
+    private var counterProgress: CGFloat {
+        guard player.duration > 0 else { return 0 }
+        return min(max(CGFloat(player.currentTime / player.duration), 0), 1)
     }
 
     private var sliderMax: Double { max(player.duration, 1) }

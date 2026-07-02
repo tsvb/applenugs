@@ -57,6 +57,7 @@ struct ArtistListView: View {
                                     .padding(.vertical, 1)
                             }
                             .listRowSeparator(.hidden)
+                            .themedListRow()
                             .contextMenu {
                                 let fav = app.favorites.isArtistFavorited(artist.id)
                                 Button(fav ? "Remove from Favorites" : "Add to Favorites",

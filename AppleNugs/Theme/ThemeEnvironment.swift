@@ -73,6 +73,17 @@ extension View {
             background(ArtWashBackground(style: style, color: color ?? .clear))
         }
     }
+
+    /// iOS List rows paint an opaque system background over the themed base
+    /// (macOS rows are transparent already) — clear it so the theme's warm
+    /// base shows through. No-op on macOS.
+    func themedListRow() -> some View {
+        #if os(iOS)
+        return listRowBackground(Color.clear)
+        #else
+        return self
+        #endif
+    }
 }
 
 // MARK: - Procedural paper grain (no bundled asset)
