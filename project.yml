@@ -135,6 +135,8 @@ targets:
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.timvbs.applenugs.ios
+        # Single-size 1024 universal icon (reuses the Mac 512@2x master).
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
         # iPhone only for v1; iPad runs the iPhone layout in compatibility mode.
         TARGETED_DEVICE_FAMILY: "1"
