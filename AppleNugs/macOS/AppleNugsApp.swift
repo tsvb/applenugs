@@ -48,6 +48,13 @@ struct AppleNugsApp: App {
                 // RootView — it sets NSWindow.minSize directly so it correctly
                 // accounts for the inspector column (250pt) when it is open.
                 .frame(minHeight: 600)
+                // Deep links (applenugs://show/…). Parse here; AppModel decides
+                // whether to act now (serialized) or stash for RootView to replay
+                // after login/bootstrap completes.
+                .onOpenURL { url in
+                    guard let link = DeepLink.parse(url) else { return }
+                    app.receiveDeepLink(link, ui: ui)
+                }
                 #if DEBUG
                 .modifier(UITestWindowSize())
                 #endif

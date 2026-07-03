@@ -43,6 +43,7 @@ targets:
           - "Info-iOS.plist"
     scheme:
       testTargets:
+        - AppleNugsTests
         - AppleNugsUITests
       gatherCoverageData: false
     dependencies:
@@ -64,6 +65,14 @@ targets:
       path: AppleNugs/Info.plist
       properties:
         CFBundleDisplayName: AppleNugs
+        # Deep-link scheme. `applenugs://` only — the OAuth `nugsnet` scheme is
+        # deliberately left unregistered (see NugsConstants) to avoid clashing
+        # with the official nugs.net app. Handles
+        # applenugs://show/<date>?artist=…&song=…&venue=…&media=audio|video
+        CFBundleURLTypes:
+          - CFBundleURLName: com.timvbs.applenugs.deeplink
+            CFBundleURLSchemes:
+              - applenugs
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         LSApplicationCategoryType: public.app-category.music
@@ -147,9 +156,11 @@ targets:
         CODE_SIGN_STYLE: Automatic
         DEVELOPMENT_TEAM: ${APPLENUGS_TEAM_ID}
 
-  # Pure-logic unit tests: host-free (no app dependency, no @testable) — the
-  # files under test compile directly into the bundle, so tests run without
-  # launching the app. Keep only Foundation-clean files in this list.
+  # Pure-logic unit tests: host-free (no app dependency, no @testable, no
+  # TEST_HOST) — the files under test compile directly into the bundle, so
+  # tests run without launching (and code-signing) the host app, which would
+  # otherwise trigger AppModel.bootstrap()/Keychain access on every test run.
+  # Keep only Foundation-clean files in this list.
   AppleNugsTests:
     type: bundle.unit-test
     platform: macOS
@@ -159,6 +170,9 @@ targets:
       - AppleNugs/Downloads/DownloadManifest.swift
       - AppleNugs/Downloads/StreamPickDownload.swift
       - AppleNugs/Core/WebcastPartition.swift
+      - path: AppleNugs/Core/DeepLink.swift
+        # Compiled into the test bundle too (not @testable-imported) so the
+        # logic tests stay host-free. DeepLink.swift is pure Foundation.
     scheme:
       testTargets:
         - AppleNugsTests
