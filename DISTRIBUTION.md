@@ -45,6 +45,24 @@ your own devices (a paid developer account keeps a personal install signed for
 one year; free accounts expire after 7 days). Sparkle does not apply to iOS —
 update by rebuilding.
 
+The whole install cycle runs headlessly once the device is paired and has
+Developer Mode on (`export APPLENUGS_TEAM_ID=<TEAMID>` makes the team survive
+regeneration — see the README):
+
+```sh
+xcodegen generate
+xcodebuild -project AppleNugs.xcodeproj -scheme AppleNugs-iOS \
+  -configuration Debug -destination 'platform=iOS,id=<DEVICE_UDID>' \
+  -derivedDataPath build-device DEVELOPMENT_TEAM=<TEAMID> \
+  -allowProvisioningUpdates build
+xcrun devicectl device install app --device <COREDEVICE_ID> \
+  build-device/Build/Products/Debug-iphoneos/AppleNugs-iOS.app
+```
+
+(`xcrun devicectl list devices` shows both identifiers. The first-ever device
+build also needs `-allowProvisioningDeviceRegistration` to register the phone
+with your team.)
+
 ## Prerequisites (both paths)
 
 - **Apple Developer Program** membership ($99/yr).

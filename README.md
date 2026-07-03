@@ -2,18 +2,20 @@
 
 [![CI](https://github.com/tsvb/applenugs/actions/workflows/ci.yml/badge.svg)](https://github.com/tsvb/applenugs/actions/workflows/ci.yml)
 
-A native macOS client for [nugs.net](https://nugs.net), written in
-Swift/SwiftUI. Fast search, a real queue,
-gapless playback, video, a Winamp-style artist library, and keyboard control
-over your own nugs.net subscription.
+A native macOS and iOS client for [nugs.net](https://nugs.net), written in
+Swift/SwiftUI. Fast search, a real queue, gapless playback, video, offline
+listening on iPhone, a Winamp-style artist library, and keyboard control over
+your own nugs.net subscription.
 
 > [!IMPORTANT]
 > **Unofficial and unaffiliated.** AppleNugs is an independent client. It is
 > not affiliated with, authorized, sponsored, or endorsed by nugs.net. It is
-> for **personal use against your own nugs.net subscription only**: it streams
-> the same content the official apps do, downloads nothing for offline use,
-> redistributes nothing, and circumvents no DRM. You are responsible for
-> complying with the [nugs.net Terms of Service](https://nugs.net).
+> for **personal use against your own nugs.net subscription only**: it plays
+> the same content the official apps do, keeps any offline copies private to
+> the app's own container on your own device (the official apps offer offline
+> listening too), redistributes nothing, and circumvents no DRM. You are
+> responsible for complying with the
+> [nugs.net Terms of Service](https://nugs.net).
 
 ## Features
 
@@ -24,20 +26,32 @@ over your own nugs.net subscription.
   `AVQueuePlayer` while the current one plays, so live-show segues flow. ALAC
   is preferred (lossless in MP4); FLAC, MQA, AAC, and HLS all play, with
   automatic fallthrough if a format fails.
-- **Video.** Continue Watching with resume positions, Live & Upcoming, a paged
-  on-demand grid, chapters, and a quality cap — audio and video share one
-  playback arbiter so they never talk over each other.
+- **Video.** Continue Watching with resume positions, Live & Upcoming,
+  Recent Exclusives (just-ended livestream replays, last-chance style), a
+  paged on-demand grid, chapters, and a quality cap — audio and video share
+  one playback arbiter so they never talk over each other.
 - **Artist library.** Each artist opens as a Winamp-style expandable outline —
   Albums, Videos, and Shows as collapsible nodes (Videos and Shows grouped by
   year) rendered as dense, scannable rows under a VU + LCD-style header, instead
   of a wall of posters. Rows page in on scroll and lazily build per year, so a
   catalog of hundreds stays fast.
+- **iPhone app.** A full iOS counterpart sharing the same core: five-tab
+  shell, background audio with lock-screen transport, themed full-screen
+  now-playing (tap the mini player), portrait-locked UI with rotatable
+  fullscreen video and automatic Picture-in-Picture.
+- **Offline listening (iOS).** Download whole shows in the best lossless
+  format offered; they land in a Library ▸ Downloads segment, play with no
+  network (gapless included), and the player prefers local files
+  automatically. An airplane-mode launch offers "Listen Offline" directly.
 - **Favorites.** Follow artists and save shows and videos; they surface on a
-  Home landing strip and a dedicated Favorites view.
-- **Themes.** Four runtime-swappable looks (Tape Room, Soundboard, Shoebox,
-  The Receiver) with album-art-driven accent washes.
-- **System integration.** Media keys, Control Center, and AirPods transport
-  via `MPRemoteCommandCenter`; cover art and now-playing in the system widget.
+  Home landing strip and a dedicated Favorites view (Library tab on iOS).
+- **Themes.** Five runtime-swappable looks (Tape Room, Soundboard, Shoebox,
+  The Receiver, Click Wheel) with album-art-driven accent washes, per-theme
+  transport signatures, and touch-first now-playing variants on iPhone —
+  including The Receiver's VU faceplate and Click Wheel's circular pad.
+- **System integration.** Media keys, Control Center, AirPods, and lock-screen
+  transport via `MPRemoteCommandCenter`; cover art and now-playing in the
+  system widget; AirPlay from the now-playing screens.
 - **Live quality dashboard.** Real format, platform tier, sample rate, bit
   depth, channels, and buffer-ahead — read from the decoder, not guessed.
 - **Auto-update.** Built-in Sparkle updater — the app checks for new releases
@@ -53,9 +67,9 @@ headers directly, so no proxy tier is needed:
 
 ```
 ┌──────────────────────────────┐    TLS    ┌──────────┐
-│ AppleNugs.app                │ ────────► │ nugs.net │
+│ AppleNugs (macOS / iOS)      │ ────────► │ nugs.net │
 │ SwiftUI · AVFoundation       │           └──────────┘
-│ tokens in the macOS Keychain │
+│ tokens in the Keychain       │
 └──────────────────────────────┘
 ```
 
@@ -115,10 +129,21 @@ xcodebuild -project AppleNugs.xcodeproj -scheme AppleNugs-iOS \
 ```
 
 Audio keeps playing in the background (lock screen / Control Center transport
-included). Sparkle auto-update is macOS-only; update the iOS install by
-rebuilding from source.
+included), and downloaded shows play fully offline. Sparkle auto-update is
+macOS-only; update the iOS install by rebuilding from source. For cable-free
+updates after the first install, `xcodebuild` against the device destination
+plus `xcrun devicectl device install app` does the whole cycle headlessly.
 
-## Keyboard shortcuts
+### Tests
+
+Pure-logic unit tests live in a host-free bundle (no app launch, no
+`@testable`):
+
+```sh
+xcodebuild test -project AppleNugs.xcodeproj -scheme AppleNugsTests
+```
+
+## Keyboard shortcuts (macOS)
 
 | key         | action                          |
 | ----------- | ------------------------------- |
@@ -134,10 +159,25 @@ rebuilding from source.
 | `⌥⌘I`       | Toggle the dashboard panel      |
 
 Plain-letter keys are handled by a window-level event monitor and pass through
-untouched while a text field has focus.
+untouched while a text field has focus. On iPhone, transport lives on screen
+and on the lock screen instead.
 
 ## Notes for hacking
 
+- **Target layout:** everything under `AppleNugs/` is shared by both apps
+  except `AppleNugs/macOS/` (Sparkle glue, keyboard monitor, split-view shell,
+  desktop faceplate) and `AppleNugs/iOS/` (app entry, tab shell, now-playing
+  screens, orientation gate). `project.yml` excludes each platform directory
+  from the other target; small in-file divergences use `#if os(...)`.
+- **UI-test harness:** launch with `-UITEST` for a stubbed logged-in state
+  (no network/Keychain). Extra launch args: `-UITestSeedQueue` parks a fake
+  queue so transport UI renders, `-UITestTab artists|search|favorites|videos`
+  selects the starting tab, `-UITestTheme <ThemeID>` forces a theme, and
+  `-UITestShowNowPlaying` opens the full-screen player (iOS).
+- **Offline downloads** live in
+  `Application Support/AppleNugs/Downloads/<containerID>/` with a
+  `manifest.json` index, excluded from backups; only direct-file picks
+  (never HLS) are downloadable.
 - The unofficial API surface is documented by
   [Sorrow446/Nugs-Downloader](https://github.com/Sorrow446/Nugs-Downloader) and
   [Dniel97/orpheusdl-nugs](https://github.com/Dniel97/orpheusdl-nugs); check
