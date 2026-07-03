@@ -9,9 +9,12 @@ struct NowPlayingScreen: View {
 
     var body: some View {
         Group {
-            if theme.transport == .faceplate {
+            switch theme.transport {
+            case .faceplate:
                 TouchFaceplate()
-            } else {
+            case .clickWheel:
+                ClickWheelScreen()
+            case .standard, .tapeLabel, .jCard:
                 StandardNowPlayingScreen()
             }
         }

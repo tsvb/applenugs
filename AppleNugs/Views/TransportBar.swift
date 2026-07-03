@@ -131,7 +131,7 @@ struct TransportBar: View {
             TapeLabelCard()
         case .jCard:
             JCardStrip()
-        case .standard, .faceplate:
+        case .standard, .faceplate, .clickWheel:
             HStack(spacing: 10) {
                 ArtChip(image: player.nowPlayingImage,
                         fallbackText: player.current?.artist ?? player.current?.title ?? "?",
@@ -187,9 +187,10 @@ struct TransportBar: View {
             TapeLabelCard()
         case .jCard:
             JCardStrip()
-        case .standard, .faceplate:
-            // The faceplate's bespoke bar is a later slice; until then The
-            // Receiver shows the standard block in its chassis palette.
+        case .standard, .faceplate, .clickWheel:
+            // Faceplate has its own whole-bar treatment on the Mac; Click
+            // Wheel's circular pad is an iOS full-screen idea — on the Mac
+            // bar both fall back to the standard block in their own tokens.
             StandardNowPlaying()
         }
     }
