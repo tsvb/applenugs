@@ -10,6 +10,7 @@ struct VideosView: View {
 
     @State private var recent: [VideoSummary] = []
     @State private var webcasts: [VideoSummary] = []
+    @State private var recentExclusives: [VideoSummary] = []
     @State private var offset = 0
     @State private var loading = false
     @State private var loadingMore = false
@@ -27,13 +28,15 @@ struct VideosView: View {
             } else if let error, recent.isEmpty {
                 errorState(error)
                     .frame(maxWidth: .infinity, minHeight: 360)
-            } else if recent.isEmpty && webcasts.isEmpty && continueWatching.isEmpty {
+            } else if recent.isEmpty && webcasts.isEmpty && recentExclusives.isEmpty
+                        && continueWatching.isEmpty {
                 emptyState
                     .frame(maxWidth: .infinity, minHeight: 360)
             } else {
                 VStack(alignment: .leading, spacing: 28) {
                     if !continueWatching.isEmpty { continueWatchingSection }
                     if !webcasts.isEmpty { liveSection }
+                    if !recentExclusives.isEmpty { recentExclusivesSection }
                     if !recent.isEmpty { onDemandSection }
                 }
                 .padding(28)
@@ -120,6 +123,29 @@ struct VideosView: View {
         }
     }
 
+    // --- Recent Exclusives (just-ended livestream replays) ------------------
+
+    private var recentExclusivesSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            sectionTitle("Recent Exclusives")
+            Text("Last chance to watch before they're gone.")
+                .font(theme.type.body(13))
+                .foregroundStyle(theme.palette.textSecondary)
+                .padding(.top, -6)
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(alignment: .top, spacing: 16) {
+                    ForEach(recentExclusives) { video in
+                        NavigationLink(value: Route.video(id: video.id, title: video.title)) {
+                            VideoThumbnail(video: video, width: 220)
+                        }
+                        .buttonStyle(.plain)
+                        .contextMenu { favoriteButton(video) }
+                    }
+                }
+            }
+        }
+    }
+
     // --- On-Demand grid -----------------------------------------------------
 
     private var onDemandSection: some View {
@@ -191,11 +217,18 @@ struct VideosView: View {
         loading = true
         defer { loading = false }
         do {
+            // Query livestreams from two weeks back so just-ended exclusives
+            // (still in their replay window) come along with the upcoming
+            // ones; the partition splits the two rails.
+            let now = Date()
             async let recentFetch = app.client.recentVideos(offset: 0, limit: pageSize)
-            async let webcastFetch = app.client.liveWebcasts()
+            async let webcastFetch = app.client.liveWebcasts(
+                upcomingFrom: now.addingTimeInterval(-14 * 86_400))
             let (recentResult, webcastResult) = try await (recentFetch, webcastFetch)
             recent = recentResult
-            webcasts = webcastResult
+            let split = partitionWebcasts(webcastResult, now: now)
+            webcasts = split.upcoming
+            recentExclusives = split.recent
             offset = recentResult.count
             reachedEnd = recentResult.count < pageSize
             error = nil

@@ -158,6 +158,7 @@ targets:
       - AppleNugs/Core/Models.swift
       - AppleNugs/Downloads/DownloadManifest.swift
       - AppleNugs/Downloads/StreamPickDownload.swift
+      - AppleNugs/Core/WebcastPartition.swift
     scheme:
       testTargets:
         - AppleNugsTests

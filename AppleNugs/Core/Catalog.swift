@@ -91,6 +91,8 @@ struct VideoSummary: Identifiable, Hashable {
     var dateText: String? { Catalog.isoDate(performanceDate) }
 }
 
+extension VideoSummary: WebcastLike {}
+
 /// One tappable chapter marker inside a VideoDetail.
 struct VideoChapter: Identifiable, Hashable {
     let id: String
