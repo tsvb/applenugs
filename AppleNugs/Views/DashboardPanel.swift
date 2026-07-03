@@ -69,12 +69,10 @@ struct DashboardPanel: View {
                             .lineLimit(1)
                             .truncationMode(.tail)
                     }
-                    if player.duration > 0 {
-                        Text("\(TransportBar.format(seconds: player.currentTime)) / \(TransportBar.format(seconds: player.duration))")
-                            .font(theme.type.numeric(11))
-                            .foregroundStyle(theme.palette.textSecondary)
-                            .lineLimit(1)
-                    }
+                    // A leaf view: the 4Hz currentTime dependency registers
+                    // here, not on the whole inspector (whose queue list
+                    // would otherwise re-diff every tick).
+                    ElapsedTimeLine()
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(8)
@@ -120,9 +118,7 @@ struct DashboardPanel: View {
                         }
                         row("Channels", specs.channels == 2 ? "Stereo" : String(specs.channels))
                     }
-                    if player.bufferedAhead > 0 {
-                        row("Buffered", String(format: "%.0f s ahead", player.bufferedAhead))
-                    }
+                    BufferedRow()   // leaf: isolates the ticking bufferedAhead read
                 }
             }
         }
@@ -223,5 +219,45 @@ struct DashboardPanel: View {
             .accessibilityLabel("Remove from queue")
         }
         .padding(.vertical, 2)
+    }
+}
+
+// MARK: - 4Hz leaf views
+
+/// The playback tick mutates currentTime ~4x/sec while playing. These leaves
+/// carry that @Observable dependency so the inspector's body — including the
+/// full queue ForEach — re-evaluates only on real state changes.
+private struct ElapsedTimeLine: View {
+    @Environment(AppModel.self) private var app
+    @Environment(\.theme) private var theme
+
+    var body: some View {
+        if app.player.duration > 0 {
+            Text("\(TransportBar.format(seconds: app.player.currentTime)) / \(TransportBar.format(seconds: app.player.duration))")
+                .font(theme.type.numeric(11))
+                .foregroundStyle(theme.palette.textSecondary)
+                .lineLimit(1)
+        }
+    }
+}
+
+private struct BufferedRow: View {
+    @Environment(AppModel.self) private var app
+    @Environment(\.theme) private var theme
+
+    var body: some View {
+        if app.player.bufferedAhead > 0 {
+            HStack(spacing: 8) {
+                Text("Buffered")
+                    .foregroundStyle(theme.palette.textSecondary)
+                    .lineLimit(1)
+                    .layoutPriority(1)
+                Spacer(minLength: 8)
+                Text(String(format: "%.0f s ahead", app.player.bufferedAhead))
+                    .font(theme.type.numeric(11))
+                    .lineLimit(1)
+            }
+            .font(.caption)
+        }
     }
 }

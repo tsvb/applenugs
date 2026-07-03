@@ -150,9 +150,11 @@ final class AppModel {
     }
 
     /// Full artist list, cached for the app lifetime (cleared on logout).
+    /// Parsing happens on the client actor — hundreds of entries plus a
+    /// locale-aware sort have no business on the main actor.
     func artists() async throws -> [ArtistEntry] {
         if let cachedArtists { return cachedArtists }
-        let parsed = Catalog.artists(from: try await client.allArtists())
+        let parsed = try await client.allArtistsParsed()
         cachedArtists = parsed
         return parsed
     }

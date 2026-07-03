@@ -12,12 +12,8 @@ struct AlbumDetailView: View {
 
     @State private var album: AlbumDetailModel?
     @State private var error: String?
-    #if os(iOS)
-    @State private var confirmRemoveDownload = false
-    @State private var downloadFailureShown = false
-    #endif
     /// Parsed once when the album loads — HTML parsing is too heavy to run
-    /// on every body evaluation (download progress ticks re-render this view).
+    /// on every body evaluation.
     @State private var notesText = ""
 
     var body: some View {
@@ -112,7 +108,12 @@ struct AlbumDetailView: View {
                 saveButton(album)
 
                 #if os(iOS)
-                downloadButton(album)
+                // A child view, not a builder method: download progress
+                // mutates DownloadStore.trackProgress at up to ~1% steps per
+                // track, and with @Observable the dependency registers on
+                // whichever body READ it — a method would pin it to this
+                // whole screen (re-grouping the track list per update).
+                ShowDownloadButton(albumId: albumId, album: album)
                 #endif
             }
             #if os(iOS)
@@ -124,74 +125,85 @@ struct AlbumDetailView: View {
     #if os(iOS)
     /// Offline download state machine: idle → live progress → downloaded
     /// (tap to remove) / failed (tap to retry). Mac stays streaming-only.
-    @ViewBuilder
-    private func downloadButton(_ album: AlbumDetailModel) -> some View {
-        switch app.downloads.state(for: albumId) {
-        case .none:
-            Button {
-                app.downloads.download(downloadRequest(album))
-            } label: {
-                Label("Download", systemImage: "arrow.down.circle")
-            }
-            .disabled(album.tracks.isEmpty)
+    /// A separate View so the live-progress @Observable dependency
+    /// invalidates only this button, never the surrounding screen.
+    private struct ShowDownloadButton: View {
+        let albumId: String
+        let album: AlbumDetailModel
 
-        case .downloading(let fraction):
-            HStack(spacing: 6) {
-                ProgressView(value: fraction)
-                    .frame(width: 44)
-                    .accessibilityLabel("Downloading show")
-                    .accessibilityValue("\(Int(fraction * 100)) percent")
+        @Environment(AppModel.self) private var app
+        @Environment(\.theme) private var theme
+        @State private var confirmRemoveDownload = false
+        @State private var downloadFailureShown = false
+
+        var body: some View {
+            switch app.downloads.state(for: albumId) {
+            case .none:
                 Button {
-                    app.downloads.delete(containerID: albumId)
+                    app.downloads.download(downloadRequest())
                 } label: {
-                    Image(systemName: "xmark.circle.fill")
-                        .foregroundStyle(theme.palette.textSecondary)
+                    Label("Download", systemImage: "arrow.down.circle")
                 }
-                .buttonStyle(.plain)
-                .accessibilityLabel("Cancel download")
-            }
+                .disabled(album.tracks.isEmpty)
 
-        case .downloaded:
-            Button {
-                confirmRemoveDownload = true
-            } label: {
-                Label("Downloaded", systemImage: "arrow.down.circle.fill")
-            }
-            .tint(theme.palette.accent)
-            .confirmationDialog("Remove this show's downloaded files?",
-                                isPresented: $confirmRemoveDownload,
-                                titleVisibility: .visible) {
-                Button("Remove Download", role: .destructive) {
-                    app.downloads.delete(containerID: albumId)
+            case .downloading(let fraction):
+                HStack(spacing: 6) {
+                    ProgressView(value: fraction)
+                        .frame(width: 44)
+                        .accessibilityLabel("Downloading show")
+                        .accessibilityValue("\(Int(fraction * 100)) percent")
+                    Button {
+                        app.downloads.delete(containerID: albumId)
+                    } label: {
+                        Image(systemName: "xmark.circle.fill")
+                            .foregroundStyle(theme.palette.textSecondary)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Cancel download")
                 }
-            }
 
-        case .failed(let message):
-            // Tooltips don't exist on touch — the tap explains and retries.
-            Button {
-                downloadFailureShown = true
-            } label: {
-                Label("Download failed", systemImage: "exclamationmark.arrow.circlepath")
-            }
-            .alert("Download failed", isPresented: $downloadFailureShown) {
-                Button("Retry") { app.downloads.download(downloadRequest(album)) }
-                Button("OK", role: .cancel) {}
-            } message: {
-                Text(message)
+            case .downloaded:
+                Button {
+                    confirmRemoveDownload = true
+                } label: {
+                    Label("Downloaded", systemImage: "arrow.down.circle.fill")
+                }
+                .tint(theme.palette.accent)
+                .confirmationDialog("Remove this show's downloaded files?",
+                                    isPresented: $confirmRemoveDownload,
+                                    titleVisibility: .visible) {
+                    Button("Remove Download", role: .destructive) {
+                        app.downloads.delete(containerID: albumId)
+                    }
+                }
+
+            case .failed(let message):
+                // Tooltips don't exist on touch — the tap explains and retries.
+                Button {
+                    downloadFailureShown = true
+                } label: {
+                    Label("Download failed", systemImage: "exclamationmark.arrow.circlepath")
+                }
+                .alert("Download failed", isPresented: $downloadFailureShown) {
+                    Button("Retry") { app.downloads.download(downloadRequest()) }
+                    Button("OK", role: .cancel) {}
+                } message: {
+                    Text(message)
+                }
             }
         }
-    }
 
-    private func downloadRequest(_ album: AlbumDetailModel) -> ShowDownloadRequest {
-        ShowDownloadRequest(
-            containerID: albumId,
-            title: album.title,
-            artist: album.artistName,
-            artworkPath: album.imagePath,
-            tracks: album.tracks.map {
-                .init(trackId: $0.id, title: $0.title,
-                      artist: album.artistName, durationText: $0.durationText)
-            })
+        private func downloadRequest() -> ShowDownloadRequest {
+            ShowDownloadRequest(
+                containerID: albumId,
+                title: album.title,
+                artist: album.artistName,
+                artworkPath: album.imagePath,
+                tracks: album.tracks.map {
+                    .init(trackId: $0.id, title: $0.title,
+                          artist: album.artistName, durationText: $0.durationText)
+                })
+        }
     }
     #endif
 

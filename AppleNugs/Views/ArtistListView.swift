@@ -12,15 +12,19 @@ struct ArtistListView: View {
     @State private var error: String?
     @FocusState private var filterFocused: Bool
 
-    private var filtered: [ArtistEntry] {
-        guard !filter.isEmpty else { return artists }
-        return artists.filter { $0.name.localizedCaseInsensitiveContains(filter) }
-    }
+    /// A–Z sections, derived state: filtering + grouping + locale-aware
+    /// sorting over a catalog hundreds deep is too heavy to redo on every
+    /// body evaluation (favorites toggles, theme switches, toasts) — it
+    /// rebuilds only when the inputs actually change (load, keystroke).
+    @State private var sections: [(letter: String, artists: [ArtistEntry])] = []
 
     /// The catalog is hundreds deep, so group it into A–Z sections (numbers and
     /// symbols collected under "#", sorted first) and let the sticky letter
     /// headers carry the rhythm instead of a divider under every row.
-    private var sections: [(letter: String, artists: [ArtistEntry])] {
+    private func rebuildSections() {
+        let filtered = filter.isEmpty
+            ? artists
+            : artists.filter { $0.name.localizedCaseInsensitiveContains(filter) }
         let grouped = Dictionary(grouping: filtered) { artist -> String in
             // Trim first: catalog names occasionally carry leading whitespace,
             // which would misfile them under "#".
@@ -30,7 +34,7 @@ struct ArtistListView: View {
             let s = String(first).uppercased()
             return s.first!.isLetter ? s : "#"
         }
-        return grouped
+        sections = grouped
             .map { (letter: $0.key,
                     artists: $0.value.sorted {
                         $0.name.localizedStandardCompare($1.name) == .orderedAscending
@@ -102,11 +106,12 @@ struct ArtistListView: View {
                     "Couldn't load artists",
                     systemImage: "exclamationmark.triangle",
                     description: Text(error))
-            } else if filtered.isEmpty && !artists.isEmpty {
+            } else if sections.isEmpty && !artists.isEmpty {
                 ContentUnavailableView.search(text: filter)
             }
         }
         .task { await load() }
+        .onChange(of: filter) { rebuildSections() }
     }
 
     /// A compact, contextual filter that lives just above the list instead of
@@ -151,6 +156,7 @@ struct ArtistListView: View {
         defer { loading = false }
         do {
             artists = try await app.artists()
+            rebuildSections()
             error = nil
         } catch {
             self.error = error.localizedDescription

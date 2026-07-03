@@ -59,10 +59,16 @@ struct CrateItem: Identifiable, Hashable {
 }
 
 extension CrateItem {
+    /// Crate rows render 24-40pt thumbnails — request a matching CDN resize
+    /// (?h=96 covers 3x displays) instead of decoding 400px covers per row.
+    private static func thumbURL(_ path: String?) -> URL? {
+        path.flatMap { NugsConstants.imageURL(path: $0, height: 96) }
+    }
+
     static func album(_ c: ContainerSummary, artist: String) -> CrateItem {
         CrateItem(rawID: c.id, kind: .album, title: c.title,
                   artistName: c.artistName ?? artist, venue: c.venue,
-                  dateText: c.dateText, date: c.date, imageURL: c.imageURL,
+                  dateText: c.dateText, date: c.date, imageURL: thumbURL(c.imagePath),
                   isLive: false, has4K: false,
                   route: .album(id: c.id, title: c.title))
     }
@@ -71,7 +77,7 @@ extension CrateItem {
         let display = c.venue ?? c.title
         return CrateItem(rawID: c.id, kind: .show, title: display,
                   artistName: c.artistName ?? artist, venue: c.venue,
-                  dateText: c.dateText, date: c.date, imageURL: c.imageURL,
+                  dateText: c.dateText, date: c.date, imageURL: thumbURL(c.imagePath),
                   isLive: false, has4K: false,
                   route: .album(id: c.id, title: display))
     }
@@ -80,7 +86,7 @@ extension CrateItem {
         let d = Catalog.parseDate(v.performanceDate) ?? v.eventStart
         return CrateItem(rawID: v.id, kind: .video, title: v.title,
                   artistName: v.artistName ?? artist, venue: nil,
-                  dateText: v.dateText, date: d, imageURL: v.imageURL,
+                  dateText: v.dateText, date: d, imageURL: thumbURL(v.imagePath),
                   isLive: v.isLive, has4K: v.has4K,
                   route: .video(id: v.id, title: v.title))
     }

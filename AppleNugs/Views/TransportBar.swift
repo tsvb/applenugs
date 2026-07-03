@@ -67,15 +67,7 @@ struct TransportBar: View {
     private var compactBar: some View {
         VStack(spacing: 0) {
             if theme.transport != .tapeLabel {
-                GeometryReader { geo in
-                    ZStack(alignment: .leading) {
-                        theme.palette.hairline
-                        theme.palette.accent
-                            .frame(width: geo.size.width * progressFraction)
-                    }
-                }
-                .frame(height: 2)
-                .accessibilityHidden(true)
+                MiniProgressStrip()
             }
 
             HStack(spacing: 12) {
@@ -117,9 +109,30 @@ struct TransportBar: View {
         .background { barBackground }
     }
 
-    private var progressFraction: Double {
-        guard player.duration > 0 else { return 0 }
-        return min(max(player.currentTime / player.duration, 0), 1)
+    /// A leaf view: the 4Hz currentTime dependency registers here, so the
+    /// rest of the compact bar (signature block, transport buttons) only
+    /// re-evaluates on real state changes.
+    private struct MiniProgressStrip: View {
+        @Environment(AppModel.self) private var app
+        @Environment(\.theme) private var theme
+
+        var body: some View {
+            GeometryReader { geo in
+                ZStack(alignment: .leading) {
+                    theme.palette.hairline
+                    theme.palette.accent
+                        .frame(width: geo.size.width * fraction)
+                }
+            }
+            .frame(height: 2)
+            .accessibilityHidden(true)
+        }
+
+        private var fraction: Double {
+            let player = app.player
+            guard player.duration > 0 else { return 0 }
+            return min(max(player.currentTime / player.duration, 0), 1)
+        }
     }
 
     /// The same per-theme signature switch the Mac bar uses, with an art chip

@@ -179,6 +179,12 @@ actor NugsClient {
         try await catalogGet(["method": "catalog.artists"])
     }
 
+    /// Fetch + parse on this actor's executor — the catalog runs to hundreds
+    /// of entries and the parse has no business on the main actor.
+    func allArtistsParsed() async throws -> [ArtistEntry] {
+        Catalog.artists(from: try await allArtists())
+    }
+
     func artistShows(id: String, offset: Int = 1, limit: Int = 100) async throws -> JSON {
         try await catalogGet([
             "method": "catalog.containersAll",

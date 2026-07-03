@@ -744,23 +744,36 @@ final class PlayerService {
         // is briefly the preloaded item; skip until bookkeeping catches up.
         guard let item = player.currentItem, item === currentItem else { return }
         let t = player.currentTime()
-        currentTime = t.seconds.isFinite ? max(0, t.seconds) : 0
+        let newTime = t.seconds.isFinite ? max(0, t.seconds) : 0
         let d = item.duration.seconds
-        duration = d.isFinite ? d : 0
-        isPlaying = player.timeControlStatus != .paused
-
-        bufferedAhead = item.loadedTimeRanges
+        let newDuration = d.isFinite ? d : 0
+        let newIsPlaying = player.timeControlStatus != .paused
+        let newBuffered = item.loadedTimeRanges
             .map(\.timeRangeValue)
             .filter { $0.start <= t && t <= $0.end }
             .map { ($0.end - t).seconds }
             .max() ?? 0
 
+        // @Observable notifies on every set (it never compares values), so
+        // write only what changed — a paused session stops waking observers
+        // 4x/sec, and stable values never invalidate views.
+        if currentTime != newTime { currentTime = newTime }
+        let pushWorthy = duration != newDuration || isPlaying != newIsPlaying
+        if duration != newDuration { duration = newDuration }
+        if isPlaying != newIsPlaying { isPlaying = newIsPlaying }
+        if bufferedAhead != newBuffered { bufferedAhead = newBuffered }
+
         // Keep the on-disk position roughly current without writing 4x/sec.
-        if abs(currentTime - lastSavedPosition) >= 5 {
+        if abs(newTime - lastSavedPosition) >= 5 {
             persistState()
         }
 
-        pushNowPlayingInfo()
+        // The system Now Playing clock extrapolates from one (elapsed, rate)
+        // sample — 4Hz XPC re-pushes buy nothing. Every real state change
+        // (play/pause/seek/track) pushes explicitly at its own site; the tick
+        // only needs to cover what it alone observes: duration discovery and
+        // external play/pause flips (e.g. a headphone unplug).
+        if pushWorthy { pushNowPlayingInfo() }
     }
 
     /// Exact specs from the decoder once the asset is readable — replaces the
@@ -861,7 +874,11 @@ final class PlayerService {
                   !Task.isCancelled
             else { return }
             // Tiny bounded cache — one show's worth of art is one entry.
-            if artworkCache.count > 8 { artworkCache.removeAll() }
+            // Evict a single entry, not the whole cache: flushing everything
+            // forces a re-fetch of art the queue is about to need again.
+            if artworkCache.count > 8, let victim = artworkCache.keys.first(where: { $0 != path }) {
+                artworkCache.removeValue(forKey: victim)
+            }
             artworkCache[path] = image
             guard current?.artworkPath == path else { return }
             setNowPlayingArtwork(image)

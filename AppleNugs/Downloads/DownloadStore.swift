@@ -95,7 +95,16 @@ final class DownloadStore {
 
         manager = DownloadManager(
             onProgress: { [weak self] trackId, fraction in
-                self?.trackProgress[trackId] = fraction
+                guard let self else { return }
+                // URLSession delivers progress per network chunk (tens to
+                // hundreds of callbacks/sec across parallel tracks), and
+                // @Observable notifies on every set — coalesce to visible
+                // increments (~1% of a track). Completion doesn't pass here:
+                // transferFinished clears the entry and counts the track as
+                // done, so nothing sticks at 99%.
+                if fraction - (self.trackProgress[trackId] ?? 0) >= 0.01 {
+                    self.trackProgress[trackId] = fraction
+                }
             },
             onComplete: { [weak self] trackId, result in
                 self?.transferFinished(trackId: trackId, result: result)
