@@ -35,3 +35,14 @@ jobs:
             -derivedDataPath build \
             CODE_SIGNING_ALLOWED=NO \
             build
+
+      - name: Build iOS (Simulator)
+        run: |
+          xcodebuild \
+            -project AppleNugs.xcodeproj \
+            -scheme AppleNugs-iOS \
+            -configuration Debug \
+            -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath build-ios \
+            CODE_SIGNING_ALLOWED=NO \
+            build

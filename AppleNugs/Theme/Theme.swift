@@ -8,6 +8,7 @@ enum TransportSignature: Sendable {
     case tapeLabel     // Tape Room: art chip + amber under-rule progress
     case jCard         // Shoebox: cassette J-card strip
     case faceplate     // The Receiver: full brushed-metal VU faceplate (deferred)
+    case clickWheel    // Click Wheel: monochrome circular-pad player (iOS full screen)
 }
 
 /// Whether the accent is a fixed color or derived from the current cover art.
@@ -107,6 +108,7 @@ struct Theme: Equatable, Sendable {
         case .soundboard: return soundboard
         case .shoebox:    return shoebox
         case .tapeDeck:   return tapeDeck
+        case .clickWheel: return clickWheel
         }
     }
 }
@@ -208,6 +210,36 @@ extension Theme {
         transport: .faceplate,
         accentMode: .staticAccent,
         washStyle: .bloom18,
+        darkOnly: true)
+}
+
+extension Theme {
+    /// Monochrome pocket-player homage: graphite surfaces, white glyphs, soft
+    /// raised circles, zero color — the album art is the only pigment on
+    /// screen. iOS gets the circular-pad full-screen player; the Mac bar keeps
+    /// its standard shape in these tokens.
+    static let clickWheel = Theme(
+        id: .clickWheel,
+        palette: Palette(
+            base: Color(hex: 0x0E0E0F), raised: Color(hex: 0x1C1C1E), hairline: Color(hex: 0x2A2A2C),
+            textPrimary: Color(hex: 0xF5F5F5), textSecondary: Color(hex: 0x9A9A9E), textIdle: Color(hex: 0x5C5C60),
+            accent: Color(hex: 0xE9E9EB), losslessBadge: nil,
+            playState: Color(hex: 0xF5F5F5), vuPeak: nil),
+        type: Typography(
+            hero:    { .system(size: $0, weight: .bold) },
+            title:   { .system(size: $0, weight: .semibold) },
+            section: { .system(size: $0, weight: .semibold) },
+            body:    { .system(size: $0) },
+            numeric: { .system(size: $0, design: .monospaced) }),
+        textureOpacity: 0,
+        copy: IdleCopy(
+            nowPlaying: "Nothing playing. Give the wheel a spin.",
+            dashboardIdle: "Idle",
+            dashHeaders: ("Now Playing", "Quality", "Up Next")),
+        caps: [],
+        transport: .clickWheel,
+        accentMode: .staticAccent,
+        washStyle: .none,
         darkOnly: true)
 }
 

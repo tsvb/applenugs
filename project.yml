@@ -1,8 +1,12 @@
 name: AppleNugs
+
 options:
   bundleIdPrefix: com.timvbs
   deploymentTarget:
     macOS: "14.0"
+    # iOS floor is set by pervasive @Observable/Observation usage — the same
+    # constraint that sets the macOS 14 floor.
+    iOS: "17.0"
   createIntermediateGroups: true
 
 settings:
@@ -29,7 +33,14 @@ targets:
     type: application
     platform: macOS
     sources:
-      - AppleNugs
+      # AppleNugs/iOS is the iOS target's platform-specific code (entry point,
+      # navigation shell, UIKit shims); everything else is shared.
+      - path: AppleNugs
+        excludes:
+          - "iOS/**"
+          # The iOS target's generated Info.plist materializes next to the Mac
+          # one; keep it out of the Mac target's resource glob.
+          - "Info-iOS.plist"
     scheme:
       testTargets:
         - AppleNugsUITests
@@ -88,6 +99,77 @@ targets:
         CODE_SIGN_STYLE: Manual
         CODE_SIGN_IDENTITY: "-"
         DEVELOPMENT_TEAM: ""
+
+  # iOS app (iPhone-first; personal install via Xcode — see DISTRIBUTION.md).
+  # Shares all sources except AppleNugs/macOS. No Sparkle (macOS-only); no
+  # entitlements (plain Keychain needs none, and there is no iOS sandbox opt-in).
+  # App icon: a flattened single-size 1024 universal entry for now; proper
+  # iOS icon artwork lands in Phase F.
+  AppleNugs-iOS:
+    type: application
+    platform: iOS
+    sources:
+      - path: AppleNugs
+        excludes:
+          - "macOS/**"
+          # The Mac target's Info.plist and sandbox entitlements are not iOS
+          # resources; without these excludes the plist collides with the
+          # processed Info-iOS.plist in the bundle.
+          - "Info.plist"
+          - "AppleNugs.entitlements"
+    info:
+      path: AppleNugs/Info-iOS.plist
+      properties:
+        CFBundleDisplayName: AppleNugs
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        ITSAppUsesNonExemptEncryption: false
+        # Keeps audio alive when the app is backgrounded/locked; pairs with the
+        # AVAudioSession(.playback) category set at launch.
+        UIBackgroundModes: [audio]
+        UILaunchScreen: {}
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
+        NSHumanReadableCopyright: "Personal use against your own nugs.net subscription only. Not affiliated with nugs.net."
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.timvbs.applenugs.ios
+        # Single-size 1024 universal icon (reuses the Mac 512@2x master).
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+        # iPhone only for v1; iPad runs the iPhone layout in compatibility mode.
+        TARGETED_DEVICE_FAMILY: "1"
+        # Personal install: set APPLENUGS_TEAM_ID in your shell before running
+        # xcodegen (persists across regenerations), or select the team in Xcode
+        # each time. Expands to empty when unset — CI/simulator unaffected.
+        CODE_SIGN_STYLE: Automatic
+        DEVELOPMENT_TEAM: ${APPLENUGS_TEAM_ID}
+
+  # Pure-logic unit tests: host-free (no app dependency, no @testable) — the
+  # files under test compile directly into the bundle, so tests run without
+  # launching the app. Keep only Foundation-clean files in this list.
+  AppleNugsTests:
+    type: bundle.unit-test
+    platform: macOS
+    sources:
+      - AppleNugsTests
+      - AppleNugs/Core/Models.swift
+      - AppleNugs/Downloads/DownloadManifest.swift
+      - AppleNugs/Downloads/StreamPickDownload.swift
+      - AppleNugs/Core/WebcastPartition.swift
+    scheme:
+      testTargets:
+        - AppleNugsTests
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.timvbs.applenugs.tests
+        GENERATE_INFOPLIST_FILE: YES
+        CODE_SIGN_STYLE: Manual
+        CODE_SIGN_IDENTITY: "-"
+        DEVELOPMENT_TEAM: ""
+        ENABLE_HARDENED_RUNTIME: NO
 
   # UI tests. `bundle.ui-testing` + a dependency on AppleNugs makes XcodeGen set
   # TEST_TARGET_NAME=AppleNugs (the app is the test host). The app is driven into

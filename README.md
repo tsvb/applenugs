@@ -87,6 +87,37 @@ tokens are stored in the macOS **Keychain** (the source of truth), with a
 have no Keychain entitlement; a legacy `session.json` is migrated into the
 Keychain on first launch and then removed. Tokens refresh ~60s before expiry.
 
+### iOS (personal build)
+
+The repo also carries an `AppleNugs-iOS` target (iPhone, iOS 17+) sharing the
+same core. It is **personal-install only** — build it yourself and run it on
+your own device; there is no App Store or TestFlight distribution:
+
+```sh
+xcodegen generate
+open AppleNugs.xcodeproj   # select the AppleNugs-iOS scheme,
+                           # set your team under Signing & Capabilities, ⌘R
+```
+
+A team selected in Xcode is wiped by the next `xcodegen generate`. To make it
+stick, export your team ID before generating (e.g. in `~/.zshrc`):
+
+```sh
+export APPLENUGS_TEAM_ID=YOUR_TEAM_ID   # then: xcodegen generate
+```
+
+or headless against the simulator:
+
+```sh
+xcodebuild -project AppleNugs.xcodeproj -scheme AppleNugs-iOS \
+  -configuration Debug -destination 'generic/platform=iOS Simulator' \
+  CODE_SIGNING_ALLOWED=NO build
+```
+
+Audio keeps playing in the background (lock screen / Control Center transport
+included). Sparkle auto-update is macOS-only; update the iOS install by
+rebuilding from source.
+
 ## Keyboard shortcuts
 
 | key         | action                          |

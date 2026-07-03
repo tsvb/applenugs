@@ -35,6 +35,16 @@ Everything else in this repo (icon, privacy manifest, sandbox, hardened
 runtime, export compliance, versioning) is genuinely required and is done.
 Nothing here is a reason not to *try* — just go in informed.
 
+### iOS target: personal install only
+
+`AppleNugs-iOS` is deliberately outside both distribution paths above. iOS has
+no Developer ID equivalent — every distribution channel (App Store, TestFlight)
+passes Apple review, where the 5.2.2 exposure applies in full. The supported
+route is building from source with your own team selected and installing on
+your own devices (a paid developer account keeps a personal install signed for
+one year; free accounts expire after 7 days). Sparkle does not apply to iOS —
+update by rebuilding.
+
 ## Prerequisites (both paths)
 
 - **Apple Developer Program** membership ($99/yr).

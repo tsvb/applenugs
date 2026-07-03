@@ -16,20 +16,21 @@ struct ArtistDetailView: View {
 
     private static let pageSize = 100
 
-    private var releases: [ContainerSummary] { containers.filter { !$0.isLiveShow } }
-    private var shows: [ContainerSummary] { containers.filter(\.isLiveShow) }
-
-    private var albumItems: [CrateItem] { releases.map { CrateItem.album($0, artist: artist.name) } }
-    private var showItems: [CrateItem] { shows.map { CrateItem.show($0, artist: artist.name) } }
-    private var videoItems: [CrateItem] { videos.map { CrateItem.video($0, artist: artist.name) } }
+    // Mapped once per data load, not per body evaluation: CrateItem
+    // construction parses each container's date (ContainerSummary.date is
+    // computed via DateFormatter), so computing these in body re-parsed the
+    // whole page on every render.
+    @State private var albumItems: [CrateItem] = []
+    @State private var showItems: [CrateItem] = []
+    @State private var videoItems: [CrateItem] = []
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 12) {
                 CrateHeader(artist: artist,
-                            albumCount: releases.count,
-                            videoCount: videos.count,
-                            showCount: shows.count)
+                            albumCount: albumItems.count,
+                            videoCount: videoItems.count,
+                            showCount: showItems.count)
 
                 CrateOutline(albums: albumItems,
                              videos: videoItems,
@@ -62,6 +63,9 @@ struct ArtistDetailView: View {
             containers = []
             canLoadMore = false
             videos = []
+            albumItems = []
+            showItems = []
+            videoItems = []
             Task { await loadVideos() }
         }
         loading = true
@@ -71,6 +75,10 @@ struct ArtistDetailView: View {
                 id: artist.id, offset: containers.count + 1, limit: Self.pageSize)
             let page = Catalog.containers(from: json)
             containers += page
+            let releases = containers.filter { !$0.isLiveShow }
+            let shows = containers.filter(\.isLiveShow)
+            albumItems = releases.map { CrateItem.album($0, artist: artist.name) }
+            showItems = shows.map { CrateItem.show($0, artist: artist.name) }
             canLoadMore = page.count >= Self.pageSize
             error = nil
         } catch {
@@ -87,6 +95,7 @@ struct ArtistDetailView: View {
         } catch {
             videos = []
         }
+        videoItems = videos.map { CrateItem.video($0, artist: artist.name) }
     }
 }
 

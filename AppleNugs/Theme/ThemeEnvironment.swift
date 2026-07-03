@@ -73,6 +73,17 @@ extension View {
             background(ArtWashBackground(style: style, color: color ?? .clear))
         }
     }
+
+    /// iOS List rows paint an opaque system background over the themed base
+    /// (macOS rows are transparent already) — clear it so the theme's warm
+    /// base shows through. No-op on macOS.
+    func themedListRow() -> some View {
+        #if os(iOS)
+        return listRowBackground(Color.clear)
+        #else
+        return self
+        #endif
+    }
 }
 
 // MARK: - Procedural paper grain (no bundled asset)
@@ -82,8 +93,13 @@ extension View {
 struct PaperGrain: View {
     var body: some View {
         Canvas { ctx, size in
-            // A coarse deterministic speckle — enough tooth to kill flat paint.
+            // A coarse deterministic speckle — enough tooth to kill flat
+            // paint. Speckles batch into two alpha buckets (visually
+            // indistinguishable under the themes' ≤4% overlay) so a redraw
+            // issues two fills instead of thousands of 1x1 fills.
             let step: CGFloat = 3
+            var dim = Path()
+            var bright = Path()
             var y: CGFloat = 0
             var seed: UInt64 = 0x9E3779B97F4A7C15
             while y < size.height {
@@ -93,12 +109,18 @@ struct PaperGrain: View {
                     let v = Double((seed >> 33) & 0xFF) / 255.0
                     if v > 0.72 {
                         let rect = CGRect(x: x, y: y, width: 1, height: 1)
-                        ctx.fill(Path(rect), with: .color(.white.opacity(v - 0.5)))
+                        if v > 0.86 {
+                            bright.addRect(rect)
+                        } else {
+                            dim.addRect(rect)
+                        }
                     }
                     x += step
                 }
                 y += step
             }
+            ctx.fill(dim, with: .color(.white.opacity(0.28)))
+            ctx.fill(bright, with: .color(.white.opacity(0.43)))
         }
         .blendMode(.overlay)
     }

@@ -16,13 +16,18 @@ struct TransportBar: View {
 
     var body: some View {
         if theme.transport == .faceplate {
+            #if os(macOS)
             FaceplateTransport()
+            #else
+            standardBar   // placeholder until Phase C's TouchFaceplate
+            #endif
         } else {
             standardBar
         }
     }
 
     private var standardBar: some View {
+        #if os(macOS)
         HStack(spacing: 16) {
             nowPlayingBlock
                 .frame(width: 230, alignment: .leading)
@@ -47,15 +52,117 @@ struct TransportBar: View {
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 10)
-        .background {
-            theme.palette.raised
-                .overlay { ArtWashBackground(style: theme.washStyle, color: artColor ?? .clear) }
-                .overlay {
-                    if theme.textureOpacity > 0 {
-                        PaperGrain().opacity(theme.textureOpacity).allowsHitTesting(false)
+        .background { barBackground }
+        #else
+        compactBar
+        #endif
+    }
+
+    #if os(iOS)
+    /// Compact bar for iPhone width: the theme's signature now-playing block
+    /// (tape label / J-card / standard) + play/next, with a hairline progress
+    /// track on top. Tape Room's label card carries its own under-rule
+    /// counter, so the hairline is skipped there. Tap opens the full-screen
+    /// now-playing (wired by the shell).
+    private var compactBar: some View {
+        VStack(spacing: 0) {
+            if theme.transport != .tapeLabel {
+                MiniProgressStrip()
+            }
+
+            HStack(spacing: 12) {
+                compactNowPlayingBlock
+                    .frame(maxWidth: .infinity, alignment: .leading)
+
+                Button {
+                    player.togglePlayPause()
+                } label: {
+                    if player.isBuffering {
+                        ProgressView()
+                            .controlSize(.small)
+                            .frame(width: 28)
+                    } else {
+                        Image(systemName: player.isPlaying ? "pause.fill" : "play.fill")
+                            .font(.title3)
+                            .frame(width: 28)
                     }
                 }
+                .buttonStyle(.plain)
+                .foregroundStyle(theme.palette.textPrimary)
+                .disabled(player.current == nil)
+                .accessibilityLabel(player.isPlaying ? "Pause" : "Play")
+
+                Button {
+                    player.next()
+                } label: {
+                    Image(systemName: "forward.fill")
+                        .frame(width: 24)
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(theme.palette.textPrimary)
+                .disabled(!player.hasNext)
+                .accessibilityLabel("Next track")
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 8)
         }
+        .background { barBackground }
+    }
+
+    /// A leaf view: the 4Hz currentTime dependency registers here, so the
+    /// rest of the compact bar (signature block, transport buttons) only
+    /// re-evaluates on real state changes.
+    private struct MiniProgressStrip: View {
+        @Environment(AppModel.self) private var app
+        @Environment(\.theme) private var theme
+
+        var body: some View {
+            GeometryReader { geo in
+                ZStack(alignment: .leading) {
+                    theme.palette.hairline
+                    theme.palette.accent
+                        .frame(width: geo.size.width * fraction)
+                }
+            }
+            .frame(height: 2)
+            .accessibilityHidden(true)
+        }
+
+        private var fraction: Double {
+            let player = app.player
+            guard player.duration > 0 else { return 0 }
+            return min(max(player.currentTime / player.duration, 0), 1)
+        }
+    }
+
+    /// The same per-theme signature switch the Mac bar uses, with an art chip
+    /// added for the chip-less standard block so the bar still reads at 36pt.
+    @ViewBuilder
+    private var compactNowPlayingBlock: some View {
+        switch theme.transport {
+        case .tapeLabel:
+            TapeLabelCard()
+        case .jCard:
+            JCardStrip()
+        case .standard, .faceplate, .clickWheel:
+            HStack(spacing: 10) {
+                ArtChip(image: player.nowPlayingImage,
+                        fallbackText: player.current?.artist ?? player.current?.title ?? "?",
+                        size: 36)
+                StandardNowPlaying()
+            }
+        }
+    }
+    #endif
+
+    private var barBackground: some View {
+        theme.palette.raised
+            .overlay { ArtWashBackground(style: theme.washStyle, color: artColor ?? .clear) }
+            .overlay {
+                if theme.textureOpacity > 0 {
+                    PaperGrain().opacity(theme.textureOpacity).allowsHitTesting(false)
+                }
+            }
     }
 
     /// Lossless formats get the theme's dedicated lossless tint when it has one;
@@ -93,9 +200,10 @@ struct TransportBar: View {
             TapeLabelCard()
         case .jCard:
             JCardStrip()
-        case .standard, .faceplate:
-            // The faceplate's bespoke bar is a later slice; until then The
-            // Receiver shows the standard block in its chassis palette.
+        case .standard, .faceplate, .clickWheel:
+            // Faceplate has its own whole-bar treatment on the Mac; Click
+            // Wheel's circular pad is an iOS full-screen idea — on the Mac
+            // bar both fall back to the standard block in their own tokens.
             StandardNowPlaying()
         }
     }

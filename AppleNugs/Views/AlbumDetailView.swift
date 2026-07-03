@@ -12,6 +12,9 @@ struct AlbumDetailView: View {
 
     @State private var album: AlbumDetailModel?
     @State private var error: String?
+    /// Parsed once when the album loads — HTML parsing is too heavy to run
+    /// on every body evaluation.
+    @State private var notesText = ""
 
     var body: some View {
         ScrollView {
@@ -99,9 +102,110 @@ struct AlbumDetailView: View {
             }
             .disabled(album.tracks.isEmpty)
 
-            saveButton(album)
+            // Five labeled buttons overflow iPhone widths; the secondary
+            // actions go icon-only there (labels stay for accessibility).
+            Group {
+                saveButton(album)
+
+                #if os(iOS)
+                // A child view, not a builder method: download progress
+                // mutates DownloadStore.trackProgress at up to ~1% steps per
+                // track, and with @Observable the dependency registers on
+                // whichever body READ it — a method would pin it to this
+                // whole screen (re-grouping the track list per update).
+                ShowDownloadButton(albumId: albumId, album: album)
+                #endif
+            }
+            #if os(iOS)
+            .labelStyle(.iconOnly)
+            #endif
         }
     }
+
+    #if os(iOS)
+    /// Offline download state machine: idle → live progress → downloaded
+    /// (tap to remove) / failed (tap to retry). Mac stays streaming-only.
+    /// A separate View so the live-progress @Observable dependency
+    /// invalidates only this button, never the surrounding screen.
+    private struct ShowDownloadButton: View {
+        let albumId: String
+        let album: AlbumDetailModel
+
+        @Environment(AppModel.self) private var app
+        @Environment(\.theme) private var theme
+        @State private var confirmRemoveDownload = false
+        @State private var downloadFailureShown = false
+
+        var body: some View {
+            switch app.downloads.state(for: albumId) {
+            case .none:
+                Button {
+                    app.downloads.download(downloadRequest())
+                } label: {
+                    Label("Download", systemImage: "arrow.down.circle")
+                }
+                .disabled(album.tracks.isEmpty)
+
+            case .downloading(let fraction):
+                HStack(spacing: 6) {
+                    ProgressView(value: fraction)
+                        .frame(width: 44)
+                        .accessibilityLabel("Downloading show")
+                        .accessibilityValue("\(Int(fraction * 100)) percent")
+                    Button {
+                        app.downloads.delete(containerID: albumId)
+                    } label: {
+                        Image(systemName: "xmark.circle.fill")
+                            .foregroundStyle(theme.palette.textSecondary)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Cancel download")
+                }
+
+            case .downloaded:
+                Button {
+                    confirmRemoveDownload = true
+                } label: {
+                    Label("Downloaded", systemImage: "arrow.down.circle.fill")
+                }
+                .tint(theme.palette.accent)
+                .confirmationDialog("Remove this show's downloaded files?",
+                                    isPresented: $confirmRemoveDownload,
+                                    titleVisibility: .visible) {
+                    Button("Remove Download", role: .destructive) {
+                        app.downloads.delete(containerID: albumId)
+                    }
+                }
+
+            case .failed(let message):
+                // Tooltips don't exist on touch — the tap explains and retries.
+                Button {
+                    downloadFailureShown = true
+                } label: {
+                    Label("Download failed", systemImage: "exclamationmark.arrow.circlepath")
+                }
+                .alert("Download failed", isPresented: $downloadFailureShown) {
+                    Button("Retry") { app.downloads.download(downloadRequest()) }
+                    Button("OK", role: .cancel) {}
+                } message: {
+                    Text(message)
+                }
+            }
+        }
+
+        private func downloadRequest() -> ShowDownloadRequest {
+            ShowDownloadRequest(
+                containerID: albumId,
+                title: album.title,
+                artist: album.artistName,
+                artworkPath: album.imagePath,
+                tracks: album.tracks.map {
+                    .init(trackId: $0.id, title: $0.title,
+                          artist: album.artistName, durationText: $0.durationText)
+                })
+        }
+    }
+    #endif
 
     private func saveButton(_ album: AlbumDetailModel) -> some View {
         let fav = app.favorites.isShowFavorited(albumId)
@@ -119,8 +223,7 @@ struct AlbumDetailView: View {
 
     @ViewBuilder
     private func notes(_ album: AlbumDetailModel) -> some View {
-        let text = album.notesHTML.map(Self.plainText(fromHTML:)).joined(separator: "\n\n")
-            .trimmingCharacters(in: .whitespacesAndNewlines)
+        let text = notesText
         if !text.isEmpty {
             DisclosureGroup("Show notes") {
                 Text(text)
@@ -186,6 +289,9 @@ struct AlbumDetailView: View {
         do {
             let json = try await app.client.album(id: albumId)
             album = Catalog.album(from: json, id: albumId)
+            notesText = (album?.notesHTML ?? []).map(Self.plainText(fromHTML:))
+                .joined(separator: "\n\n")
+                .trimmingCharacters(in: .whitespacesAndNewlines)
             error = nil
         } catch {
             self.error = error.localizedDescription
@@ -218,6 +324,16 @@ private struct TrackRow: View {
     @Environment(\.theme) private var theme
     @Environment(\.artColor) private var artColor
     @State private var hovering = false
+
+    /// Touch has no hover: on iOS the per-row actions are always visible
+    /// (the context menu still offers them via long-press as well).
+    private var rowActionsVisible: Bool {
+        #if os(iOS)
+        true
+        #else
+        hovering
+        #endif
+    }
 
     var body: some View {
         HStack(spacing: 8) {
@@ -253,7 +369,7 @@ private struct TrackRow: View {
                 .help("Add to queue")
             }
             .buttonStyle(.borderless)
-            .opacity(hovering ? 1 : 0)
+            .opacity(rowActionsVisible ? 1 : 0)
         }
         .padding(.vertical, 4)
         .padding(.horizontal, 6)

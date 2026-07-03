@@ -1,4 +1,9 @@
+#if os(macOS)
 import AppKit
+#else
+import AVFAudio
+import UIKit
+#endif
 import AVFoundation
 import Foundation
 import MediaPlayer
@@ -80,11 +85,19 @@ final class PlayerService {
 
     private let client: NugsClient
     private let stateStore = PlaybackStateStore()
+
+    /// Offline library, injected by AppModel. When a track has a local file,
+    /// it becomes the (only) initial pick; stream resolution is the fallback.
+    var downloads: DownloadStore?
+    /// True while the current picks are the local file — lets the failure
+    /// path fall back to network resolution instead of giving up.
+    private var usingLocalPick = false
     private let player = AVQueuePlayer()
     private var timeObserver: Any?
     private var statusObservation: NSKeyValueObservation?
     private var endObserver: NSObjectProtocol?
     private var terminationObserver: NSObjectProtocol?
+    private var interruptionObserver: NSObjectProtocol?
     private var timeControlObservation: NSKeyValueObservation?
 
     /// The item being played (head of the AVQueuePlayer), tracked explicitly
@@ -116,8 +129,13 @@ final class PlayerService {
     /// audio and video never both drive the system playback UI.
     private var suspendedForVideo = false
 
+    /// True only between an audio-session interruption pausing playback and
+    /// that interruption ending — the gate that keeps `.shouldResume` from
+    /// restarting audio the user paused themselves (iOS only; inert on macOS).
+    private var pausedByInterruption = false
+
     /// Cover art for the system Now Playing widget, keyed by image path.
-    private var artworkCache: [String: NSImage] = [:]
+    private var artworkCache: [String: PlatformImage] = [:]
     private var artworkTask: Task<Void, Never>?
     private var nowPlayingArtwork: MPMediaItemArtwork?
 
@@ -158,11 +176,56 @@ final class PlayerService {
                 self?.itemDidEnd(endedID)
             }
         }
+        #if os(macOS)
+        let terminateNotification = NSApplication.willTerminateNotification
+        #else
+        // Best-effort only on iOS — the scene-phase observer in the app entry
+        // is the reliable persistence trigger there.
+        let terminateNotification = UIApplication.willTerminateNotification
+        #endif
         terminationObserver = NotificationCenter.default.addObserver(
-            forName: NSApplication.willTerminateNotification,
+            forName: terminateNotification,
             object: nil, queue: .main) { [weak self] _ in
             MainActor.assumeIsolated { self?.persistState() }
         }
+        #if os(iOS)
+        // Phone call / Siri / another app taking the session: pause, and
+        // resume only when (a) the system says the interruption ended
+        // resumably AND (b) it was this interruption that paused us.
+        // `.shouldResume` alone only reflects the interrupting app's
+        // deactivation mode — acting on it unconditionally would restart
+        // audio the user had explicitly paused (or play under a video).
+        interruptionObserver = NotificationCenter.default.addObserver(
+            forName: AVAudioSession.interruptionNotification,
+            object: AVAudioSession.sharedInstance(), queue: .main) { [weak self] note in
+            let type = (note.userInfo?[AVAudioSessionInterruptionTypeKey] as? UInt)
+                .flatMap(AVAudioSession.InterruptionType.init)
+            let options = (note.userInfo?[AVAudioSessionInterruptionOptionKey] as? UInt)
+                .map(AVAudioSession.InterruptionOptions.init) ?? []
+            MainActor.assumeIsolated {
+                guard let self else { return }
+                switch type {
+                case .began:
+                    // Best-effort "were we playing": the system pauses the
+                    // player before delivering the notification, and tick()
+                    // may already have observed that — check both signals.
+                    let wasPlaying = self.isPlaying || self.player.rate != 0
+                    if wasPlaying && !self.suspendedForVideo {
+                        self.pausedByInterruption = true
+                        self.pause()
+                    }
+                case .ended:
+                    if self.pausedByInterruption, !self.suspendedForVideo,
+                       options.contains(.shouldResume) {
+                        self.resume()
+                    }
+                    self.pausedByInterruption = false
+                default:
+                    break
+                }
+            }
+        }
+        #endif
         // The periodic time observer is silent while the timebase is stalled, so
         // track buffering via timeControlStatus: it flips to
         // .waitingToPlayAtSpecifiedRate on a stall and back to .playing on
@@ -262,8 +325,7 @@ final class PlayerService {
            currentItem != nil, player.currentItem === currentItem {
             player.advanceToNextItem()
             adoptPreload(p)
-            player.play()
-            isPlaying = true
+            isPlaying = startPlayback()
         } else {
             startAt(index + 1)
         }
@@ -284,6 +346,26 @@ final class PlayerService {
 
     // --- transport -----------------------------------------------------------
 
+    /// The single choke point for starting the AVQueuePlayer: on iOS the
+    /// audio session must be (re)activated before playback so background
+    /// audio and Now Playing ownership are granted to this app. Returns
+    /// whether playback actually started, so callers keep `isPlaying` (and
+    /// therefore Control Center) honest when activation fails — e.g. during
+    /// an ongoing call.
+    @discardableResult
+    private func startPlayback() -> Bool {
+        #if os(iOS)
+        do {
+            try AVAudioSession.sharedInstance().setActive(true)
+        } catch {
+            playbackError = "Audio session unavailable: \(error.localizedDescription)"
+            return false
+        }
+        #endif
+        player.play()
+        return true
+    }
+
     func togglePlayPause() {
         guard player.currentItem != nil else {
             // A restored (or finished) queue with nothing loaded yet —
@@ -293,8 +375,7 @@ final class PlayerService {
             return
         }
         if player.timeControlStatus == .paused {
-            player.play()
-            isPlaying = true
+            isPlaying = startPlayback()
         } else {
             player.pause()
             isPlaying = false
@@ -307,8 +388,7 @@ final class PlayerService {
             if current != nil { startCurrent() }
             return
         }
-        player.play()
-        isPlaying = true
+        isPlaying = startPlayback()
         pushNowPlayingInfo()
     }
 
@@ -327,6 +407,9 @@ final class PlayerService {
     @discardableResult
     func pauseForExternalAudio() -> Bool {
         suspendedForVideo = true
+        // Video now owns playback — a pending interruption-resume must not
+        // fire underneath it once the interruption ends.
+        pausedByInterruption = false
         let wasPlaying = isPlaying
         if wasPlaying { pause() }
         return wasPlaying
@@ -383,6 +466,22 @@ final class PlayerService {
         loadArtwork(for: track)
         pushNowPlayingInfo()
 
+        // Downloaded tracks play from disk with no network round-trip; the
+        // failure path in loadCurrentPick falls back to stream resolution.
+        if let local = downloads?.localURL(trackId: track.trackId) {
+            let format = downloads?.manifest.track(id: track.trackId)?.formatRaw
+                .flatMap(AudioFormat.init(rawValue:)) ?? .unknown
+            usingLocalPick = true
+            picks = [StreamPick(url: local.absoluteString, platformId: 0, format: format)]
+            pickIndex = 0
+            loadCurrentPick()
+            return
+        }
+        usingLocalPick = false
+        resolveNetworkStreams(for: track, generation: generation)
+    }
+
+    private func resolveNetworkStreams(for track: QueueTrack, generation: Int) {
         Task {
             do {
                 let resolved = try await client.resolveStreams(trackId: track.trackId)
@@ -403,6 +502,13 @@ final class PlayerService {
 
     private func loadCurrentPick() {
         guard pickIndex < picks.count else {
+            // A dead local file (corrupt, half-written) shouldn't strand the
+            // track — fall back to streaming as if it weren't downloaded.
+            if usingLocalPick, let track = current {
+                usingLocalPick = false
+                resolveNetworkStreams(for: track, generation: loadGeneration)
+                return
+            }
             playbackError = "Every available stream format failed to play."
             isPlaying = false
             return
@@ -427,8 +533,7 @@ final class PlayerService {
         // seeking now, before the item is ready (status .unknown, empty
         // seekableTimeRanges), is silently dropped, so playback would resume
         // at 0 while the UI shows the saved position.
-        player.play()
-        isPlaying = true
+        isPlaying = startPlayback()
         loadSpecs(from: item.asset, format: pick.format)
         schedulePreload()
         pushNowPlayingInfo()
@@ -522,6 +627,9 @@ final class PlayerService {
         picks = p.picks
         pickIndex = p.pickIndex
         nowPick = p.pick
+        // Keep the local/network flag honest across gapless transitions so
+        // a failing local file still falls back to streaming.
+        usingLocalPick = URL(string: p.pick.url)?.isFileURL == true
         playbackError = nil
         currentTime = 0
         duration = 0
@@ -551,12 +659,22 @@ final class PlayerService {
         let track = queue[index + 1]
         let generation = loadGeneration
         preloadTask = Task {
-            guard let resolved = try? await client.resolveStreams(trackId: track.trackId),
-                  !resolved.isEmpty else { return }
+            // A downloaded next track preloads from disk — offline gapless
+            // works and no cellular data is spent on an owned file.
+            let picks: [StreamPick]
+            if let local = downloads?.localURL(trackId: track.trackId) {
+                let format = downloads?.manifest.track(id: track.trackId)?.formatRaw
+                    .flatMap(AudioFormat.init(rawValue:)) ?? .unknown
+                picks = [StreamPick(url: local.absoluteString, platformId: 0, format: format)]
+            } else {
+                guard let resolved = try? await client.resolveStreams(trackId: track.trackId),
+                      !resolved.isEmpty else { return }
+                picks = resolved
+            }
             guard !Task.isCancelled, generation == loadGeneration,
                   queue.indices.contains(index + 1), queue[index + 1].id == track.id
             else { return }
-            buildPreload(track: track, picks: resolved, startingAt: 0)
+            buildPreload(track: track, picks: picks, startingAt: 0)
         }
     }
 
@@ -626,23 +744,36 @@ final class PlayerService {
         // is briefly the preloaded item; skip until bookkeeping catches up.
         guard let item = player.currentItem, item === currentItem else { return }
         let t = player.currentTime()
-        currentTime = t.seconds.isFinite ? max(0, t.seconds) : 0
+        let newTime = t.seconds.isFinite ? max(0, t.seconds) : 0
         let d = item.duration.seconds
-        duration = d.isFinite ? d : 0
-        isPlaying = player.timeControlStatus != .paused
-
-        bufferedAhead = item.loadedTimeRanges
+        let newDuration = d.isFinite ? d : 0
+        let newIsPlaying = player.timeControlStatus != .paused
+        let newBuffered = item.loadedTimeRanges
             .map(\.timeRangeValue)
             .filter { $0.start <= t && t <= $0.end }
             .map { ($0.end - t).seconds }
             .max() ?? 0
 
+        // @Observable notifies on every set (it never compares values), so
+        // write only what changed — a paused session stops waking observers
+        // 4x/sec, and stable values never invalidate views.
+        if currentTime != newTime { currentTime = newTime }
+        let pushWorthy = duration != newDuration || isPlaying != newIsPlaying
+        if duration != newDuration { duration = newDuration }
+        if isPlaying != newIsPlaying { isPlaying = newIsPlaying }
+        if bufferedAhead != newBuffered { bufferedAhead = newBuffered }
+
         // Keep the on-disk position roughly current without writing 4x/sec.
-        if abs(currentTime - lastSavedPosition) >= 5 {
+        if abs(newTime - lastSavedPosition) >= 5 {
             persistState()
         }
 
-        pushNowPlayingInfo()
+        // The system Now Playing clock extrapolates from one (elapsed, rate)
+        // sample — 4Hz XPC re-pushes buy nothing. Every real state change
+        // (play/pause/seek/track) pushes explicitly at its own site; the tick
+        // only needs to cover what it alone observes: duration discovery and
+        // external play/pause flips (e.g. a headphone unplug).
+        if pushWorthy { pushNowPlayingInfo() }
     }
 
     /// Exact specs from the decoder once the asset is readable — replaces the
@@ -686,6 +817,21 @@ final class PlayerService {
         pushNowPlayingInfo()
     }
 
+    /// External persistence hook: the iOS scene-phase observer calls this on
+    /// backgrounding, where willTerminate is not guaranteed to fire.
+    func persistNow() { persistState() }
+
+    #if DEBUG
+    /// UITest-only: park a queue without resolving streams or starting
+    /// playback, so transport UI renders under the `-UITestSeedQueue` flag.
+    func seedUITestQueue(_ tracks: [QueueTrack], at index: Int = 0) {
+        guard AppModel.isUITestRun else { return }
+        queue = tracks
+        self.index = min(max(0, index), max(0, tracks.count - 1))
+        ended = false
+    }
+    #endif
+
     private func persistState() {
         guard !queue.isEmpty else {
             stateStore.clear()
@@ -709,7 +855,7 @@ final class PlayerService {
     /// Reused by themed now-playing chips and the album-art color extractor —
     /// reading the observed cache means views update when art arrives, with no
     /// extra fetch.
-    var nowPlayingImage: NSImage? {
+    var nowPlayingImage: PlatformImage? {
         current?.artworkPath.flatMap { artworkCache[$0] }
     }
 
@@ -724,18 +870,22 @@ final class PlayerService {
         guard let url = NugsConstants.imageURL(path: path, height: 600) else { return }
         artworkTask = Task {
             guard let (data, _) = try? await URLSession.shared.data(from: url),
-                  let image = NSImage(data: data),
+                  let image = PlatformImage(data: data),
                   !Task.isCancelled
             else { return }
             // Tiny bounded cache — one show's worth of art is one entry.
-            if artworkCache.count > 8 { artworkCache.removeAll() }
+            // Evict a single entry, not the whole cache: flushing everything
+            // forces a re-fetch of art the queue is about to need again.
+            if artworkCache.count > 8, let victim = artworkCache.keys.first(where: { $0 != path }) {
+                artworkCache.removeValue(forKey: victim)
+            }
             artworkCache[path] = image
             guard current?.artworkPath == path else { return }
             setNowPlayingArtwork(image)
         }
     }
 
-    private func setNowPlayingArtwork(_ image: NSImage) {
+    private func setNowPlayingArtwork(_ image: PlatformImage) {
         nowPlayingArtwork = MPMediaItemArtwork(boundsSize: image.size) { _ in image }
         pushNowPlayingInfo()
     }

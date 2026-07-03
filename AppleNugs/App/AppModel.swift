@@ -19,6 +19,7 @@ final class AppModel {
     let favorites = FavoritesStore()
     let videoProgress = VideoProgressStore()
     let video: VideoPlayerService
+    let downloads: DownloadStore
 
     private(set) var sessionState: SessionState = .unknown
     private(set) var isLoggingIn = false
@@ -36,6 +37,9 @@ final class AppModel {
         player = PlayerService(client: client)
         video = VideoPlayerService(audio: player, client: client,
                                    progress: videoProgress)
+        downloads = DownloadStore(client: client)
+        // Local files take precedence over network stream resolution.
+        player.downloads = downloads
     }
 
     /// Resolve the persisted session at launch (refreshing the token if it
@@ -84,6 +88,19 @@ final class AppModel {
             ArtistEntry(id: "3", name: "Umphrey's McGee"),
         ]
         sessionState = .loggedIn(plan: "UITest")
+        // Opt-in stub queue (separate flag so existing tests see no transport
+        // content change): parks tracks without network or playback, making
+        // the transport bar render for layout tests/screenshots.
+        if ProcessInfo.processInfo.arguments.contains("-UITestSeedQueue") {
+            player.seedUITestQueue([
+                QueueTrack(trackId: "t1", title: "Away From the Mire",
+                           artist: "Billy Strings", show: "2024-03-14 Capitol Theatre, Port Chester, NY",
+                           artworkPath: nil, showId: "s1"),
+                QueueTrack(trackId: "t2", title: "Dust in a Baggie",
+                           artist: "Billy Strings", show: "2024-03-14 Capitol Theatre, Port Chester, NY",
+                           artworkPath: nil, showId: "s1"),
+            ])
+        }
     }
     #endif
 
@@ -133,9 +150,11 @@ final class AppModel {
     }
 
     /// Full artist list, cached for the app lifetime (cleared on logout).
+    /// Parsing happens on the client actor — hundreds of entries plus a
+    /// locale-aware sort have no business on the main actor.
     func artists() async throws -> [ArtistEntry] {
         if let cachedArtists { return cachedArtists }
-        let parsed = Catalog.artists(from: try await client.allArtists())
+        let parsed = try await client.allArtistsParsed()
         cachedArtists = parsed
         return parsed
     }

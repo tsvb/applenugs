@@ -64,6 +64,18 @@ struct HomeView: View {
 
     // --- continue listening (the hero) --------------------------------------
 
+    // Compact metrics on iPhone: the desktop sizes (96pt art + 48pt glyph)
+    // starve the title column below ~140pt at compact width.
+    #if os(iOS)
+    private var resumeArtSize: CGFloat { 64 }
+    private var resumeTitleSize: CGFloat { 18 }
+    private var resumeGlyphSize: CGFloat { 40 }
+    #else
+    private var resumeArtSize: CGFloat { 96 }
+    private var resumeTitleSize: CGFloat { 24 }
+    private var resumeGlyphSize: CGFloat { 48 }
+    #endif
+
     @ViewBuilder
     private var resumeCard: some View {
         if let track = player.current {
@@ -73,7 +85,7 @@ struct HomeView: View {
                 HStack(spacing: 18) {
                     ArtChip(image: player.nowPlayingImage,
                             fallbackText: track.artist ?? track.title ?? "?",
-                            size: 96)
+                            size: resumeArtSize)
                         .shadow(color: (artColor ?? theme.palette.accent).opacity(0.45), radius: 22, y: 6)
 
                     VStack(alignment: .leading, spacing: 5) {
@@ -82,18 +94,18 @@ struct HomeView: View {
                             .tracking(1.8)
                             .foregroundStyle(theme.palette.textSecondary)
                         Text(track.title ?? "Unknown track")
-                            .font(theme.type.hero(24))
+                            .font(theme.type.hero(resumeTitleSize))
                             .foregroundStyle(theme.palette.textPrimary)
                             .lineLimit(1)
                         Text(NowPlayingMeta.line(track))
                             .font(theme.type.title(14))
                             .foregroundStyle(theme.palette.textSecondary)
                             .lineLimit(1)
-                        progressRule.padding(.top, 6)
+                        ResumeProgressRule().padding(.top, 6)
                     }
                     Spacer(minLength: 8)
                     Image(systemName: player.isPlaying ? "pause.circle.fill" : "play.circle.fill")
-                        .font(.system(size: 48))
+                        .font(.system(size: resumeGlyphSize))
                         .foregroundStyle(theme.effectiveAccent(art: artColor))
                         .symbolRenderingMode(.hierarchical)
                 }
@@ -117,21 +129,30 @@ struct HomeView: View {
         }
     }
 
-    private var progressRule: some View {
-        GeometryReader { geo in
-            ZStack(alignment: .leading) {
-                Capsule().fill(theme.palette.hairline)
-                Capsule().fill(theme.effectiveAccent(art: artColor))
-                    .frame(width: geo.size.width * resumeProgress)
-            }
-        }
-        .frame(height: 3)
-        .frame(maxWidth: 320, alignment: .leading)
-    }
+    /// A leaf view: the 4Hz currentTime dependency registers here, not on
+    /// the whole editorial landing page.
+    private struct ResumeProgressRule: View {
+        @Environment(AppModel.self) private var app
+        @Environment(\.theme) private var theme
+        @Environment(\.artColor) private var artColor
 
-    private var resumeProgress: CGFloat {
-        guard player.duration > 0 else { return 0 }
-        return min(max(CGFloat(player.currentTime / player.duration), 0), 1)
+        var body: some View {
+            GeometryReader { geo in
+                ZStack(alignment: .leading) {
+                    Capsule().fill(theme.palette.hairline)
+                    Capsule().fill(theme.effectiveAccent(art: artColor))
+                        .frame(width: geo.size.width * fraction)
+                }
+            }
+            .frame(height: 3)
+            .frame(maxWidth: 320, alignment: .leading)
+        }
+
+        private var fraction: CGFloat {
+            let player = app.player
+            guard player.duration > 0 else { return 0 }
+            return min(max(CGFloat(player.currentTime / player.duration), 0), 1)
+        }
     }
 
     // --- entry points -------------------------------------------------------

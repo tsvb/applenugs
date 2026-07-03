@@ -1,4 +1,8 @@
+#if os(macOS)
 import AppKit
+#else
+import UIKit
+#endif
 import AuthenticationServices
 import CryptoKit
 import Foundation
@@ -64,7 +68,9 @@ final class BrowserAuthService: NSObject, ASWebAuthenticationPresentationContext
             s.presentationContextProvider = self          // must be set before start()
             s.prefersEphemeralWebBrowserSession = false   // share Safari cookies so SSO is seamless
             self.session = s                              // retain before start()
+            #if os(macOS)
             NSApp.activate(ignoringOtherApps: true)       // foreground, or the sheet never appears
+            #endif
             if !s.start() {
                 cont.resume(throwing: NugsError.badResponse("could not start the login session"))
             }
@@ -82,7 +88,14 @@ final class BrowserAuthService: NSObject, ASWebAuthenticationPresentationContext
     }
 
     func presentationAnchor(for _: ASWebAuthenticationSession) -> ASPresentationAnchor {
-        NSApp.windows.first(where: { $0.isKeyWindow }) ?? NSApp.windows.first ?? NSWindow()
+        #if os(macOS)
+        return NSApp.windows.first(where: { $0.isKeyWindow }) ?? NSApp.windows.first ?? NSWindow()
+        #else
+        let scenes = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
+        let window = scenes.flatMap(\.windows).first(where: \.isKeyWindow)
+            ?? scenes.first?.windows.first
+        return window ?? UIWindow()
+        #endif
     }
 
     // --- PKCE helpers -------------------------------------------------------

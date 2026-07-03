@@ -12,21 +12,29 @@ struct ArtistListView: View {
     @State private var error: String?
     @FocusState private var filterFocused: Bool
 
-    private var filtered: [ArtistEntry] {
-        guard !filter.isEmpty else { return artists }
-        return artists.filter { $0.name.localizedCaseInsensitiveContains(filter) }
-    }
+    /// A–Z sections, derived state: filtering + grouping + locale-aware
+    /// sorting over a catalog hundreds deep is too heavy to redo on every
+    /// body evaluation (favorites toggles, theme switches, toasts) — it
+    /// rebuilds only when the inputs actually change (load, keystroke).
+    @State private var sections: [(letter: String, artists: [ArtistEntry])] = []
 
     /// The catalog is hundreds deep, so group it into A–Z sections (numbers and
     /// symbols collected under "#", sorted first) and let the sticky letter
     /// headers carry the rhythm instead of a divider under every row.
-    private var sections: [(letter: String, artists: [ArtistEntry])] {
+    private func rebuildSections() {
+        let filtered = filter.isEmpty
+            ? artists
+            : artists.filter { $0.name.localizedCaseInsensitiveContains(filter) }
         let grouped = Dictionary(grouping: filtered) { artist -> String in
-            guard let first = artist.name.first else { return "#" }
+            // Trim first: catalog names occasionally carry leading whitespace,
+            // which would misfile them under "#".
+            guard let first = artist.name.trimmingCharacters(in: .whitespaces).first else {
+                return "#"
+            }
             let s = String(first).uppercased()
             return s.first!.isLetter ? s : "#"
         }
-        return grouped
+        sections = grouped
             .map { (letter: $0.key,
                     artists: $0.value.sorted {
                         $0.name.localizedStandardCompare($1.name) == .orderedAscending
@@ -57,6 +65,7 @@ struct ArtistListView: View {
                                     .padding(.vertical, 1)
                             }
                             .listRowSeparator(.hidden)
+                            .themedListRow()
                             .contextMenu {
                                 let fav = app.favorites.isArtistFavorited(artist.id)
                                 Button(fav ? "Remove from Favorites" : "Add to Favorites",
@@ -78,6 +87,17 @@ struct ArtistListView: View {
         }
         .background(theme.palette.base)
         .navigationTitle("Artists")
+        .scrollDismissesKeyboard(.immediately)
+        .toolbar {
+            #if os(iOS)
+            // Escape hatch while the keyboard covers the tab bar (SwiftUI
+            // has no tap-outside dismissal) — same treatment as SearchView.
+            ToolbarItemGroup(placement: .keyboard) {
+                Spacer()
+                Button("Done") { filterFocused = false }
+            }
+            #endif
+        }
         .overlay {
             if loading {
                 ProgressView()
@@ -86,11 +106,12 @@ struct ArtistListView: View {
                     "Couldn't load artists",
                     systemImage: "exclamationmark.triangle",
                     description: Text(error))
-            } else if filtered.isEmpty && !artists.isEmpty {
+            } else if sections.isEmpty && !artists.isEmpty {
                 ContentUnavailableView.search(text: filter)
             }
         }
         .task { await load() }
+        .onChange(of: filter) { rebuildSections() }
     }
 
     /// A compact, contextual filter that lives just above the list instead of
@@ -105,6 +126,7 @@ struct ArtistListView: View {
                 .font(theme.type.body(13))
                 .foregroundStyle(theme.palette.textPrimary)
                 .focused($filterFocused)
+                .submitLabel(.done)
             if !filter.isEmpty {
                 Button { filter = "" } label: {
                     Image(systemName: "xmark.circle.fill")
@@ -134,6 +156,7 @@ struct ArtistListView: View {
         defer { loading = false }
         do {
             artists = try await app.artists()
+            rebuildSections()
             error = nil
         } catch {
             self.error = error.localizedDescription
