@@ -7,6 +7,8 @@ struct AppleNugsiOSApp: App {
     @State private var ui: UIState
     @State private var themes = ThemeManager()
     @Environment(\.scenePhase) private var scenePhase
+    // Portrait-locked app, rotatable fullscreen video (see OrientationGate).
+    @UIApplicationDelegateAdaptor(OrientationGate.self) private var orientationGate
 
     init() {
         // Launch-arg tab/theme selection for layout screenshots under -UITEST
