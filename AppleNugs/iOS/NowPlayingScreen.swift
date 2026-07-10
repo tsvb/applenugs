@@ -223,19 +223,19 @@ struct StandardNowPlayingScreen: View {
 
     private var transportRow: some View {
         HStack(spacing: 26) {
-            Button { player.previous() } label: {
+            HapticButton(.transportStep) { player.previous() } label: {
                 Image(systemName: "backward.fill").font(.system(size: 26))
             }
             .disabled(!player.hasPrevious)
             .accessibilityLabel("Previous track")
 
-            Button { player.seek(by: -15) } label: {
+            HapticButton(.transportStep) { player.seek(by: -15) } label: {
                 Image(systemName: "gobackward.15").font(.system(size: 20))
             }
             .disabled(player.current == nil)
             .accessibilityLabel("Back 15 seconds")
 
-            Button { player.togglePlayPause() } label: {
+            HapticButton(.transportToggle) { player.togglePlayPause() } label: {
                 if player.isBuffering {
                     ProgressView()
                         .frame(width: 68, height: 68)
@@ -248,13 +248,13 @@ struct StandardNowPlayingScreen: View {
             .disabled(player.current == nil)
             .accessibilityLabel(player.isPlaying ? "Pause" : "Play")
 
-            Button { player.seek(by: 30) } label: {
+            HapticButton(.transportStep) { player.seek(by: 30) } label: {
                 Image(systemName: "goforward.30").font(.system(size: 20))
             }
             .disabled(player.current == nil)
             .accessibilityLabel("Forward 30 seconds")
 
-            Button { player.next() } label: {
+            HapticButton(.transportStep) { player.next() } label: {
                 Image(systemName: "forward.fill").font(.system(size: 26))
             }
             .disabled(!player.hasNext)

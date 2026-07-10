@@ -206,8 +206,10 @@ struct ClickWheelScreen: View {
         .frame(maxWidth: .infinity)
     }
 
+    /// A pad outside the ring. Seek and queue live here, one wheel-width from
+    /// the prev/next glyphs that tick — so they tick the same way.
     private func satellite(_ system: String, label: String, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
+        HapticButton(.transportStep, action: action) {
             Image(systemName: system)
                 .font(.system(size: 17, weight: .semibold))
                 .foregroundStyle(theme.palette.textPrimary)
@@ -253,7 +255,7 @@ struct ClickWheelScreen: View {
             .padding(.horizontal, 20)
 
             // Center play/pause puck.
-            Button {
+            HapticButton(.transportToggle) {
                 player.togglePlayPause()
             } label: {
                 ZStack {
@@ -275,8 +277,9 @@ struct ClickWheelScreen: View {
         .frame(width: 240, height: 240)
     }
 
+    /// A glyph on the ring. Ticks like the original scroll wheel.
     private func wheelButton(_ system: String, label: String, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
+        HapticButton(.transportStep, action: action) {
             Image(systemName: system)
                 .font(.system(size: 20, weight: .semibold))
                 .foregroundStyle(theme.palette.textPrimary)
