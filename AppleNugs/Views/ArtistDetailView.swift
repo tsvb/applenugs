@@ -44,6 +44,7 @@ struct ArtistDetailView: View {
         }
         .background(theme.palette.base)
         .navigationTitle(artist.name)
+        .compactNavigationTitle()
         .overlay {
             if loading && containers.isEmpty {
                 ProgressView()

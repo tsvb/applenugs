@@ -45,6 +45,7 @@ struct VideosView: View {
         }
         .background(theme.palette.base)
         .navigationTitle("Videos")
+        .compactNavigationTitle()
         .task { await load() }
     }
 

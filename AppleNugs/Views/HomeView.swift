@@ -1,30 +1,55 @@
 import SwiftUI
 
 /// The landing surface. A calm, editorial counterpoint to the dense catalog:
-/// a time-aware greeting, a glowing "continue listening" hero, a couple of
-/// restrained entry points, and a small taste of the crate to invite digging.
+/// a time-aware greeting, favorites, and a taste of the crate to invite
+/// digging.
+///
+/// On macOS it also carries a glowing "continue listening" hero and two entry
+/// tiles. Both are desktop-only by design — see `resumeCard` and `entryRow`.
 struct HomeView: View {
     @Environment(AppModel.self) private var app
     @Environment(UIState.self) private var ui
     @Environment(\.theme) private var theme
+    #if os(macOS)
+    /// Only the resume hero reads the art color. Left unguarded, this would
+    /// re-render Home on every track change on iPhone, where the hero no
+    /// longer exists.
     @Environment(\.artColor) private var artColor
+    #endif
 
     @State private var sample: [ArtistEntry] = []
     @State private var artistCount = 0
     @State private var appeared = false
+    @State private var sampleError: String?
+    /// Starts true: the fetch is already coming, and a one-frame "nothing in
+    /// the crate" is a worse lie than a spinner nobody sees.
+    @State private var loadingSample = true
 
+    #if os(macOS)
     private var player: PlayerService { app.player }
+    #endif
+
+    /// The rest of the app pads to 16–20; 36 is a wide-window luxury.
+    #if os(iOS)
+    private var horizontalPadding: CGFloat { 20 }
+    #else
+    private var horizontalPadding: CGFloat { 36 }
+    #endif
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 30) {
                 greeting.reveal(appeared, 0)
+                #if os(macOS)
                 if player.current != nil { resumeCard.reveal(appeared, 1) }
+                #endif
                 if !app.favorites.isEmpty { favoritesStrip.reveal(appeared, 2) }
+                #if os(macOS)
                 entryRow.reveal(appeared, 3)
-                if !sample.isEmpty { crate.reveal(appeared, 4) }
+                #endif
+                crate.reveal(appeared, 4)
             }
-            .padding(.horizontal, 36)
+            .padding(.horizontal, horizontalPadding)
             .padding(.top, 34)
             .padding(.bottom, 40)
             .frame(maxWidth: 880, alignment: .leading)
@@ -32,6 +57,7 @@ struct HomeView: View {
         }
         .background(theme.palette.base)
         .navigationTitle("Home")
+        .compactNavigationTitle()
         .task { await loadSample() }
         .onAppear { appeared = true }
     }
@@ -64,17 +90,15 @@ struct HomeView: View {
 
     // --- continue listening (the hero) --------------------------------------
 
-    // Compact metrics on iPhone: the desktop sizes (96pt art + 48pt glyph)
-    // starve the title column below ~140pt at compact width.
-    #if os(iOS)
-    private var resumeArtSize: CGFloat { 64 }
-    private var resumeTitleSize: CGFloat { 18 }
-    private var resumeGlyphSize: CGFloat { 40 }
-    #else
+    // macOS only. On iPhone the mini-player docks above the tab bar whenever a
+    // track is loaded — which, because the queue is restored at launch, is
+    // exactly whenever this hero would render. It showed the same art, title,
+    // meta and progress twice on one screen and pushed the crate below the
+    // fold. Resume lives in the dock there; Home gets the space back.
+    #if os(macOS)
     private var resumeArtSize: CGFloat { 96 }
     private var resumeTitleSize: CGFloat { 24 }
     private var resumeGlyphSize: CGFloat { 48 }
-    #endif
 
     @ViewBuilder
     private var resumeCard: some View {
@@ -157,6 +181,8 @@ struct HomeView: View {
 
     // --- entry points -------------------------------------------------------
 
+    // macOS only, for the same reason as the hero: on iPhone these two tiles
+    // re-open Artists and Search, which the tab bar already puts one tap away.
     private var entryRow: some View {
         HStack(spacing: 14) {
             EntryTile(icon: "music.mic",
@@ -171,9 +197,14 @@ struct HomeView: View {
             }
         }
     }
+    #endif
 
     // --- from the crate -----------------------------------------------------
 
+    /// On iPhone this is the only section that always renders — no resume hero,
+    /// no entry tiles, and favorites may well be empty. So it has to account for
+    /// itself when it's loading, empty, or offline, or a new user's Home is a
+    /// greeting alone on a blank screen, promising a crate that never arrives.
     private var crate: some View {
         VStack(alignment: .leading, spacing: 14) {
             Text(theme.caps.contains(.condensedHeaders) ? "FROM THE CRATE" : "From the crate")
@@ -181,29 +212,61 @@ struct HomeView: View {
                 .tracking(theme.caps.contains(.condensedHeaders) ? 1.6 : 0)
                 .foregroundStyle(theme.palette.textPrimary)
 
-            LazyVGrid(
-                columns: [GridItem(.adaptive(minimum: 200, maximum: 280), spacing: 12)],
-                alignment: .leading, spacing: 12
-            ) {
-                ForEach(sample) { artist in
-                    NavigationLink(value: Route.artist(artist)) {
-                        HStack(spacing: 11) {
-                            MonogramTile(text: artist.name, size: 36)
-                            Text(artist.name)
-                                .font(theme.type.body(14))
-                                .foregroundStyle(theme.palette.textPrimary)
-                                .lineLimit(1)
-                            Spacer(minLength: 0)
-                        }
-                        .padding(8)
-                        .background {
-                            RoundedRectangle(cornerRadius: 10, style: .continuous)
-                                .fill(theme.palette.raised)
-                        }
-                        .contentShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+            if !sample.isEmpty {
+                crateGrid
+            } else if loadingSample {
+                ProgressView()
+                    .controlSize(.small)
+                    .padding(.vertical, 6)
+            } else {
+                crateNotice
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var crateNotice: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            if let sampleError {
+                Text("Couldn't reach the catalog. \(sampleError)")
+                    .font(theme.type.body(14))
+                    .foregroundStyle(theme.palette.textSecondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                Button("Try again") { Task { await loadSample() } }
+                    .buttonStyle(.bordered)
+                    .tint(theme.palette.accent)
+            } else {
+                Text("The catalog came back empty.")
+                    .font(theme.type.body(14))
+                    .foregroundStyle(theme.palette.textSecondary)
+            }
+        }
+        .padding(.vertical, 2)
+    }
+
+    private var crateGrid: some View {
+        LazyVGrid(
+            columns: [GridItem(.adaptive(minimum: 200, maximum: 280), spacing: 12)],
+            alignment: .leading, spacing: 12
+        ) {
+            ForEach(sample) { artist in
+                NavigationLink(value: Route.artist(artist)) {
+                    HStack(spacing: 11) {
+                        MonogramTile(text: artist.name, size: 36)
+                        Text(artist.name)
+                            .font(theme.type.body(14))
+                            .foregroundStyle(theme.palette.textPrimary)
+                            .lineLimit(1)
+                        Spacer(minLength: 0)
                     }
-                    .buttonStyle(.plain)
+                    .padding(8)
+                    .background {
+                        RoundedRectangle(cornerRadius: 10, style: .continuous)
+                            .fill(theme.palette.raised)
+                    }
+                    .contentShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
                 }
+                .buttonStyle(.plain)
             }
         }
     }
@@ -266,14 +329,22 @@ struct HomeView: View {
 
     private func loadSample() async {
         guard sample.isEmpty else { return }
-        guard let all = try? await app.artists() else { return }
-        artistCount = all.count
-        sample = Array(all.shuffled().prefix(9))
+        loadingSample = true
+        defer { loadingSample = false }
+        do {
+            let all = try await app.artists()
+            artistCount = all.count
+            sample = Array(all.shuffled().prefix(9))
+            sampleError = nil
+        } catch {
+            sampleError = error.localizedDescription
+        }
     }
 }
 
 // MARK: - Entry tile
 
+#if os(macOS)
 private struct EntryTile: View {
     @Environment(\.theme) private var theme
     let icon: String
@@ -316,6 +387,7 @@ private struct EntryTile: View {
         .animation(.easeOut(duration: 0.18), value: hovering)
     }
 }
+#endif
 
 // MARK: - Staggered reveal
 
