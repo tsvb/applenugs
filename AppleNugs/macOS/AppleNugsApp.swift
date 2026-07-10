@@ -54,7 +54,25 @@ struct AppleNugsApp: App {
                 .onOpenURL { url in
                     guard let link = DeepLink.parse(url) else { return }
                     app.receiveDeepLink(link, ui: ui)
+                    // A link clicked in a browser does not foreground us. Pull
+                    // the app forward so the linked show is actually visible —
+                    // it matters most for video, whose playback is bound to
+                    // VideoDetailView being on screen. Raise only a main-capable
+                    // window: ordering all of NSApp.windows would also surface
+                    // Sparkle's update alert or the About panel, and would leave
+                    // whichever enumerated last as key.
+                    NSApp.unhide(nil)
+                    NSApp.activate()
+                    (NSApp.mainWindow ?? NSApp.windows.first { $0.canBecomeMain })?
+                        .makeKeyAndOrderFront(nil)
                 }
+                // Let the open window claim the incoming URL. Without this a
+                // WindowGroup services an external event by building a new
+                // window/scene — measured at 1 → 2 → 3 windows across repeated
+                // links, all in one process. It is a scene decision, so no
+                // process-level guard (LSMultipleInstancesProhibited) can
+                // prevent it; only an existing window volunteering does.
+                .handlesExternalEvents(preferring: ["*"], allowing: ["*"])
                 #if DEBUG
                 .modifier(UITestWindowSize())
                 #endif

@@ -73,6 +73,14 @@ targets:
           - CFBundleURLName: com.timvbs.applenugs.deeplink
             CFBundleURLSchemes:
               - applenugs
+        # One process per bundle id. LaunchServices otherwise keys "is this the
+        # running handler?" on the registered on-disk PATH, so with several
+        # AppleNugs.app copies around (an export, a DMG staging dir, /Applications)
+        # a link can launch a fresh instance from a different path instead of
+        # reaching the live one. This does NOT stop the duplicate-window bug —
+        # that is a scene decision, handled by handlesExternalEvents in
+        # AppleNugsApp — the two guard different layers.
+        LSMultipleInstancesProhibited: true
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         LSApplicationCategoryType: public.app-category.music
