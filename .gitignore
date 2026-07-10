@@ -18,4 +18,5 @@ xcuserdata/
 # Internal design/planning docs — kept local, not part of the public repo.
 docs/superpowers/
 build-ios/
+build-device/
 local.yml
