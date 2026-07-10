@@ -48,15 +48,16 @@ struct CrateItem: Identifiable, Hashable {
     let has4K: Bool
     let route: Route
 
+    /// Lowercased haystack for the crate filter, built once at construction —
+    /// the same reason ArtistDetailView maps its item arrays outside `body`.
+    let searchText: String
+
     // Kind-qualified so a video and a show that share a catalog id never
     // collide inside a mixed ForEach.
     var id: String { "\(kind)-\(rawID)" }
-
-    var year: Int? {
-        guard let date else { return nil }
-        return Calendar.current.component(.year, from: date)
-    }
 }
+
+extension CrateItem: CrateSectionable {}
 
 extension CrateItem {
     /// Crate rows render 24-40pt thumbnails — request a matching CDN resize
@@ -66,48 +67,41 @@ extension CrateItem {
     }
 
     static func album(_ c: ContainerSummary, artist: String) -> CrateItem {
-        CrateItem(rawID: c.id, kind: .album, title: c.title,
-                  artistName: c.artistName ?? artist, venue: c.venue,
+        let artistName = c.artistName ?? artist
+        return CrateItem(rawID: c.id, kind: .album, title: c.title,
+                  artistName: artistName, venue: c.venue,
                   dateText: c.dateText, date: c.date, imageURL: thumbURL(c.imagePath),
                   isLive: false, has4K: false,
-                  route: .album(id: c.id, title: c.title))
+                  route: .album(id: c.id, title: c.title),
+                  searchText: CrateSection.searchText(
+                    title: c.title, venue: c.venue, artistName: artistName,
+                    dateText: c.dateText, date: c.date))
     }
 
     static func show(_ c: ContainerSummary, artist: String) -> CrateItem {
         let display = c.venue ?? c.title
+        let artistName = c.artistName ?? artist
         return CrateItem(rawID: c.id, kind: .show, title: display,
-                  artistName: c.artistName ?? artist, venue: c.venue,
+                  artistName: artistName, venue: c.venue,
                   dateText: c.dateText, date: c.date, imageURL: thumbURL(c.imagePath),
                   isLive: false, has4K: false,
-                  route: .album(id: c.id, title: display))
+                  route: .album(id: c.id, title: display),
+                  searchText: CrateSection.searchText(
+                    title: display, venue: c.venue, artistName: artistName,
+                    dateText: c.dateText, date: c.date))
     }
 
     static func video(_ v: VideoSummary, artist: String) -> CrateItem {
         let d = Catalog.parseDate(v.performanceDate) ?? v.eventStart
+        let artistName = v.artistName ?? artist
         return CrateItem(rawID: v.id, kind: .video, title: v.title,
-                  artistName: v.artistName ?? artist, venue: nil,
+                  artistName: artistName, venue: nil,
                   dateText: v.dateText, date: d, imageURL: thumbURL(v.imagePath),
                   isLive: v.isLive, has4K: v.has4K,
-                  route: .video(id: v.id, title: v.title))
-    }
-}
-
-extension Array where Element == CrateItem {
-    /// Groups by calendar year, newest year first; undated items fall into a
-    /// trailing `nil` ("Unknown") group. Within a group, newest item first.
-    func groupedByYear() -> [(year: Int?, items: [CrateItem])] {
-        Dictionary(grouping: self, by: { $0.year })
-            .map { (year: $0.key,
-                    items: $0.value.sorted {
-                        ($0.date ?? .distantPast) > ($1.date ?? .distantPast)
-                    }) }
-            .sorted { lhs, rhs in
-                switch (lhs.year, rhs.year) {
-                case let (l?, r?): return l > r
-                case (nil, _):     return false   // Unknown sorts last
-                case (_, nil):     return true
-                }
-            }
+                  route: .video(id: v.id, title: v.title),
+                  searchText: CrateSection.searchText(
+                    title: v.title, venue: nil, artistName: artistName,
+                    dateText: v.dateText, date: d))
     }
 }
 
@@ -128,6 +122,6 @@ extension Array where Element == CrateItem {
         + containers.filter(\.isLiveShow).map { CrateItem.show($0, artist: "Goose") }
         + videos.map { CrateItem.video($0, artist: "Goose") }
     return List(items) { item in
-        Text("\(item.kind.label) · \(item.title) · \(item.year.map(String.init) ?? "—")")
+        Text("\(item.kind.label) · \(item.title) · \(item.dateText ?? "—")")
     }
 }

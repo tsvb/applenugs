@@ -98,6 +98,23 @@ final class CrateSectionTests: XCTestCase {
         XCTAssertEqual(s[1].items.count, 1)
     }
 
+    /// The defect this redesign replaces: the old year-outline rendered 315 of
+    /// Goose's 483 shows, silently dropping three years. Sectioning must never
+    /// lose a row.
+    func testSectionsPreserveEveryItem() {
+        let plan = [(2026, 60), (2025, 60), (2024, 48), (2023, 83), (2022, 84),
+                    (2021, 44), (2020, 39), (2019, 48), (2018, 17)]
+        let items = plan.flatMap { year, count in
+            (1...count).map { day in
+                Stub(String(format: "%04d-06-%02d", year, (day % 28) + 1))
+            }
+        }
+        XCTAssertEqual(items.count, 483)
+        let s = CrateSection.sections(items, filter: "", calendar: utc)
+        XCTAssertEqual(s.flatMap(\.items).count, 483, "sectioning dropped rows")
+        XCTAssertEqual(s.count, 9, "one section per month, one month per year here")
+    }
+
     // --- titles -------------------------------------------------------------
 
     func testMonthTitle() {
