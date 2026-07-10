@@ -33,6 +33,7 @@ struct VideoDetailView: View {
         }
         .background(theme.palette.base)
         .navigationTitle(detail?.title ?? titleHint ?? "Video")
+        .compactNavigationTitle()
         .overlay {
             if detail == nil && error == nil {
                 ProgressView()

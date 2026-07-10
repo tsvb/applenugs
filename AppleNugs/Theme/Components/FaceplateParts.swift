@@ -64,7 +64,9 @@ struct KnurledButton: View {
     let action: () -> Void
 
     var body: some View {
-        Button(action: action) {
+        // The whole point of a machined button is that it thunks; a silent one
+        // is a picture of a button.
+        HapticButton(.machinedPress, action: action) {
             ZStack {
                 Circle()
                     .fill(RadialGradient(

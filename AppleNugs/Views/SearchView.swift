@@ -27,6 +27,7 @@ struct SearchView: View {
             resultsBody
         }
         .navigationTitle("Search")
+        .compactNavigationTitle()
         .onAppear {
             // Auto-focus serves the Mac's "/" flow. On iOS it would slam the
             // keyboard over the tab bar the moment the tab opens.

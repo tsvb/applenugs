@@ -76,6 +76,7 @@ struct IOSRootView: View {
             NavigationStack {
                 DownloadsView()
                     .navigationTitle("Downloads")
+                    .compactNavigationTitle()
                     .toolbar {
                         ToolbarItem(placement: .confirmationAction) {
                             Button("Done") { offlineShown = false }

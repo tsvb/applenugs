@@ -87,6 +87,7 @@ struct ArtistListView: View {
         }
         .background(theme.palette.base)
         .navigationTitle("Artists")
+        .compactNavigationTitle()
         .scrollDismissesKeyboard(.immediately)
         .toolbar {
             #if os(iOS)

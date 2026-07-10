@@ -30,8 +30,11 @@ struct LibraryView: View {
         }
         .background(theme.palette.base)
         // FavoritesView titles itself; this covers the Downloads segment so
-        // the header tracks the visible content.
+        // the header tracks the visible content. Inline, because the Picker an
+        // inch below already names the segment — a large title would spend the
+        // top of the phone's longest list saying it a second time.
         .navigationTitle(segment == .favorites ? "Favorites" : "Downloads")
+        .compactNavigationTitle()
     }
 }
 

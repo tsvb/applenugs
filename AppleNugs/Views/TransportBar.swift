@@ -74,7 +74,10 @@ struct TransportBar: View {
                 compactNowPlayingBlock
                     .frame(maxWidth: .infinity, alignment: .leading)
 
-                Button {
+                // The bar is docked on every tab, so these two are the most
+                // pressed controls in the app; they answer like their
+                // full-screen twins an inch above.
+                HapticButton(.transportToggle) {
                     player.togglePlayPause()
                 } label: {
                     if player.isBuffering {
@@ -92,7 +95,7 @@ struct TransportBar: View {
                 .disabled(player.current == nil)
                 .accessibilityLabel(player.isPlaying ? "Pause" : "Play")
 
-                Button {
+                HapticButton(.transportStep) {
                     player.next()
                 } label: {
                     Image(systemName: "forward.fill")

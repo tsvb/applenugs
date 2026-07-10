@@ -31,6 +31,7 @@ struct AlbumDetailView: View {
         }
         .background(theme.palette.base)
         .navigationTitle(album?.title ?? titleHint ?? "Album")
+        .compactNavigationTitle()
         .overlay {
             if album == nil && error == nil {
                 ProgressView()
