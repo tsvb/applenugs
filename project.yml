@@ -182,6 +182,9 @@ targets:
       - path: AppleNugs/Core/DeepLink.swift
         # Compiled into the test bundle too (not @testable-imported) so the
         # logic tests stay host-free. DeepLink.swift is pure Foundation.
+      - path: AppleNugs/Views/ArtistLibrary/CrateSection.swift
+        # Same deal: pure Foundation (no SwiftUI, no Route/NugsConstants), so
+        # the crate's month-sectioning and filter logic tests stay host-free.
     scheme:
       testTargets:
         - AppleNugsTests
