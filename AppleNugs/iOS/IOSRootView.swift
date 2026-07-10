@@ -55,6 +55,28 @@ struct IOSRootView: View {
                 enabled: theme.consumesArtColor)
         }
         .task { await app.bootstrap() }
+        // Deep links (applenugs://show/…). Parse here; AppModel acts now if the
+        // session is up, or stashes for the drain below. Drop the now-playing
+        // cover on receipt — the router pushes the linked show onto the shared
+        // stack, and a video's playback only starts once VideoDetailView is on
+        // screen, so behind an opaque cover it would play blind. None of the
+        // Mac's NSApp plumbing: iOS foregrounds us on open, and there is one scene.
+        .onOpenURL { url in
+            guard let link = DeepLink.parse(url) else { return }
+            nowPlayingPresented = false
+            app.receiveDeepLink(link, ui: ui)
+        }
+        // Replay a link that arrived before login/bootstrap finished — which is
+        // every cold-launch link, since bootstrap awaits the session before
+        // flipping isLoggedIn. The iOS analog of RootView's drain: same
+        // serialized channel, nil'd first so a duplicate fire can't double-open.
+        .task(id: app.isLoggedIn) {
+            if app.isLoggedIn, let link = app.pendingDeepLink {
+                app.pendingDeepLink = nil
+                nowPlayingPresented = false
+                app.handleDeepLink(link, ui: ui)
+            }
+        }
     }
 
     private func connectionFailedView(_ message: String) -> some View {

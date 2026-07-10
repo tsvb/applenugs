@@ -139,6 +139,14 @@ targets:
       path: AppleNugs/Info-iOS.plist
       properties:
         CFBundleDisplayName: AppleNugs
+        # Deep-link scheme, mirroring the Mac target. `applenugs://` only — the
+        # OAuth `nugsnet` scheme stays unregistered (see NugsConstants) so we
+        # never clash with the official nugs.net app. No LaunchServices keys
+        # here: iOS has no path-keyed handler model, so nothing to disambiguate.
+        CFBundleURLTypes:
+          - CFBundleURLName: com.timvbs.applenugs.deeplink
+            CFBundleURLSchemes:
+              - applenugs
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         ITSAppUsesNonExemptEncryption: false
