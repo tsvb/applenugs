@@ -3,15 +3,31 @@ import XCTest
 final class WebcastRoutingTests: XCTestCase {
 
     private func summary(access: WebcastAccess, isAudio: Bool = false,
-                         external: URL? = nil, sku: Int? = 42) -> VideoSummary {
+                         external: URL? = nil, sku: Int? = 42,
+                         notes: String? = nil) -> VideoSummary {
         VideoSummary(id: "1", title: "T", artistName: "A", performanceDate: nil,
                      imagePath: nil, isLive: true, eventStart: nil, has4K: false,
-                     access: access, isAudio: isAudio, externalURL: external, skuId: sku)
+                     access: access, isAudio: isAudio, externalURL: external, skuId: sku,
+                     benefitNotes: notes)
     }
 
     func testFreeVideoWithLinkOpensExternally() {
         let url = URL(string: "https://www.youtube.com/watch?v=abc")!
         let tap = webcastTap(for: summary(access: .free, external: url))
+        XCTAssertEqual(tap, .openExternal(url))
+    }
+
+    func testFreeVideoWithNotesRoutesToWebcastForFraming() {
+        let url = URL(string: "https://www.youtube.com/watch?v=x")!
+        let tap = webcastTap(for: summary(access: .free, external: url, notes: "<p>Donate</p>"))
+        guard case let .openWebcast(ctx) = tap else { return XCTFail("expected webcast") }
+        XCTAssertEqual(ctx.externalURL, url)
+        XCTAssertEqual(ctx.benefitNotes, "<p>Donate</p>")
+    }
+
+    func testFreeVideoWithoutNotesStillOpensExternally() {
+        let url = URL(string: "https://www.youtube.com/watch?v=y")!
+        let tap = webcastTap(for: summary(access: .free, external: url, notes: nil))
         XCTAssertEqual(tap, .openExternal(url))
     }
 

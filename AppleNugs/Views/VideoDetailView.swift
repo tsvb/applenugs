@@ -25,16 +25,18 @@ struct VideoDetailView: View {
                     if let detail { header(detail) }
                     if let bn = webcast?.benefitNotes { benefitNotes(bn) }
                 } else {
-                    playerSurface
-                    if let linkOut {   // free item with no in-app stream
+                    if linkOut == nil || webcast?.isAudio == true {
+                        playerSurface
+                    }
+                    if let linkOut {
                         Button { openURL(linkOut) } label: {
-                            Label("Watch on nugs.net", systemImage: "arrow.up.right.square")
+                            Label(watchButtonTitle, systemImage: "arrow.up.right.square")
                         }
                         .buttonStyle(.borderedProminent)
                     }
                     if let detail {
                         header(detail)
-                        if linkOut == nil {   // hide transport when we're linking out
+                        if linkOut == nil {
                             actions(detail)
                             qualityMenu
                             resumeBanner(detail)
@@ -43,6 +45,7 @@ struct VideoDetailView: View {
                         notes(detail)
                         chapterList(detail)
                     }
+                    if detail == nil, let bn = webcast?.benefitNotes { benefitNotes(bn) }
                 }
             }
             .padding(20)
@@ -111,6 +114,12 @@ struct VideoDetailView: View {
 
     private var isBuyOnly: Bool { webcast?.access == .ppv }
 
+    /// The link-out button targets YouTube for free-video items (which carry an
+    /// externalURL) and nugs.net otherwise.
+    private var watchButtonTitle: String {
+        webcast?.externalURL != nil ? "Watch on YouTube" : "Watch on nugs.net"
+    }
+
     /// Whether this screen resolves + plays in-app. VOD and exclusive webcasts
     /// play; free-AUDIO plays (resolved from the feed sku); PPV and
     /// free-VIDEO-without-a-link do not (buy / link-out instead).
@@ -154,34 +163,55 @@ struct VideoDetailView: View {
     }
 
     /// Benefit/donation framing that ships with some free webcasts. Rendered
-    /// as attributed HTML so links (e.g. donation pages) stay tappable.
+    /// as attributed HTML so links (e.g. donation pages) stay tappable; falls
+    /// back to plain text if the markdown parse fails.
     @ViewBuilder private func benefitNotes(_ html: String) -> some View {
-        if let attributed = try? AttributedString(
-            markdown: htmlToMarkdownish(html),
-            options: .init(interpretedSyntax: .inlineOnlyPreservingWhitespace)) {
-            Text(attributed)
-                .font(theme.type.body(13))
-                .foregroundStyle(theme.palette.textSecondary)
-                .tint(theme.palette.accent)
-                .textSelection(.enabled)
+        let md = htmlToMarkdownish(html)
+        Group {
+            if let attributed = try? AttributedString(
+                markdown: md,
+                options: .init(interpretedSyntax: .inlineOnlyPreservingWhitespace)) {
+                Text(attributed)
+            } else {
+                Text(md)
+            }
         }
+        .font(theme.type.body(13))
+        .foregroundStyle(theme.palette.textSecondary)
+        .tint(theme.palette.accent)
+        .textSelection(.enabled)
     }
 
-    /// Minimal HTML→text: strip tags, keep anchor hrefs as markdown links.
-    /// The notes are short nugs-authored blurbs, not arbitrary documents.
+    /// Minimal HTML→text for short, first-party nugs blurbs: keep http/https/
+    /// mailto anchors as markdown links (drop other schemes to plain text),
+    /// turn <p>/<br> into breaks, strip remaining tags.
     private func htmlToMarkdownish(_ html: String) -> String {
         var s = html
-        // <a href="URL">text</a> -> [text](URL)
         if let re = try? NSRegularExpression(
-            pattern: "<a[^>]*href=\"([^\"]+)\"[^>]*>(.*?)</a>", options: [.caseInsensitive, .dotMatchesLineSeparators]) {
-            let range = NSRange(s.startIndex..., in: s)
-            s = re.stringByReplacingMatches(in: s, range: range, withTemplate: "[$2]($1)")
+            pattern: "<a[^>]*href=\"([^\"]+)\"[^>]*>(.*?)</a>",
+            options: [.caseInsensitive, .dotMatchesLineSeparators]) {
+            let ns = s as NSString
+            var out = ""
+            var last = 0
+            for m in re.matches(in: s, range: NSRange(location: 0, length: ns.length)) {
+                out += ns.substring(with: NSRange(location: last, length: m.range.location - last))
+                let href = ns.substring(with: m.range(at: 1))
+                let text = ns.substring(with: m.range(at: 2))
+                let scheme = URL(string: href)?.scheme?.lowercased()
+                if scheme == "http" || scheme == "https" || scheme == "mailto" {
+                    out += "[\(text)](\(href))"
+                } else {
+                    out += text
+                }
+                last = m.range.location + m.range.length
+            }
+            out += ns.substring(from: last)
+            s = out
         }
         s = s.replacingOccurrences(of: "</p>", with: "\n\n")
              .replacingOccurrences(of: "<br>", with: "\n")
              .replacingOccurrences(of: "<br/>", with: "\n")
              .replacingOccurrences(of: "<br />", with: "\n")
-        // strip any remaining tags
         if let re = try? NSRegularExpression(pattern: "<[^>]+>") {
             let range = NSRange(s.startIndex..., in: s)
             s = re.stringByReplacingMatches(in: s, range: range, withTemplate: "")
@@ -376,33 +406,39 @@ struct VideoDetailView: View {
     // --- load -------------------------------------------------------------------
 
     private func load() async {
-        // Metadata loads for every state (unauthenticated; drives header/venue).
-        detail = try? await app.client.videoDetail(containerId: videoId)
-
-        // PPV: buy-only. Never resolve or play.
+        do {
+            detail = try await app.client.videoDetail(containerId: videoId)
+        } catch {
+            // Buy-only and link-out screens don't strictly need metadata; only
+            // the play path does, so only there do we surface the specific error.
+            if isBuyOnly || !shouldAttemptPlay {
+                detail = nil
+            } else {
+                self.error = error.localizedDescription
+                return
+            }
+        }
         if isBuyOnly { return }
-
-        // Free item with no in-app stream (e.g. free-video whose watch link is
-        // on YouTube): send the user to nugs's page, not a dead player.
+        // Free item with no in-app stream (free-video whose watch link is on
+        // YouTube): send the user to that link; else nugs's page.
         guard shouldAttemptPlay else {
-            linkOut = nugsWatchURL(access: webcast?.access ?? .free, skuId: webcast?.sku ?? 0)
+            linkOut = webcast?.externalURL
+                ?? nugsWatchURL(access: webcast?.access ?? .free, skuId: webcast?.sku ?? 0)
             return
         }
-
         guard var toPlay = detail else {
             error = "Couldn't load this video."
             return
         }
         error = nil
-        // Webcasts carry the correct sku from the feed; the legacy detail can't
-        // derive an audio SKU (returns 0). Prefer the feed sku.
         if let sku = webcast?.sku, sku > 0 { toPlay.videoSku = sku }
         if app.video.current?.id != toPlay.id {
             await app.video.play(toPlay)
         }
         // Free-audio the account can't resolve → link-out fallback.
         if app.video.loadError != nil, webcast?.isAudio == true {
-            linkOut = nugsWatchURL(access: webcast?.access ?? .free, skuId: webcast?.sku ?? 0)
+            linkOut = webcast?.externalURL
+                ?? nugsWatchURL(access: webcast?.access ?? .free, skuId: webcast?.sku ?? 0)
         }
     }
 }

@@ -11,6 +11,7 @@ struct WebcastContext: Hashable {
     let access: WebcastAccess
     let isAudio: Bool
     let benefitNotes: String?
+    let externalURL: URL?
 }
 
 /// What tapping a webcast card should do.
@@ -19,16 +20,17 @@ enum WebcastTap: Equatable {
     case openWebcast(WebcastContext) // navigate to detail (buy / play / link-out)
 }
 
-/// Pure tap decision. Free-video with a published link goes straight to that
-/// link; everything else navigates to the detail screen, which chooses buy vs
-/// play vs link-out from `access`.
+/// Pure tap decision. A free video with a published external (YouTube) link
+/// opens directly ONLY when it has no in-app framing to show; if it carries
+/// benefit/donation notes, it routes to the detail screen (which shows those
+/// notes plus a Watch-on-YouTube action). Everything else navigates to detail.
 func webcastTap(for v: VideoSummary) -> WebcastTap {
-    if v.access == .free, let external = v.externalURL {
+    if v.access == .free, let external = v.externalURL, (v.benefitNotes?.isEmpty ?? true) {
         return .openExternal(external)
     }
     return .openWebcast(WebcastContext(
-        id: v.id, title: v.title, sku: v.skuId ?? 0,
-        access: v.access, isAudio: v.isAudio, benefitNotes: v.benefitNotes))
+        id: v.id, title: v.title, sku: v.skuId ?? 0, access: v.access,
+        isAudio: v.isAudio, benefitNotes: v.benefitNotes, externalURL: v.externalURL))
 }
 
 /// The nugs web-player watch/buy page for a webcast. Verified live: an

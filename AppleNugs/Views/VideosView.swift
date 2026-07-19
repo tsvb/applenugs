@@ -148,7 +148,7 @@ struct VideosView: View {
     /// everything else pushes the detail screen (which chooses buy vs play).
     @ViewBuilder
     private func webcastCard(_ video: VideoSummary) -> some View {
-        Group {
+        let card = Group {
             switch webcastTap(for: video) {
             case .openExternal(let url):
                 Button { openURL(url) } label: { VideoThumbnail(video: video, width: 220) }
@@ -157,7 +157,11 @@ struct VideosView: View {
             }
         }
         .buttonStyle(.plain)
-        .contextMenu { favoriteButton(video) }
+        if video.access == .exclusive {
+            card.contextMenu { favoriteButton(video) }
+        } else {
+            card
+        }
     }
 
     // --- On-Demand grid -----------------------------------------------------
