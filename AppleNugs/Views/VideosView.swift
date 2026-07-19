@@ -2,8 +2,10 @@ import SwiftUI
 
 /// The Videos sidebar destination. Three stacked sections, all themed:
 /// a Continue Watching strip (recent VOD progress), a Live & Upcoming row
-/// (webcasts), and a paged On-Demand grid of recently-added VOD. Each card
-/// pushes Route.video; VideoDetailView resolves resume position and live edge.
+/// (webcasts), and a paged On-Demand grid of recently-added VOD. On-Demand
+/// and Continue Watching cards push Route.video; webcast cards route via
+/// webcastTap (Route.webcast for in-app play / buy, or an external link
+/// for free video).
 struct VideosView: View {
     @Environment(AppModel.self) private var app
     @Environment(\.theme) private var theme
@@ -126,7 +128,7 @@ struct VideosView: View {
     private var recentExclusivesSection: some View {
         VStack(alignment: .leading, spacing: 12) {
             sectionTitle("Recent Exclusives")
-            Text("Last chance to watch before they're gone.")
+            Text("Recently streamed — replays and free links.")
                 .font(theme.type.body(13))
                 .foregroundStyle(theme.palette.textSecondary)
                 .padding(.top, -6)
@@ -146,18 +148,16 @@ struct VideosView: View {
     /// everything else pushes the detail screen (which chooses buy vs play).
     @ViewBuilder
     private func webcastCard(_ video: VideoSummary) -> some View {
-        switch webcastTap(for: video) {
-        case .openExternal(let url):
-            Button { openURL(url) } label: { VideoThumbnail(video: video, width: 220) }
-                .buttonStyle(.plain)
-                .contextMenu { favoriteButton(video) }
-        case .openWebcast(let ctx):
-            NavigationLink(value: Route.webcast(ctx)) {
-                VideoThumbnail(video: video, width: 220)
+        Group {
+            switch webcastTap(for: video) {
+            case .openExternal(let url):
+                Button { openURL(url) } label: { VideoThumbnail(video: video, width: 220) }
+            case .openWebcast(let ctx):
+                NavigationLink(value: Route.webcast(ctx)) { VideoThumbnail(video: video, width: 220) }
             }
-            .buttonStyle(.plain)
-            .contextMenu { favoriteButton(video) }
         }
+        .buttonStyle(.plain)
+        .contextMenu { favoriteButton(video) }
     }
 
     // --- On-Demand grid -----------------------------------------------------
