@@ -8,24 +8,41 @@ import SwiftUI
 struct VideoDetailView: View {
     let videoId: String
     var titleHint: String?
+    var webcast: WebcastContext? = nil
 
     @Environment(AppModel.self) private var app
     @Environment(\.theme) private var theme
 
     @State private var detail: VideoDetail?
     @State private var error: String?
+    @State private var linkOut: URL?   // set when a free item has no in-app stream
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 14) {
-                playerSurface
-                if let detail {
-                    header(detail)
-                    actions(detail)
-                    qualityMenu
-                    resumeBanner(detail)
-                    notes(detail)
-                    chapterList(detail)
+                if isBuyOnly {
+                    buyPanel
+                    if let detail { header(detail) }
+                    if let bn = webcast?.benefitNotes { benefitNotes(bn) }
+                } else {
+                    playerSurface
+                    if let linkOut {   // free item with no in-app stream
+                        Button { openURL(linkOut) } label: {
+                            Label("Watch on nugs.net", systemImage: "arrow.up.right.square")
+                        }
+                        .buttonStyle(.borderedProminent)
+                    }
+                    if let detail {
+                        header(detail)
+                        if linkOut == nil {   // hide transport when we're linking out
+                            actions(detail)
+                            qualityMenu
+                            resumeBanner(detail)
+                        }
+                        if let bn = webcast?.benefitNotes { benefitNotes(bn) }
+                        notes(detail)
+                        chapterList(detail)
+                    }
                 }
             }
             .padding(20)
@@ -35,7 +52,7 @@ struct VideoDetailView: View {
         .navigationTitle(detail?.title ?? titleHint ?? "Video")
         .compactNavigationTitle()
         .overlay {
-            if detail == nil && error == nil {
+            if shouldAttemptPlay && linkOut == nil && detail == nil && error == nil {
                 ProgressView()
             } else if let error {
                 ContentUnavailableView(
@@ -50,22 +67,126 @@ struct VideoDetailView: View {
 
     // --- player -----------------------------------------------------------------
 
+    @ViewBuilder
     private var playerSurface: some View {
-        VideoPlayerSurface(player: app.video.player)
-            .aspectRatio(16.0 / 9.0, contentMode: .fit)
-            .frame(maxWidth: .infinity)
-            .background(Color.black)
-            .clipShape(RoundedRectangle(cornerRadius: 8))
-            .overlay(alignment: .topLeading) { liveBadge }
-            .overlay {
-                if let loadError = app.video.loadError {
-                    ContentUnavailableView(
-                        "Can't play this video",
-                        systemImage: "play.slash",
-                        description: Text(loadError))
-                        .background(.black.opacity(0.6))
+        if webcast?.isAudio == true {
+            audioSurface
+        } else {
+            VideoPlayerSurface(player: app.video.player)
+                .aspectRatio(16.0 / 9.0, contentMode: .fit)
+                .frame(maxWidth: .infinity)
+                .background(Color.black)
+                .clipShape(RoundedRectangle(cornerRadius: 8))
+                .overlay(alignment: .topLeading) { liveBadge }
+                .overlay {
+                    if let loadError = app.video.loadError {
+                        ContentUnavailableView(
+                            "Can't play this video",
+                            systemImage: "play.slash",
+                            description: Text(loadError))
+                            .background(.black.opacity(0.6))
+                    }
                 }
+        }
+    }
+
+    /// Audio webcast: cover art in place of video; the AVPlayer still drives the
+    /// HLS audio and the transport row below works unchanged.
+    private var audioSurface: some View {
+        RoundedRectangle(cornerRadius: 8)
+            .fill(theme.palette.raised)
+            .aspectRatio(16.0/9.0, contentMode: .fit)
+            .overlay {
+                AsyncImage(url: detail?.imageURL) { img in
+                    img.resizable().aspectRatio(contentMode: .fit)
+                } placeholder: {
+                    Image(systemName: "waveform")
+                        .font(.system(size: 40))
+                        .foregroundStyle(theme.palette.accent)
+                }
+                .padding(24)
             }
+            .overlay(alignment: .topLeading) { liveBadge }
+    }
+
+    private var isBuyOnly: Bool { webcast?.access == .ppv }
+
+    /// Whether this screen resolves + plays in-app. VOD and exclusive webcasts
+    /// play; free-AUDIO plays (resolved from the feed sku); PPV and
+    /// free-VIDEO-without-a-link do not (buy / link-out instead).
+    private var shouldAttemptPlay: Bool {
+        guard let w = webcast else { return true }   // VOD
+        switch w.access {
+        case .exclusive: return true
+        case .free:      return w.isAudio
+        case .ppv:       return false
+        }
+    }
+
+    @Environment(\.openURL) private var openURL
+
+    /// PPV: honest buy-out. No player, no stream-resolve. Opens nugs's own
+    /// watch/buy page (which gates on login, then offers purchase).
+    @ViewBuilder private var buyPanel: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            RoundedRectangle(cornerRadius: 8)
+                .fill(theme.palette.raised)
+                .aspectRatio(16.0/9.0, contentMode: .fit)
+                .overlay {
+                    VStack(spacing: 6) {
+                        Image(systemName: "lock.circle")
+                            .font(.system(size: 34))
+                            .foregroundStyle(theme.palette.accent)
+                        Text("Pay-per-view").font(theme.type.title(15))
+                            .foregroundStyle(theme.palette.textPrimary)
+                        Text("Not included in your subscription")
+                            .font(theme.type.body(12))
+                            .foregroundStyle(theme.palette.textSecondary)
+                    }
+                }
+            Button {
+                if let url = nugsWatchURL(access: .ppv, skuId: webcast?.sku ?? 0) { openURL(url) }
+            } label: {
+                Label("Buy on nugs.net", systemImage: "arrow.up.right.square")
+            }
+            .buttonStyle(.borderedProminent)
+        }
+    }
+
+    /// Benefit/donation framing that ships with some free webcasts. Rendered
+    /// as attributed HTML so links (e.g. donation pages) stay tappable.
+    @ViewBuilder private func benefitNotes(_ html: String) -> some View {
+        if let attributed = try? AttributedString(
+            markdown: htmlToMarkdownish(html),
+            options: .init(interpretedSyntax: .inlineOnlyPreservingWhitespace)) {
+            Text(attributed)
+                .font(theme.type.body(13))
+                .foregroundStyle(theme.palette.textSecondary)
+                .tint(theme.palette.accent)
+                .textSelection(.enabled)
+        }
+    }
+
+    /// Minimal HTML→text: strip tags, keep anchor hrefs as markdown links.
+    /// The notes are short nugs-authored blurbs, not arbitrary documents.
+    private func htmlToMarkdownish(_ html: String) -> String {
+        var s = html
+        // <a href="URL">text</a> -> [text](URL)
+        if let re = try? NSRegularExpression(
+            pattern: "<a[^>]*href=\"([^\"]+)\"[^>]*>(.*?)</a>", options: [.caseInsensitive, .dotMatchesLineSeparators]) {
+            let range = NSRange(s.startIndex..., in: s)
+            s = re.stringByReplacingMatches(in: s, range: range, withTemplate: "[$2]($1)")
+        }
+        s = s.replacingOccurrences(of: "</p>", with: "\n\n")
+             .replacingOccurrences(of: "<br>", with: "\n")
+             .replacingOccurrences(of: "<br/>", with: "\n")
+             .replacingOccurrences(of: "<br />", with: "\n")
+        // strip any remaining tags
+        if let re = try? NSRegularExpression(pattern: "<[^>]+>") {
+            let range = NSRange(s.startIndex..., in: s)
+            s = re.stringByReplacingMatches(in: s, range: range, withTemplate: "")
+        }
+        return s.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
     @ViewBuilder
@@ -255,18 +376,33 @@ struct VideoDetailView: View {
     // --- load -------------------------------------------------------------------
 
     private func load() async {
-        do {
-            let loaded = try await app.client.videoDetail(containerId: videoId)
-            detail = loaded
-            error = nil
-            // The `.task(id:)` re-fires when this view is recreated (e.g. on
-            // navigate-back); don't tear down and restart a video that's already
-            // current — only (re)start when it isn't.
-            if app.video.current?.id != loaded.id {
-                await app.video.play(loaded)
-            }
-        } catch {
-            self.error = error.localizedDescription
+        // Metadata loads for every state (unauthenticated; drives header/venue).
+        detail = try? await app.client.videoDetail(containerId: videoId)
+
+        // PPV: buy-only. Never resolve or play.
+        if isBuyOnly { return }
+
+        // Free item with no in-app stream (e.g. free-video whose watch link is
+        // on YouTube): send the user to nugs's page, not a dead player.
+        guard shouldAttemptPlay else {
+            linkOut = nugsWatchURL(access: webcast?.access ?? .free, skuId: webcast?.sku ?? 0)
+            return
+        }
+
+        guard var toPlay = detail else {
+            error = "Couldn't load this video."
+            return
+        }
+        error = nil
+        // Webcasts carry the correct sku from the feed; the legacy detail can't
+        // derive an audio SKU (returns 0). Prefer the feed sku.
+        if let sku = webcast?.sku, sku > 0 { toPlay.videoSku = sku }
+        if app.video.current?.id != toPlay.id {
+            await app.video.play(toPlay)
+        }
+        // Free-audio the account can't resolve → link-out fallback.
+        if app.video.loadError != nil, webcast?.isAudio == true {
+            linkOut = nugsWatchURL(access: webcast?.access ?? .free, skuId: webcast?.sku ?? 0)
         }
     }
 }

@@ -154,6 +154,8 @@ struct IOSRootView: View {
                         AlbumDetailView(albumId: id, titleHint: title)
                     case .video(let id, let title):
                         VideoDetailView(videoId: id, titleHint: title)
+                    case .webcast(let ctx):
+                        VideoDetailView(videoId: ctx.id, titleHint: ctx.title, webcast: ctx)
                     }
                 }
                 .toolbar {

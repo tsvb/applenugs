@@ -6,6 +6,7 @@ enum Route: Hashable {
     case artist(ArtistEntry)
     case album(id: String, title: String?)
     case video(id: String, title: String?)
+    case webcast(WebcastContext)
 }
 
 /// Window-level UI state: sidebar selection, navigation stack, the dashboard
