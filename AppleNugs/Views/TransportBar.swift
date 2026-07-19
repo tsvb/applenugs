@@ -38,6 +38,9 @@ struct TransportBar: View {
 
             volumeBlock
 
+            RoutePicker(tint: theme.palette.accent)
+                .frame(width: 26, height: 26)
+
             nowPlayingStar
 
             if let pick = player.nowPick {
