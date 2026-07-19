@@ -87,14 +87,13 @@ struct VideoThumbnail<PosterAccessory: View>: View {
 
     private var badges: some View {
         VStack {
-            HStack(alignment: .top) {
-                if video.isLive {
-                    badge("LIVE", filled: true)
-                }
+            HStack(alignment: .top, spacing: 4) {
+                if video.isLive { badge("LIVE", filled: true) }
+                if video.access == .free { badge("FREE", filled: true) }
+                if video.access == .ppv { badge("PPV", filled: false) }
                 Spacer(minLength: 0)
-                if video.has4K {
-                    badge("4K", filled: false)
-                }
+                if video.isAudio { badge("AUDIO", filled: false) }
+                if video.has4K { badge("4K", filled: false) }
             }
             Spacer(minLength: 0)
         }
