@@ -187,6 +187,7 @@ targets:
       - AppleNugs/Downloads/DownloadManifest.swift
       - AppleNugs/Downloads/StreamPickDownload.swift
       - AppleNugs/Core/WebcastPartition.swift
+      - AppleNugs/Core/WebcastRouting.swift
       - AppleNugs/Core/JSON.swift
       - AppleNugs/Core/NugsConstants.swift
       - path: AppleNugs/Core/Catalog.swift
