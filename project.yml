@@ -187,6 +187,10 @@ targets:
       - AppleNugs/Downloads/DownloadManifest.swift
       - AppleNugs/Downloads/StreamPickDownload.swift
       - AppleNugs/Core/WebcastPartition.swift
+      - AppleNugs/Core/JSON.swift
+      - AppleNugs/Core/NugsConstants.swift
+      - path: AppleNugs/Core/Catalog.swift
+        # Foundation-only parsing; compiled in (not @testable) to keep tests host-free.
       - path: AppleNugs/Core/DeepLink.swift
         # Compiled into the test bundle too (not @testable-imported) so the
         # logic tests stay host-free. DeepLink.swift is pure Foundation.

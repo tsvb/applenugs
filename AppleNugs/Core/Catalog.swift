@@ -76,6 +76,14 @@ struct AlbumDetailModel {
 // Purpose-built presentation types for the Videos feature. Kept distinct from
 // ContainerSummary/AlbumDetailModel so the audio catalog path is untouched.
 
+/// Access class of a live webcast, parsed from the feed's `eventType`.
+/// Unknown values map to `.exclusive` — the paywalled default, so paid content
+/// is never accidentally presented as free.
+enum WebcastAccess: String, Hashable {
+    case exclusive, free, ppv
+    init(feed raw: String?) { self = WebcastAccess(rawValue: raw ?? "") ?? .exclusive }
+}
+
 /// A browse-grid / row item: VOD or a live/upcoming webcast.
 struct VideoSummary: Identifiable, Hashable {
     let id: String              // containerID (legacy) or release id (REST)
@@ -86,6 +94,24 @@ struct VideoSummary: Identifiable, Hashable {
     let isLive: Bool            // LIVE HD VIDEO vs VIDEO ON DEMAND
     let eventStart: Date?       // upcoming/live webcasts only
     let has4K: Bool
+
+    // --- webcast surfacing (defaulted so the VOD path is untouched) ---
+    let access: WebcastAccess   // exclusive / free / ppv
+    let isAudio: Bool           // contentType == "audio"
+    let externalURL: URL?       // free-video: nugs's public YouTube watch link
+    let skuId: Int?             // feed skuId; lets a webcast resolve without a detail round-trip
+    let benefitNotes: String?   // freeVideo.notes HTML (benefit/donation framing)
+
+    init(id: String, title: String, artistName: String?, performanceDate: String?,
+         imagePath: String?, isLive: Bool, eventStart: Date?, has4K: Bool,
+         access: WebcastAccess = .exclusive, isAudio: Bool = false,
+         externalURL: URL? = nil, skuId: Int? = nil, benefitNotes: String? = nil) {
+        self.id = id; self.title = title; self.artistName = artistName
+        self.performanceDate = performanceDate; self.imagePath = imagePath
+        self.isLive = isLive; self.eventStart = eventStart; self.has4K = has4K
+        self.access = access; self.isAudio = isAudio; self.externalURL = externalURL
+        self.skuId = skuId; self.benefitNotes = benefitNotes
+    }
 
     var imageURL: URL? { imagePath.flatMap { NugsConstants.imageURL(path: $0) } }
     var dateText: String? { Catalog.isoDate(performanceDate) }
@@ -275,28 +301,46 @@ enum Catalog {
         return items.compactMap { videoSummary(fromRelease: $0, isLiveDefault: false) }
     }
 
-    /// REST `GET /livestreams?itemTypes=sel` → `{ items, offset, limit, total }`.
-    /// Each item carries `skuId`, `startDate`/`endDate`, `has4KOption`, and a
-    /// nested `release { id, title, performanceDate, coverImage, artist{...} }`.
+    /// REST `GET /livestreams` → `{ items, offset, limit, total }`. Each item
+    /// carries `skuId`, `eventType`, `contentType`, `startDate`, `has4KOption`, a
+    /// nested `release {…}`, and (free items) a `freeVideo { showUrl, notes,
+    /// coverImage }`. We surface every eventType; the caller decides how each plays.
     static func liveWebcasts(from json: JSON) -> [VideoSummary] {
         json.arr("items", "Items", "data").compactMap { item in
             let release = item["release"].raw != nil ? item["release"] : item
-            // Never fall back to the live `skuId` as the container id — it's a
-            // different namespace and would mis-route videoDetail/resolve.
+            let free = item["freeVideo"]
+            // Never fall back to the live `skuId` as the container id — different
+            // namespace; would mis-route videoDetail/resolve.
             guard let id = release.str("id", "ID", "containerID", "releaseId")
                     ?? item.str("id", "ID") else { return nil }
             let start = Catalog.parseTimestamp(item.str("startDate", "StartDate", "eventStartDateStr"))
             let has4K = (item["has4KOption"].raw as? Bool) ?? (item.int("has4KOption") == 1)
+            let access = WebcastAccess(feed: item.str("eventType", "EventType"))
+            let isAudio = item.str("contentType", "ContentType") == "audio"
+            // Poster: release image first, then the free-webcast S3 cover.
+            let poster = videoImagePath(release) ?? free.str("coverImage", "CoverImage")
+            // Artist/title can live under freeVideo for free items (release.artist
+            // is sometimes id "0"/blank there).
+            let artist = release["artist"].str("name", "artistName")
+                ?? release.str("artistName", "ArtistName")
+                ?? free["artist"].str("name", "artistName")
+            let title = release.str("title", "Title", "containerInfo")
+                ?? free["venue"].str("name", "title")
+                ?? "(untitled)"
             return VideoSummary(
                 id: id,
-                title: release.str("title", "Title", "containerInfo") ?? "(untitled)",
-                artistName: release["artist"].str("name", "artistName")
-                    ?? release.str("artistName", "ArtistName"),
+                title: title,
+                artistName: artist,
                 performanceDate: release.str("performanceDate", "PerformanceDate"),
-                imagePath: videoImagePath(release),
+                imagePath: poster,
                 isLive: true,
                 eventStart: start,
-                has4K: has4K)
+                has4K: has4K,
+                access: access,
+                isAudio: isAudio,
+                externalURL: Catalog.watchURLFromEmbed(free.str("showUrl", "ShowUrl", "showURL")),
+                skuId: item.int("skuId", "skuID", "SkuID"),
+                benefitNotes: free.str("notes", "Notes"))
         }
     }
 
@@ -387,6 +431,18 @@ enum Catalog {
             ?? j.str("videoImage", "VideoImage", "vodPlayerImage", "coverImage", "CoverImage")
             ?? j["coverImage"].str("url", "path")
             ?? j["img"].str("url")
+    }
+
+    /// nugs publishes free-video links as YouTube *embed* URLs; normalize to a
+    /// normal watch URL so it opens as a regular page. Non-embed strings pass
+    /// through; nil/empty → nil.
+    static func watchURLFromEmbed(_ s: String?) -> URL? {
+        guard let s, !s.isEmpty else { return nil }
+        guard let r = s.range(of: "/embed/") else { return URL(string: s) }
+        let tail = s[r.upperBound...]
+        let id = tail.prefix { $0 != "?" && $0 != "/" && $0 != "&" }
+        guard !id.isEmpty else { return URL(string: s) }
+        return URL(string: "https://www.youtube.com/watch?v=\(id)")
     }
 
     /// Scan product arrays for the video product and return (skuID, isLive).
