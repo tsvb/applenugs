@@ -25,7 +25,7 @@ struct VideoDetailView: View {
                     if let detail { header(detail) }
                     if let bn = webcast?.benefitNotes { benefitNotes(bn) }
                 } else {
-                    if linkOut == nil || webcast?.isAudio == true {
+                    if (linkOut == nil && shouldAttemptPlay) || webcast?.isAudio == true {
                         playerSurface
                     }
                     if let linkOut {
