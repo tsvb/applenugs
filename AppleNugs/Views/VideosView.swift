@@ -7,6 +7,7 @@ import SwiftUI
 struct VideosView: View {
     @Environment(AppModel.self) private var app
     @Environment(\.theme) private var theme
+    @Environment(\.openURL) private var openURL
 
     @State private var recent: [VideoSummary] = []
     @State private var webcasts: [VideoSummary] = []
@@ -113,11 +114,7 @@ struct VideosView: View {
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(alignment: .top, spacing: 16) {
                     ForEach(webcasts) { video in
-                        NavigationLink(value: Route.video(id: video.id, title: video.title)) {
-                            VideoThumbnail(video: video, width: 220)
-                        }
-                        .buttonStyle(.plain)
-                        .contextMenu { favoriteButton(video) }
+                        webcastCard(video)
                     }
                 }
             }
@@ -136,14 +133,30 @@ struct VideosView: View {
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(alignment: .top, spacing: 16) {
                     ForEach(recentExclusives) { video in
-                        NavigationLink(value: Route.video(id: video.id, title: video.title)) {
-                            VideoThumbnail(video: video, width: 220)
-                        }
-                        .buttonStyle(.plain)
-                        .contextMenu { favoriteButton(video) }
+                        webcastCard(video)
                     }
                 }
             }
+        }
+    }
+
+    // --- webcast card (shared by Live & Upcoming / Recent Exclusives) -------
+
+    /// A webcast rail card: free-video opens nugs's YouTube link directly;
+    /// everything else pushes the detail screen (which chooses buy vs play).
+    @ViewBuilder
+    private func webcastCard(_ video: VideoSummary) -> some View {
+        switch webcastTap(for: video) {
+        case .openExternal(let url):
+            Button { openURL(url) } label: { VideoThumbnail(video: video, width: 220) }
+                .buttonStyle(.plain)
+                .contextMenu { favoriteButton(video) }
+        case .openWebcast(let ctx):
+            NavigationLink(value: Route.webcast(ctx)) {
+                VideoThumbnail(video: video, width: 220)
+            }
+            .buttonStyle(.plain)
+            .contextMenu { favoriteButton(video) }
         }
     }
 
@@ -224,7 +237,7 @@ struct VideosView: View {
             let now = Date()
             async let recentFetch = app.client.recentVideos(offset: 0, limit: pageSize)
             async let webcastFetch = app.client.liveWebcasts(
-                upcomingFrom: now.addingTimeInterval(-14 * 86_400))
+                upcomingFrom: now.addingTimeInterval(-14 * 86_400), itemTypes: "")
             let (recentResult, webcastResult) = try await (recentFetch, webcastFetch)
             recent = recentResult
             let split = partitionWebcasts(webcastResult, now: now)

@@ -227,11 +227,14 @@ actor NugsClient {
         return Catalog.recentVideos(from: json)
     }
 
-    /// Live & upcoming webcasts from `<upcomingFrom>` onward.
-    func liveWebcasts(upcomingFrom: Date = Date(), limit: Int = 100) async throws -> [VideoSummary] {
+    /// Live & upcoming webcasts from `<upcomingFrom>` onward. `itemTypes`
+    /// defaults to unfiltered (all categories: exclusive/free/ppv, audio+video);
+    /// pass "sel" for the old subscription-exclusive-only view.
+    func liveWebcasts(upcomingFrom: Date = Date(), itemTypes: String = "",
+                      limit: Int = 100) async throws -> [VideoSummary] {
         let start = ISO8601DateFormatter().string(from: upcomingFrom)
         let json = try await catalogV1Get("/livestreams", query: [
-            "itemTypes": "sel",
+            "itemTypes": itemTypes,
             "startDate": start,
             "limit": String(limit),
         ])
