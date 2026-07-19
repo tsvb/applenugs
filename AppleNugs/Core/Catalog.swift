@@ -440,7 +440,7 @@ enum Catalog {
         guard let s, !s.isEmpty else { return nil }
         guard let r = s.range(of: "/embed/") else { return URL(string: s) }
         let tail = s[r.upperBound...]
-        let id = tail.prefix { $0 != "?" && $0 != "/" && $0 != "&" }
+        let id = tail.prefix { $0 != "?" && $0 != "/" && $0 != "&" && $0 != "#" }
         guard !id.isEmpty else { return URL(string: s) }
         return URL(string: "https://www.youtube.com/watch?v=\(id)")
     }

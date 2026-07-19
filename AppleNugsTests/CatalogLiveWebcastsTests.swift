@@ -70,4 +70,31 @@ final class CatalogLiveWebcastsTests: XCTestCase {
         """#)[0]
         XCTAssertEqual(v.access, .exclusive)
     }
+
+    func testFreeVideoTitleFallsBackToVenueName() {
+        let v = parse(#"""
+        {"skuId":5,"eventType":"free","contentType":"video",
+         "release":{"id":"77","artist":{"name":"Various"}},
+         "freeVideo":{"venue":{"name":"FREE STREAM: Civic Center Plaza"}}}
+        """#)[0]
+        XCTAssertEqual(v.title, "FREE STREAM: Civic Center Plaza")
+    }
+
+    func testEmbedURLQueryParamsAreStripped() {
+        let v = parse(#"""
+        {"skuId":6,"eventType":"free","contentType":"video",
+         "release":{"id":"78","title":"X","artist":{"name":"Y"}},
+         "freeVideo":{"showUrl":"https://www.youtube.com/embed/7pRya78tAAo?rel=0&foo=bar"}}
+        """#)[0]
+        XCTAssertEqual(v.externalURL?.absoluteString, "https://www.youtube.com/watch?v=7pRya78tAAo")
+    }
+
+    func testEmbedURLFragmentIsStripped() {
+        let v = parse(#"""
+        {"skuId":7,"eventType":"free","contentType":"video",
+         "release":{"id":"79","title":"X","artist":{"name":"Y"}},
+         "freeVideo":{"showUrl":"https://www.youtube.com/embed/abc123#t=30s"}}
+        """#)[0]
+        XCTAssertEqual(v.externalURL?.absoluteString, "https://www.youtube.com/watch?v=abc123")
+    }
 }
