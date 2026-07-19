@@ -97,4 +97,27 @@ final class CatalogLiveWebcastsTests: XCTestCase {
         """#)[0]
         XCTAssertEqual(v.externalURL?.absoluteString, "https://www.youtube.com/watch?v=abc123")
     }
+
+    func testFreeVideoWithNullReleaseIsNotDropped() {
+        // Real free-video items: release:null, skuId:null, id only via freeVideo.
+        // They must NOT be dropped — this is the headline free-stream feature.
+        let list = parse(#"""
+        {"skuId":null,"eventType":"free","contentType":"video","has4KOption":false,
+         "release":null,
+         "freeVideo":{"showUrl":"https://www.youtube.com/embed/KlZgj1u1bAE",
+                      "coverImage":"https://s3.amazonaws.com/static.nugs.net/assets/webcasts/uuid.jpg",
+                      "notes":"<p>Watch free</p>",
+                      "venue":{"name":"Pasadena Civic Auditorium"},
+                      "artist":{"id":"0","name":"A Concert For Altadena"}}}
+        """#)
+        XCTAssertEqual(list.count, 1, "free-video with null release must not be dropped")
+        let v = list[0]
+        XCTAssertEqual(v.access, .free)
+        XCTAssertFalse(v.isAudio)
+        XCTAssertEqual(v.externalURL?.absoluteString, "https://www.youtube.com/watch?v=KlZgj1u1bAE")
+        XCTAssertEqual(v.benefitNotes, "<p>Watch free</p>")
+        XCTAssertEqual(v.artistName, "A Concert For Altadena")
+        XCTAssertEqual(v.imagePath, "https://s3.amazonaws.com/static.nugs.net/assets/webcasts/uuid.jpg")
+        XCTAssertFalse(v.id.isEmpty, "must have a stable synthetic id")
+    }
 }

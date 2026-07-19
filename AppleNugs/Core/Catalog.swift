@@ -311,8 +311,13 @@ enum Catalog {
             let free = item["freeVideo"]
             // Never fall back to the live `skuId` as the container id — different
             // namespace; would mis-route videoDetail/resolve.
+            // Free-webcast items have release:null / skuId:null and no id — they
+            // are identified only by their freeVideo payload. Use a stable
+            // synthetic id (the YouTube link, else the S3 cover) so they aren't
+            // dropped; they only ever open externally, never resolve a stream.
             guard let id = release.str("id", "ID", "containerID", "releaseId")
-                    ?? item.str("id", "ID") else { return nil }
+                    ?? item.str("id", "ID")
+                    ?? free.str("showUrl", "coverImage") else { return nil }
             let start = Catalog.parseTimestamp(item.str("startDate", "StartDate", "eventStartDateStr"))
             let has4K = (item["has4KOption"].raw as? Bool) ?? (item.int("has4KOption") == 1)
             let access = WebcastAccess(feed: item.str("eventType", "EventType"))
