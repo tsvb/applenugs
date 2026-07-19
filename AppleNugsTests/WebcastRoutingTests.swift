@@ -43,4 +43,24 @@ final class WebcastRoutingTests: XCTestCase {
         XCTAssertEqual(nugsWatchURL(access: .free, skuId: 0)?.absoluteString,
                        "https://www.nugs.net/")
     }
+
+    func testPPVWithExternalLinkStillOpensWebcast() {
+        // No-paywall-bypass guarantee: a paid item is never opened externally,
+        // even if an externalURL is somehow present on the item.
+        let url = URL(string: "https://www.youtube.com/watch?v=x")!
+        let tap = webcastTap(for: summary(access: .ppv, external: url))
+        guard case let .openWebcast(ctx) = tap else { return XCTFail("expected webcast") }
+        XCTAssertEqual(ctx.access, .ppv)
+    }
+
+    func testNilSkuBecomesZeroInContext() {
+        let tap = webcastTap(for: summary(access: .exclusive, sku: nil))
+        guard case let .openWebcast(ctx) = tap else { return XCTFail("expected webcast") }
+        XCTAssertEqual(ctx.sku, 0)
+    }
+
+    func testFreeVideoWithoutLinkOpensWebcast() {
+        let tap = webcastTap(for: summary(access: .free, isAudio: false, external: nil))
+        guard case .openWebcast = tap else { return XCTFail("expected webcast") }
+    }
 }
