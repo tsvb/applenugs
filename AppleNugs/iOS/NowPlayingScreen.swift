@@ -32,6 +32,7 @@ struct StandardNowPlayingScreen: View {
     @State private var scrubbing = false
     @State private var scrubValue: Double = 0
     @State private var dashboardShown = false
+    @State private var confirmClear = false
 
     private var player: PlayerService { app.player }
 
@@ -112,6 +113,10 @@ struct StandardNowPlayingScreen: View {
             DashboardPanel()
                 .presentationDetents([.medium, .large])
                 .presentationBackground(theme.palette.base)
+        }
+        .confirmationDialog("Clear the queue?", isPresented: $confirmClear, titleVisibility: .visible) {
+            Button("Clear Queue", role: .destructive) { app.player.clear() }
+            Button("Cancel", role: .cancel) {}
         }
     }
 
@@ -302,6 +307,23 @@ struct StandardNowPlayingScreen: View {
             }
             .buttonStyle(.plain)
             .accessibilityLabel("Queue and stream details")
+
+            if !player.queue.isEmpty {
+                Menu {
+                    Button(role: .destructive) {
+                        confirmClear = true
+                    } label: {
+                        Label("Clear Queue", systemImage: "trash")
+                    }
+                } label: {
+                    Image(systemName: "ellipsis.circle")
+                        .font(.system(size: 17))
+                        .foregroundStyle(theme.palette.textSecondary)
+                        .frame(width: 44, height: 44)
+                }
+                .menuStyle(.borderlessButton)
+                .accessibilityLabel("More queue actions")
+            }
         }
     }
 
