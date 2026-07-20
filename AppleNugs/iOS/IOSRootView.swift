@@ -134,6 +134,7 @@ struct IOSRootView: View {
         .fullScreenCover(isPresented: $nowPlayingPresented) {
             NowPlayingScreen()
         }
+        .background(KeyCommandsHost(app: app, ui: ui))
     }
 
     /// One tab: its own NavigationStack over the shared navPath, the shared
