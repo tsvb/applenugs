@@ -19,6 +19,7 @@ final class UIState {
         case artists
         case videos
         case favorites
+        case downloads
         case search
     }
 

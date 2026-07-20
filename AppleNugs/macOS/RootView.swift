@@ -82,6 +82,9 @@ struct RootView: View {
                 Text("Favorites")
                     .tag(UIState.SidebarItem.favorites)
                     .accessibilityIdentifier("sidebar.item.favorites")
+                Text("Downloads")
+                    .tag(UIState.SidebarItem.downloads)
+                    .accessibilityIdentifier("sidebar.item.downloads")
                 Text("Search")
                     .tag(UIState.SidebarItem.search)
                     .accessibilityIdentifier("sidebar.item.search")
@@ -163,6 +166,8 @@ struct RootView: View {
             VideosView()
         case .favorites:
             FavoritesView()
+        case .downloads:
+            DownloadsView()
         case .search:
             SearchView()
         default:
