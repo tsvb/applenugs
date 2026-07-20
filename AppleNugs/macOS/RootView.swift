@@ -6,21 +6,7 @@ struct RootView: View {
     @Environment(ThemeManager.self) private var themes
     @Environment(\.theme) private var theme
 
-    @State private var artProvider = ArtColorProvider()
     @State private var offlineShown = false
-
-    /// The accent the chrome should use right now: the live art color when the
-    /// active theme is art-driven, else nil (so static themes are untouched).
-    private var activeArtColor: Color? {
-        theme.consumesArtColor ? artProvider.color : nil
-    }
-
-    /// Refires the extractor when the track changes, when its art finishes
-    /// loading, or when the theme's appetite for art changes.
-    private var artTaskID: String {
-        let track = app.player.current?.id.uuidString ?? "none"
-        return "\(track)|\(app.player.nowPlayingImage != nil)|\(theme.consumesArtColor)"
-    }
 
     var body: some View {
         Group {
@@ -37,14 +23,7 @@ struct RootView: View {
                 connectionFailedView(message)
             }
         }
-        .themed(theme, art: activeArtColor)
-        .environment(\.artColor, activeArtColor)
-        .task(id: artTaskID) {
-            artProvider.update(
-                image: app.player.nowPlayingImage,
-                key: app.player.current?.artworkPath,
-                enabled: theme.consumesArtColor)
-        }
+        .providesArtColor(app: app, theme: theme)
         .task { await app.bootstrap() }
         .onAppear { KeyboardShortcuts.install(app: app, ui: ui) }
     }
