@@ -4,9 +4,8 @@ import SwiftUI
 /// a time-aware greeting, favorites, and a taste of the crate to invite
 /// digging.
 ///
-/// It also carries a glowing "continue listening" hero (see `resumeCard`),
-/// shared across platforms. macOS additionally shows two entry tiles —
-/// desktop-only by design, see `entryRow`.
+/// On macOS it also carries a glowing "continue listening" hero and two entry
+/// tiles. Both are desktop-only by design — see `resumeCard` and `entryRow`.
 struct HomeView: View {
     @Environment(AppModel.self) private var app
     @Environment(UIState.self) private var ui
@@ -26,16 +25,8 @@ struct HomeView: View {
     /// the crate" is a worse lie than a spinner nobody sees.
     @State private var loadingSample = true
 
-    private var player: PlayerService { app.player }
-
-    /// The resume hero's art tint. macOS uses the per-track art color for its
-    /// glow; iOS uses the theme accent so Home never re-renders on track change
-    /// (the reason `artColor` is read only on macOS — see the `#if os(macOS)`
-    /// property near the top of the struct).
     #if os(macOS)
-    private var resumeTint: Color? { artColor }
-    #else
-    private var resumeTint: Color? { nil }
+    private var player: PlayerService { app.player }
     #endif
 
     /// The rest of the app pads to 16–20; 36 is a wide-window luxury.
@@ -49,7 +40,9 @@ struct HomeView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 30) {
                 greeting.reveal(appeared, 0)
+                #if os(macOS)
                 if player.current != nil { resumeCard.reveal(appeared, 1) }
+                #endif
                 if !app.favorites.isEmpty { favoritesStrip.reveal(appeared, 2) }
                 #if os(macOS)
                 entryRow.reveal(appeared, 3)
@@ -97,6 +90,12 @@ struct HomeView: View {
 
     // --- continue listening (the hero) --------------------------------------
 
+    // macOS only. On iPhone the mini-player docks above the tab bar whenever a
+    // track is loaded — which, because the queue is restored at launch, is
+    // exactly whenever this hero would render. It showed the same art, title,
+    // meta and progress twice on one screen and pushed the crate below the
+    // fold. Resume lives in the dock there; Home gets the space back.
+    #if os(macOS)
     private var resumeArtSize: CGFloat { 96 }
     private var resumeTitleSize: CGFloat { 24 }
     private var resumeGlyphSize: CGFloat { 48 }
@@ -111,7 +110,7 @@ struct HomeView: View {
                     ArtChip(image: player.nowPlayingImage,
                             fallbackText: track.artist ?? track.title ?? "?",
                             size: resumeArtSize)
-                        .shadow(color: (resumeTint ?? theme.palette.accent).opacity(0.45), radius: 22, y: 6)
+                        .shadow(color: (artColor ?? theme.palette.accent).opacity(0.45), radius: 22, y: 6)
 
                     VStack(alignment: .leading, spacing: 5) {
                         Text("CONTINUE LISTENING")
@@ -126,12 +125,12 @@ struct HomeView: View {
                             .font(theme.type.title(14))
                             .foregroundStyle(theme.palette.textSecondary)
                             .lineLimit(1)
-                        ResumeProgressRule(tint: resumeTint).padding(.top, 6)
+                        ResumeProgressRule().padding(.top, 6)
                     }
                     Spacer(minLength: 8)
                     Image(systemName: player.isPlaying ? "pause.circle.fill" : "play.circle.fill")
                         .font(.system(size: resumeGlyphSize))
-                        .foregroundStyle(theme.effectiveAccent(art: resumeTint))
+                        .foregroundStyle(theme.effectiveAccent(art: artColor))
                         .symbolRenderingMode(.hierarchical)
                 }
                 .padding(20)
@@ -141,7 +140,7 @@ struct HomeView: View {
                         .overlay {
                             RoundedRectangle(cornerRadius: 16, style: .continuous)
                                 .fill(.clear)
-                                .artWash(theme.washStyle, color: resumeTint)
+                                .artWash(theme.washStyle, color: artColor)
                         }
                         .overlay {
                             RoundedRectangle(cornerRadius: 16, style: .continuous)
@@ -157,15 +156,15 @@ struct HomeView: View {
     /// A leaf view: the 4Hz currentTime dependency registers here, not on
     /// the whole editorial landing page.
     private struct ResumeProgressRule: View {
-        let tint: Color?
         @Environment(AppModel.self) private var app
         @Environment(\.theme) private var theme
+        @Environment(\.artColor) private var artColor
 
         var body: some View {
             GeometryReader { geo in
                 ZStack(alignment: .leading) {
                     Capsule().fill(theme.palette.hairline)
-                    Capsule().fill(theme.effectiveAccent(art: tint))
+                    Capsule().fill(theme.effectiveAccent(art: artColor))
                         .frame(width: geo.size.width * fraction)
                 }
             }
@@ -182,9 +181,8 @@ struct HomeView: View {
 
     // --- entry points -------------------------------------------------------
 
-    // macOS only: on iPhone these two tiles re-open Artists and Search, which
-    // the tab bar already puts one tap away.
-    #if os(macOS)
+    // macOS only, for the same reason as the hero: on iPhone these two tiles
+    // re-open Artists and Search, which the tab bar already puts one tap away.
     private var entryRow: some View {
         HStack(spacing: 14) {
             EntryTile(icon: "music.mic",
