@@ -7,6 +7,7 @@ import SwiftUI
 struct FaceplateTransport: View {
     @Environment(AppModel.self) private var app
     @Environment(\.theme) private var theme
+    @Environment(\.openWindow) private var openWindow
 
     @State private var scrubbing = false
     @State private var scrubValue: Double = 0
@@ -25,6 +26,15 @@ struct FaceplateTransport: View {
             qualityReadout
                 .frame(width: 130, alignment: .trailing)
             faceplateStar
+
+            Button { openWindow(id: NowPlayingWindow.id) } label: {
+                Image(systemName: "macwindow")
+                    .font(.system(size: 14))
+                    .foregroundStyle(theme.palette.textSecondary)
+            }
+            .buttonStyle(.plain)
+            .disabled(player.current == nil)
+            .help("Open the Now Playing window")
         }
         .padding(.horizontal, 18)
         .padding(.vertical, 9)

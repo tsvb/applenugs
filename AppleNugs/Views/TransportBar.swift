@@ -7,6 +7,10 @@ struct TransportBar: View {
     @Environment(\.theme) private var theme
     @Environment(\.artColor) private var artColor
 
+    #if os(macOS)
+    @Environment(\.openWindow) private var openWindow
+    #endif
+
     /// While the user drags, hold the thumb at the dragged value so the
     /// playback ticks don't yank it back.
     @State private var scrubbing = false
@@ -43,6 +47,15 @@ struct TransportBar: View {
                 .help("AirPlay")
 
             nowPlayingStar
+
+            Button { openWindow(id: NowPlayingWindow.id) } label: {
+                Image(systemName: "macwindow")
+                    .font(.system(size: 13))
+                    .foregroundStyle(theme.palette.textSecondary)
+            }
+            .buttonStyle(.plain)
+            .disabled(player.current == nil)
+            .help("Open the Now Playing window")
 
             if let pick = player.nowPick {
                 Text(pick.format.badge)
