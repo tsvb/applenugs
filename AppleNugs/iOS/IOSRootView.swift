@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 /// Phase A shell: one NavigationStack over the shared section views, driven by
 /// the same UIState routing the Mac shell uses, with the shared TransportBar
@@ -135,6 +136,18 @@ struct IOSRootView: View {
             NowPlayingScreen()
         }
         .background(KeyCommandsHost(app: app, ui: ui))
+        // A text field in the tab you just left keeps first responder across a
+        // tab switch (switching tabs doesn't end its editing), which would
+        // swallow the hardware-keyboard shortcuts — keys keep flowing into the
+        // hidden field. Resign it on leave so KeyCommandsHost reclaims focus.
+        // Skip when arriving at Search: the "/" shortcut switches here and then
+        // focuses the field, and resigning would fight that.
+        .onChange(of: ui.sidebarSelection) { _, newValue in
+            if newValue != .search {
+                UIApplication.shared.sendAction(
+                    #selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+            }
+        }
     }
 
     /// One tab: its own NavigationStack over the shared navPath, the shared
