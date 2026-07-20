@@ -124,7 +124,7 @@ struct IOSRootView: View {
         // resets the path whenever the section changes, so a background
         // tab can never hold stale path entries).
         return TabView(selection: $ui.sidebarSelection) {
-            tab(.home, "Home", systemImage: "house") { HomeView() }
+            tab(.home, "Home", systemImage: "house", showsDock: false) { HomeView() }
             tab(.artists, "Artists", systemImage: "music.mic") { ArtistListView() }
             tab(.search, "Search", systemImage: "magnifyingglass") { SearchView() }
             tab(.favorites, "Library", systemImage: "star") { LibraryView() }
@@ -141,6 +141,7 @@ struct IOSRootView: View {
     /// exactly as in the Mac shell's detail column), and the account menu.
     private func tab<Content: View>(
         _ item: UIState.SidebarItem, _ title: String, systemImage: String,
+        showsDock: Bool = true,
         @ViewBuilder content: @escaping () -> Content
     ) -> some View {
         @Bindable var ui = ui
@@ -164,7 +165,7 @@ struct IOSRootView: View {
                 // Inset per tab (not on the TabView) so the bar docks above
                 // the tab bar instead of covering it.
                 .safeAreaInset(edge: .bottom, spacing: 0) {
-                    if app.player.current != nil {
+                    if showsDock && app.player.current != nil {
                         VStack(spacing: 0) {
                             Divider()
                             TransportBar()
