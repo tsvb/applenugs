@@ -42,7 +42,9 @@ struct ClickWheelScreen: View {
         .background { theme.palette.base.ignoresSafeArea() }
         .sheet(isPresented: $dashboardShown) {
             DashboardPanel()
+                #if os(iOS)
                 .presentationDetents([.medium, .large])
+                #endif
                 .presentationBackground(theme.palette.base)
         }
     }

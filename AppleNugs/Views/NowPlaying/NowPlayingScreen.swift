@@ -1,5 +1,12 @@
 import SwiftUI
 
+/// Scene id for the macOS Now Playing window (see AppleNugsApp). Shared so the
+/// window scene, the Window-menu command, and the transport expand buttons all
+/// reference one constant.
+enum NowPlayingWindow {
+    static let id = "now-playing"
+}
+
 /// Full-screen now-playing, presented from a tap on the compact transport bar.
 /// Themes with the faceplate transport (The Receiver) get the TouchFaceplate;
 /// everything else gets the standard layout below, tinted by theme tokens.
@@ -110,7 +117,9 @@ struct StandardNowPlayingScreen: View {
         }
         .sheet(isPresented: $dashboardShown) {
             DashboardPanel()
+                #if os(iOS)
                 .presentationDetents([.medium, .large])
+                #endif
                 .presentationBackground(theme.palette.base)
         }
         .confirmationDialog("Clear the queue?", isPresented: $confirmClear, titleVisibility: .visible) {

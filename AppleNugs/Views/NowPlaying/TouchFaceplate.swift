@@ -47,7 +47,9 @@ struct TouchFaceplate: View {
         }
         .sheet(isPresented: $dashboardShown) {
             DashboardPanel()
+                #if os(iOS)
                 .presentationDetents([.medium, .large])
+                #endif
                 .presentationBackground(theme.palette.base)
         }
     }
