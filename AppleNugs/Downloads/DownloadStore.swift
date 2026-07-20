@@ -143,6 +143,12 @@ final class DownloadStore {
         return nil
     }
 
+    /// The show's on-disk folder (pure path computation — no I/O). Used by
+    /// the Mac's Reveal-in-Finder row action.
+    func showDirectory(containerID: String) -> URL {
+        root.appendingPathComponent(containerID, isDirectory: true)
+    }
+
     // --- commands ---------------------------------------------------------------
 
     /// Download a whole show. No-op while the same show is in flight or

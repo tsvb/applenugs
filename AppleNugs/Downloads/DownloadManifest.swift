@@ -32,6 +32,11 @@ struct DownloadedShow: Codable, Equatable {
 struct DownloadManifest: Codable, Equatable {
     var shows: [DownloadedShow] = []
 
+    /// Sum of every downloaded show's bytes — drives the storage footer.
+    var totalBytes: Int64 {
+        shows.reduce(0) { $0 + $1.totalBytes }
+    }
+
     /// Insert the show, replacing any existing entry with the same id.
     mutating func upsert(_ show: DownloadedShow) {
         removeShow(id: show.containerID)

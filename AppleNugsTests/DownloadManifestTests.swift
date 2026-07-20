@@ -65,4 +65,12 @@ final class DownloadManifestTests: XCTestCase {
     func testShowTotalBytesSumsTracks() {
         XCTAssertEqual(sampleShow().totalBytes, 150)
     }
+
+    func testManifestTotalBytesSumsAllShows() {
+        var manifest = DownloadManifest()
+        XCTAssertEqual(manifest.totalBytes, 0)
+        manifest.upsert(sampleShow(id: "s1"))
+        manifest.upsert(sampleShow(id: "s2"))
+        XCTAssertEqual(manifest.totalBytes, 300)
+    }
 }
