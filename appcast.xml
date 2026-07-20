@@ -3,12 +3,26 @@
     <channel>
         <title>AppleNugs</title>
         <item>
-            <title>1.0</title>
-            <pubDate>Sun, 28 Jun 2026 16:33:12 -0400</pubDate>
-            <sparkle:version>1</sparkle:version>
-            <sparkle:shortVersionString>1.0</sparkle:shortVersionString>
+            <title>1.1</title>
+            <pubDate>Mon, 20 Jul 2026 09:16:48 -0400</pubDate>
+            <sparkle:version>2</sparkle:version>
+            <sparkle:shortVersionString>1.1</sparkle:shortVersionString>
             <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-            <enclosure url="https://github.com/tsvb/applenugs/releases/download/v1.0/AppleNugs-1.0.dmg" length="2813512" type="application/octet-stream" sparkle:edSignature="wpPRI7seUODLL4ayuRqRhnffEBm0GIOo1eC2yB4fdxyeIeTMQB1pPxHyzU9V2u/PhYhSSVgXc4QJBCETKuf6BA=="/>
+            <description><![CDATA[<h2>macOS ↔ iOS feature parity</h2>
+<h3>macOS</h3>
+<ul>
+  <li><b>AirPlay output picker</b> in the transport bar.</li>
+  <li><b>Offline downloads</b> — a Downloads sidebar section, per-show download buttons, and a “Listen Offline” escape hatch when disconnected.</li>
+  <li><b>Now Playing window</b> (⌥⌘P, or the expand button) — the full themed player, including the Receiver faceplate and the Click Wheel.</li>
+</ul>
+<h3>iOS / iPadOS</h3>
+<ul>
+  <li><b>Hardware-keyboard shortcuts</b> (iPad) — “/” search, Space play/pause, n/p skip, ←/→ seek, 0 and 1–9 jump.</li>
+  <li><b>Clear Queue</b> from the Now Playing screen.</li>
+</ul>
+<p>Plus fixes and polish.</p>
+]]></description>
+            <enclosure url="https://github.com/tsvb/applenugs/releases/download/v1.1/AppleNugs-1.1.dmg" length="3833007" type="application/octet-stream" sparkle:edSignature="l3B3PGnV3OC5YxA+cxemRWgUxGsI6xfphp8dbmoRa4j0Cu7ycEiUZRRSDSSxA6jql+i5U0+uTWDs6eh8Q+u+CQ=="/>
         </item>
     </channel>
 </rss>
