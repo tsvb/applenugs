@@ -125,7 +125,30 @@ struct AppleNugsApp: App {
                 }
                 .keyboardShortcut("i", modifiers: [.command, .option])
             }
+            CommandGroup(before: .windowArrangement) {
+                NowPlayingWindowMenuItem()
+            }
         }
+
+        Window("Now Playing", id: NowPlayingWindow.id) {
+            NowPlayingScreen()
+                .environment(app)
+                .environment(ui)
+                .environment(themes)
+                .environment(\.theme, themes.theme)
+                .providesArtColor(app: app, theme: themes.theme)
+        }
+        .defaultSize(width: 400, height: 680)
+    }
+}
+
+/// The "Now Playing" Window-menu command. A view (not a bare `Button`) so it can
+/// read `@Environment(\.openWindow)`, which `CommandGroup`'s ViewBuilder allows.
+private struct NowPlayingWindowMenuItem: View {
+    @Environment(\.openWindow) private var openWindow
+    var body: some View {
+        Button("Now Playing") { openWindow(id: NowPlayingWindow.id) }
+            .keyboardShortcut("p", modifiers: [.command, .option])
     }
 }
 
