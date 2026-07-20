@@ -49,16 +49,21 @@ final class KeyCommandsController: UIViewController {
 
     override var canBecomeFirstResponder: Bool { true }
 
-    override func viewDidAppear(_ animated: Bool) {
-        super.viewDidAppear(animated)
-        becomeFirstResponder()
+    override func viewDidLoad() {
+        super.viewDidLoad()
         // Reclaim key focus after a text field (Search / filters / login) ends
         // editing — otherwise shortcuts stay dead once a field has stolen it.
+        // Register exactly once per controller lifetime.
         for name in [UITextField.textDidEndEditingNotification,
                      UITextView.textDidEndEditingNotification] {
             NotificationCenter.default.addObserver(
                 self, selector: #selector(reclaimFocus), name: name, object: nil)
         }
+    }
+
+    override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+        becomeFirstResponder()
     }
 
     @objc private func reclaimFocus() {
