@@ -40,6 +40,7 @@ struct TransportBar: View {
 
             RoutePicker(tint: theme.palette.accent)
                 .frame(width: 26, height: 26)
+                .help("AirPlay")
 
             nowPlayingStar
 

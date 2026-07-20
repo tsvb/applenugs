@@ -321,7 +321,6 @@ struct StandardNowPlayingScreen: View {
                         .foregroundStyle(theme.palette.textSecondary)
                         .frame(width: 44, height: 44)
                 }
-                .menuStyle(.borderlessButton)
                 .accessibilityLabel("More queue actions")
             }
         }

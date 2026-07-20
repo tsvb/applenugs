@@ -22,6 +22,8 @@ struct RoutePicker: NSViewRepresentable {
     private func apply(_ tint: Color, to view: AVRoutePickerView) {
         let color = NSColor(tint)
         view.setRoutePickerButtonColor(color, for: .normal)
+        view.setRoutePickerButtonColor(color, for: .normalHighlighted)
         view.setRoutePickerButtonColor(color, for: .active)
+        view.setRoutePickerButtonColor(color, for: .activeHighlighted)
     }
 }
