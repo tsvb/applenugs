@@ -7,6 +7,7 @@ struct RootView: View {
     @Environment(\.theme) private var theme
 
     @State private var artProvider = ArtColorProvider()
+    @State private var offlineShown = false
 
     /// The accent the chrome should use right now: the live art color when the
     /// active theme is art-driven, else nil (so static themes are untouched).
@@ -56,9 +57,35 @@ struct RootView: View {
         } actions: {
             Button("Retry") { Task { await app.retryBootstrap() } }
                 .buttonStyle(.borderedProminent)
+            // The whole point of downloads is being reachable right here.
+            if !app.downloads.manifest.shows.isEmpty {
+                Button("Listen Offline") { offlineShown = true }
+            }
             Button("Sign Out") { app.logout() }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .sheet(isPresented: $offlineShown) {
+            NavigationStack {
+                DownloadsView()
+                    .navigationTitle("Downloads")
+                    .compactNavigationTitle()
+                    .toolbar {
+                        ToolbarItem(placement: .confirmationAction) {
+                            Button("Done") { offlineShown = false }
+                        }
+                    }
+                    .safeAreaInset(edge: .bottom, spacing: 0) {
+                        if app.player.current != nil {
+                            VStack(spacing: 0) {
+                                Divider()
+                                TransportBar()
+                            }
+                        }
+                    }
+            }
+            .frame(minWidth: 520, minHeight: 420)
+            .presentationBackground(theme.palette.base)
+        }
     }
 
     private var mainLayout: some View {
