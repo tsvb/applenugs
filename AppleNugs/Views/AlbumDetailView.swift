@@ -108,14 +108,12 @@ struct AlbumDetailView: View {
             Group {
                 saveButton(album)
 
-                #if os(iOS)
                 // A child view, not a builder method: download progress
                 // mutates DownloadStore.trackProgress at up to ~1% steps per
                 // track, and with @Observable the dependency registers on
                 // whichever body READ it — a method would pin it to this
                 // whole screen (re-grouping the track list per update).
                 ShowDownloadButton(albumId: albumId, album: album)
-                #endif
             }
             #if os(iOS)
             .labelStyle(.iconOnly)
@@ -123,9 +121,8 @@ struct AlbumDetailView: View {
         }
     }
 
-    #if os(iOS)
     /// Offline download state machine: idle → live progress → downloaded
-    /// (tap to remove) / failed (tap to retry). Mac stays streaming-only.
+    /// (tap to remove) / failed (tap to retry). Shared by both platforms.
     /// A separate View so the live-progress @Observable dependency
     /// invalidates only this button, never the surrounding screen.
     private struct ShowDownloadButton: View {
@@ -206,7 +203,6 @@ struct AlbumDetailView: View {
                 })
         }
     }
-    #endif
 
     private func saveButton(_ album: AlbumDetailModel) -> some View {
         let fav = app.favorites.isShowFavorited(albumId)
