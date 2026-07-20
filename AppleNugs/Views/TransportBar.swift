@@ -56,6 +56,7 @@ struct TransportBar: View {
             .buttonStyle(.plain)
             .disabled(player.current == nil)
             .help("Open the Now Playing window")
+            .accessibilityLabel("Open the Now Playing window")
 
             if let pick = player.nowPick {
                 Text(pick.format.badge)

@@ -35,6 +35,7 @@ struct FaceplateTransport: View {
             .buttonStyle(.plain)
             .disabled(player.current == nil)
             .help("Open the Now Playing window")
+            .accessibilityLabel("Open the Now Playing window")
         }
         .padding(.horizontal, 18)
         .padding(.vertical, 9)
