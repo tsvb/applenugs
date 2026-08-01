@@ -56,13 +56,14 @@ struct MiniPlayerScrubTrack: View {
                         scrubValue = min(max(value.location.x / width, 0), 1) * duration
                     }
                     .onEnded { _ in
-                        guard duration > 0 else { return }
-                        player.seek(to: scrubValue)
-                        scrubbing = false
+                        defer { scrubbing = false }
+                        guard scrubbing, duration > 0 else { return }
+                        player.seek(to: min(scrubValue, duration))
                     }
             )
         }
         .frame(height: 20)
+        .disabled(duration <= 0)
         .accessibilityElement()
         .accessibilityLabel("Playback position")
         .accessibilityValue(TransportBar.format(seconds: position))
@@ -93,8 +94,7 @@ struct MiniPlayerScrubTrack: View {
     }
 
     private var remaining: String {
-        guard duration > 0 else { return "--:--" }
-        return "-" + TransportBar.format(seconds: max(duration - position, 0))
+        MiniPlayerClock.remainingText(elapsed: position, duration: duration)
     }
 }
 
@@ -123,13 +123,21 @@ struct MiniPlayerClock: View {
 
     private var text: String {
         let player = app.player
-        guard player.duration > 0 else { return "--:--" }
         switch kind {
         case .elapsed:
+            guard player.duration > 0 else { return "--:--" }
             return TransportBar.format(seconds: player.currentTime)
         case .remaining:
-            return "-" + TransportBar.format(seconds: max(player.duration - player.currentTime, 0))
+            return Self.remainingText(elapsed: player.currentTime, duration: player.duration)
         }
+    }
+
+    /// Shared "-mm:ss" remaining-time formula, and its "--:--" placeholder
+    /// before duration is known. Reused by `MiniPlayerScrubTrack` so the two
+    /// clocks can't drift as more variants (Task 4+) add their own readouts.
+    static func remainingText(elapsed: Double, duration: Double) -> String {
+        guard duration > 0 else { return "--:--" }
+        return "-" + TransportBar.format(seconds: max(duration - elapsed, 0))
     }
 }
 
@@ -154,13 +162,13 @@ struct MiniPlayerTransportTriad: View {
 
     var body: some View {
         HStack(spacing: 0) {
-            step("backward.fill", label: "Previous track", enabled: player.hasPrevious) {
+            step("backward.fill", label: "Previous track", help: "Previous (p)", enabled: player.hasPrevious) {
                 player.previous()
             }
             Spacer(minLength: 8)
             playButton
             Spacer(minLength: 8)
-            step("forward.fill", label: "Next track", enabled: player.hasNext) {
+            step("forward.fill", label: "Next track", help: "Next (n)", enabled: player.hasNext) {
                 player.next()
             }
         }
@@ -169,6 +177,7 @@ struct MiniPlayerTransportTriad: View {
 
     private func step(_ system: String,
                       label: String,
+                      help: String,
                       enabled: Bool,
                       action: @escaping () -> Void) -> some View {
         HapticButton(.transportStep, action: action) {
@@ -181,6 +190,7 @@ struct MiniPlayerTransportTriad: View {
         }
         .buttonStyle(.plain)
         .disabled(!enabled)
+        .help(help)
         .accessibilityLabel(label)
     }
 
@@ -195,7 +205,7 @@ struct MiniPlayerTransportTriad: View {
                 case .bare:    Color.clear
                 }
                 if player.isBuffering {
-                    ProgressView().controlSize(.small)
+                    ProgressView().controlSize(.small).tint(playGlyphColor)
                 } else {
                     Image(systemName: player.isPlaying ? "pause.fill" : "play.fill")
                         .font(.system(size: style == .bare ? glyphSize + 2 : glyphSize))
@@ -207,6 +217,7 @@ struct MiniPlayerTransportTriad: View {
         }
         .buttonStyle(.plain)
         .disabled(player.current == nil)
+        .help("Play / pause (space)")
         .accessibilityLabel(player.isPlaying ? "Pause" : "Play")
         .accessibilityValue(player.isBuffering ? "Buffering" : "")
     }

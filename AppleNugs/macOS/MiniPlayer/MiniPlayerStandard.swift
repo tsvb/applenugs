@@ -29,6 +29,7 @@ struct MiniPlayerStandard: View {
             ArtChip(image: player.nowPlayingImage,
                     fallbackText: player.current?.artist ?? player.current?.title ?? "?",
                     size: 56)
+                .accessibilityHidden(true)
 
             if isJCard {
                 Rectangle()

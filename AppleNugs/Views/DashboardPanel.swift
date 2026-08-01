@@ -48,16 +48,15 @@ struct DashboardPanel: View {
 
     @ViewBuilder
     private var nowPlayingSection: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 6) {
             sectionHeader(theme.copy.dashHeaders.now)
-            #if os(macOS)
+            #if os(iOS)
+            legacyNowPlayingBlock
+            #else
             // The Mac inspector gets the per-theme miniplayer. iOS keeps the
-            // text block below: it reaches this panel as a sheet from the
+            // text block above: it reaches this panel as a sheet from the
             // full-screen players, which already carry their own transport.
             DashboardMiniPlayer()
-            #else
-            legacyNowPlayingBlock
-            #endif
             if let error = player.playbackError {
                 Label(error, systemImage: "exclamationmark.triangle")
                     .font(.caption)
@@ -65,6 +64,7 @@ struct DashboardPanel: View {
                     .lineLimit(2)
                     .fixedSize(horizontal: false, vertical: true)
             }
+            #endif
         }
     }
 
@@ -96,6 +96,13 @@ struct DashboardPanel: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(8)
             .background(Color.clear.artWash(theme.washStyle, color: artColor))
+            if let error = player.playbackError {
+                Label(error, systemImage: "exclamationmark.triangle")
+                    .font(.caption)
+                    .foregroundStyle(.red)
+                    .lineLimit(2)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
         } else {
             Text(theme.copy.dashboardIdle)
                 .font(.caption)
