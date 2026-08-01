@@ -11,9 +11,9 @@ Native **macOS + iOS SwiftUI** client for nugs.net. Public repo `tsvb/applenugs`
 ## Environment & build
 - Work in the git **worktree** you were started in; **don't `cd` to the main checkout** (the repo-root clone). Merge to `main` via a fast-forward from the main checkout using `git -C`, then push (releases/pushes are the maintainer's call).
 - `xcodegen generate` after any `project.yml` edit (`AppleNugs.xcodeproj/` is **gitignored**). Regenerate before building/opening.
-- Schemes: `AppleNugs` (macOS, `-destination 'platform=macOS'`), `AppleNugs-iOS` (`-destination 'generic/platform=iOS Simulator'` or a device id), `AppleNugsTests` (host-free unit tests, 75 currently).
+- Schemes: `AppleNugs` (macOS, `-destination 'platform=macOS'`), `AppleNugs-iOS` (`-destination 'generic/platform=iOS Simulator'` or a device id), `AppleNugsTests` (host-free unit tests, 81 currently).
 - **Always build/verify with a fresh `-derivedDataPath`** — incremental builds can report a false "clean". Project must stay warning-free under `SWIFT_STRICT_CONCURRENCY=complete` on **both** schemes. SourceKit "No such module 'UIKit'" on iOS-only files = per-target index noise; `xcodebuild` is authoritative.
-- `docs/superpowers/` is **gitignored** (specs, plans, handoffs — local only).
+- `docs/superpowers/` is **gitignored** (specs, plans, reports — local only, and therefore NOT a safe place for handoff state: a worktree removal deletes it. Durable session state belongs in this file plus the auto-memory index).
 - Visual verify without a login: launch with `-UITEST -UITestSeedQueue` (bypasses login, seeds a now-playing queue). Theme switcher = account menu (person icon). Dashboard = `sidebar.right` toolbar button / ⌥⌘I.
 - iOS device install: `DEVELOPMENT_TEAM=U44N9ZPFP2` (paid team) + `-allowProvisioningUpdates`; **the iPhone must be UNLOCKED** or the developer disk image won't mount. Notary profile `rapple-notary`; Developer ID `…(U44N9ZPFP2)`. Full release runbook: `DISTRIBUTION.md` + the `applenugs-distribution` memory.
 
@@ -25,9 +25,16 @@ Native **macOS + iOS SwiftUI** client for nugs.net. Public repo `tsvb/applenugs`
 - **Dashboard miniplayer** (`AppleNugs/macOS/MiniPlayer/`, macOS only): `DashboardMiniPlayer` dispatches on `theme.transport` to `MiniPlayerStandard` (Soundboard + Shoebox share one token-driven view), `MiniPlayerCassette`, `MiniPlayerFaceplate`, `MiniPlayerClickWheel`; shared leaves in `MiniPlayerParts.swift`, pure reel math in `TapeGeometry.swift`. The inspector column is pinned `min: 340, ideal: 340, max: 380` because a real 44-char venue string clips below 340. Tape Room's cassette holds a true **25:16** ratio with only ~19pt of slack — growing the label, the play puck, the clock font, or the reels silently yields the ratio (it has already regressed twice); the budget arithmetic is commented in `MiniPlayerCassette.swift`.
 - Catalog dates are UTC-midnight instants — use `CrateSection.catalogCalendar`, not `Calendar.current` (see the `applenugs-catalog-dates-are-utc` memory).
 
-## Active work — macOS Dashboard miniplayer (BUILT, awaiting visual sign-off)
-Merged to local `main` @ `c29b3d7` (2026-08-01, 13 commits) and **not pushed** — that's the maintainer's call. Replaces the inspector's text-only now-playing section with a per-theme miniplayer; see the miniplayer bullet under Conventions for the architecture.
+## Pick up here — state as of 2026-08-01
 
-**What's left:** nothing was ever seen with real cover art or during live playback (the agent sandbox has no nugs.net login and can't screenshot), so reel motion, pause-freeze, VU meters, tape-strip drag-to-seek, and the 340↔380 reflow are all unverified. A 15-item checklist is at `docs/superpowers/miniplayer-artifacts/reports/task-7-report.md`, alongside the spec, plan, every task report, the SDD ledger, and the brainstorm mockups.
+**Repo:** `main` == `origin/main` == `a6d5793`, working tree clean, nothing unpushed. Worktrees present: `parity` and `livestream-surfacing` (both pre-existing, unrelated). Builds clean on both schemes; 81 tests green. The only build warning is `appintentsmetadataprocessor` ("No AppIntents.framework dependency found") — **confirmed pre-existing at `fb308c8`**, not a regression, don't chase it.
 
-**When verifying UI here:** launching the app is fine, but always quit it afterward, don't grind on stuck GUI automation, and never enter credentials at a Keychain prompt (see the `applenugs-no-gui-automation` memory). For pure layout questions a standalone `swiftc` + `NSHostingView` harness is faster and needs no GUI — it caught two real sizing bugs on this feature that builds could not.
+**Last shipped:** the macOS Dashboard miniplayer (`fb308c8..c29b3d7`), then a `CLAUDE.md` refresh and two `AudioFormat` cleanups (`isLossless` extracted; `impliedBitDepth` made exhaustive). Architecture is in the miniplayer bullet under Conventions.
+
+**The one open thread — visual verification of the miniplayer.** Nothing has been seen with real cover art or during live playback: the agent sandbox has no nugs.net login and can't screenshot. So reel motion, pause-freeze, VU meters, tape-strip drag-to-seek, the 340↔380 reflow, and a VoiceOver/focus pass are all unverified by eye. A 15-item checklist is at `docs/superpowers/miniplayer-artifacts/reports/task-7-report.md`.
+
+Treat that as real risk, not paperwork: the two worst bugs on that branch were both invisible to green builds and tests. One only surfaced when a layout harness measured the shell (340pt against a 217.6pt target); the other was a fixed literal that would have rendered `POSITION HIG…` in every Tape Room session.
+
+**Also parked:** `docs/superpowers/miniplayer-artifacts/` holds the spec, plan, all task reports, the SDD ledger, and the brainstorm mockups (gitignored, local only). Known follow-ups with no owner: shuffle and repeat (which should first collapse the *three* partial transport-control implementations — see the player-backlog memory), and a buffering state for the faceplate's knurled play button.
+
+**When verifying UI here:** launching the app is fine, but always quit it afterward, don't grind on stuck GUI automation (screenshot capture and synthetic split-divider drags are both unreliable on this machine), and never enter credentials at a Keychain prompt — see the `applenugs-no-gui-automation` memory. For pure layout questions a standalone `swiftc` + `NSHostingView` harness needs no GUI at all and is usually the better tool.
