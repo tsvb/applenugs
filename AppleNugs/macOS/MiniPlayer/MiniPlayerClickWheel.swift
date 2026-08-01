@@ -25,6 +25,7 @@ struct MiniPlayerClickWheel: View {
             ArtChip(image: player.nowPlayingImage,
                     fallbackText: player.current?.artist ?? "?",
                     size: 34)
+                .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 1) {
                 Text(player.current?.artist ?? "—")
                     .font(theme.type.body(11))
@@ -58,6 +59,8 @@ struct MiniPlayerClickWheel: View {
                     .font(theme.type.numeric(8).weight(.bold))
                     .tracking(1.2)
                     .foregroundStyle(theme.palette.textSecondary)
+                    .lineLimit(1)
+                    .truncationMode(.tail)
                     .accessibilityHidden(true)
                 Spacer()
             }
@@ -78,7 +81,7 @@ struct MiniPlayerClickWheel: View {
                 ZStack {
                     Circle().fill(theme.palette.base)
                     if player.isBuffering {
-                        ProgressView().controlSize(.small)
+                        ProgressView().controlSize(.small).tint(theme.palette.textPrimary)
                     } else {
                         Image(systemName: player.isPlaying ? "pause.fill" : "play.fill")
                             .font(.system(size: 17, weight: .bold))

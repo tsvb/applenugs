@@ -39,6 +39,7 @@ struct MiniPlayerFaceplate: View {
                 .font(theme.type.numeric(9).weight(.bold))
                 .tracking(1.6)
                 .lineLimit(1)
+                .truncationMode(.tail)
         }
         .foregroundStyle(theme.palette.accent.opacity(player.isPlaying ? 1 : 0.5))
         .accessibilityHidden(true)
