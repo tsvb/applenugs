@@ -275,7 +275,7 @@ struct MiniPlayerCassette: View {
             RoundedRectangle(cornerRadius: 3, style: .continuous)
                 .strokeBorder(.black.opacity(0.55), lineWidth: 1)
         }
-        .frame(minHeight: 78)
+        .frame(minHeight: 62)
     }
 
     // --- ridged bottom edge -----------------------------------------------------
@@ -316,7 +316,7 @@ struct CassetteReels: View {
     @Environment(\.theme) private var theme
 
     private let hubRadius: Double = 7.5
-    private let fullRadius: Double = 21
+    private let fullRadius: Double = 18
 
     private var player: PlayerService { app.player }
 
@@ -343,7 +343,7 @@ struct CassetteReels: View {
                                      startRadius: 0,
                                      endRadius: CGFloat(radius)))
                 .frame(width: CGFloat(radius) * 2, height: CGFloat(radius) * 2)
-            ReelHub(isPlaying: player.isPlaying)
+            ReelHub(isPlaying: player.isPlaying, diameter: CGFloat(hubRadius) * 2)
         }
         // Reserve the full footprint so a shrinking pack never shifts the layout.
         .frame(width: CGFloat(fullRadius) * 2, height: CGFloat(fullRadius) * 2)
