@@ -33,6 +33,8 @@ final class TapeGeometryTests: XCTestCase {
     func testPackRadiusTreatsNonFiniteFractionAsEmpty() {
         XCTAssertEqual(TapeGeometry.packRadius(fraction: .nan, hub: 7.5, full: 21),
                        7.5, accuracy: 0.0001)
+        XCTAssertEqual(TapeGeometry.packRadius(fraction: .infinity, hub: 7.5, full: 21),
+                       7.5, accuracy: 0.0001)
     }
 
     func testPackRadiusIncreasesMonotonically() {
@@ -58,6 +60,7 @@ final class TapeGeometryTests: XCTestCase {
 
     func testProgressIsZeroWhenCurrentTimeIsNotFinite() {
         XCTAssertEqual(TapeGeometry.progress(currentTime: .nan, duration: 100), 0)
+        XCTAssertEqual(TapeGeometry.progress(currentTime: .infinity, duration: 100), 0)
     }
 
     func testProgressClampsToUnitRange() {
