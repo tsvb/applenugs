@@ -239,7 +239,7 @@ struct MiniPlayerCassette: View {
     /// hit area behind its 4 pt strip, so it is draggable despite being thin.
     ///
     /// The reels are pinned to the *top* of the window on purpose: now that
-    /// their tape packs are real (up to 42 pt across, Task 5), a bottom-anchor
+    /// their tape packs are real (up to 36 pt across, Task 5), a bottom-anchor
     /// would run the packs straight through the scrubber strip instead of a
     /// real cassette's read: two full reels up top, a bare span of tape
     /// exposed along the bottom edge underneath them.
