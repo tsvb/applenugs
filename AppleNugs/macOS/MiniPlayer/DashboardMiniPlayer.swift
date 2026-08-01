@@ -27,7 +27,7 @@ struct DashboardMiniPlayer: View {
     private var variant: some View {
         switch theme.transport {
         case .standard, .jCard: MiniPlayerStandard()
-        case .tapeLabel:        MiniPlayerStandard()   // Task 4 replaces this
+        case .tapeLabel:        MiniPlayerCassette()
         case .faceplate:        MiniPlayerStandard()   // Task 5 replaces this
         case .clickWheel:       MiniPlayerStandard()   // Task 6 replaces this
         }
