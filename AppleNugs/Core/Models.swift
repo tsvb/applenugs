@@ -154,11 +154,15 @@ enum AudioFormat: String {
 
     /// Known bit depth implied by the format tier, used when the decoder
     /// doesn't report one (compressed formats report 0 bits per channel).
+    ///
+    /// Exhaustive rather than `default: nil`, for the same reason as
+    /// `isLossless` below: a format added to the enum should fail to compile
+    /// here and force a decision, not silently inherit "no known depth".
     var impliedBitDepth: Int? {
         switch self {
         case .flac16, .alac16: return 16
         case .mqa24: return 24
-        default: return nil
+        case .s360ra, .aac150, .hls, .unknown: return nil
         }
     }
 

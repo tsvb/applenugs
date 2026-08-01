@@ -15,6 +15,22 @@ final class AudioFormatTests: XCTestCase {
         XCTAssertFalse(AudioFormat.unknown.isLossless)
     }
 
+    func testImpliedBitDepthForFormatsThatCarryOne() {
+        XCTAssertEqual(AudioFormat.flac16.impliedBitDepth, 16)
+        XCTAssertEqual(AudioFormat.alac16.impliedBitDepth, 16)
+        XCTAssertEqual(AudioFormat.mqa24.impliedBitDepth, 24)
+    }
+
+    /// Compressed formats report 0 bits per channel from the decoder, so the
+    /// answer here must be nil — not 0, which would render as "0-bit" in the
+    /// inspector's Quality section.
+    func testImpliedBitDepthIsNilForFormatsThatDoNot() {
+        XCTAssertNil(AudioFormat.aac150.impliedBitDepth)
+        XCTAssertNil(AudioFormat.hls.impliedBitDepth)
+        XCTAssertNil(AudioFormat.s360ra.impliedBitDepth)
+        XCTAssertNil(AudioFormat.unknown.impliedBitDepth)
+    }
+
     /// `unknown` is the fallback `identify(_:)` returns for an unrecognised URL.
     /// Claiming lossless there would light the badge for a stream we cannot
     /// vouch for, so the pessimistic answer is the correct one.
