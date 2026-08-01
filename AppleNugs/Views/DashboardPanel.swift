@@ -48,51 +48,63 @@ struct DashboardPanel: View {
 
     @ViewBuilder
     private var nowPlayingSection: some View {
-        VStack(alignment: .leading, spacing: 6) {
+        VStack(alignment: .leading, spacing: 8) {
             sectionHeader(theme.copy.dashHeaders.now)
-            if let track = player.current {
-                VStack(alignment: .leading, spacing: 3) {
-                    Text(track.title ?? "Unknown track")
-                        .font(theme.type.title(15))
-                        .lineLimit(1)
-                        .truncationMode(.tail)
-                    if let artist = track.artist {
-                        Text(artist)
-                            .font(.caption)
-                            .lineLimit(1)
-                            .truncationMode(.tail)
-                    }
-                    if let show = track.show {
-                        Text(show)
-                            .font(.caption)
-                            .foregroundStyle(theme.palette.textSecondary)
-                            .lineLimit(1)
-                            .truncationMode(.tail)
-                    }
-                    // A leaf view: the 4Hz currentTime dependency registers
-                    // here, not on the whole inspector (whose queue list
-                    // would otherwise re-diff every tick).
-                    ElapsedTimeLine()
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(8)
-                .background(Color.clear.artWash(theme.washStyle, color: artColor))
-                if let error = player.playbackError {
-                    Label(error, systemImage: "exclamationmark.triangle")
-                        .font(.caption)
-                        .foregroundStyle(.red)
-                        .lineLimit(2)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-            } else {
-                Text(theme.copy.dashboardIdle)
+            #if os(macOS)
+            // The Mac inspector gets the per-theme miniplayer. iOS keeps the
+            // text block below: it reaches this panel as a sheet from the
+            // full-screen players, which already carry their own transport.
+            DashboardMiniPlayer()
+            #else
+            legacyNowPlayingBlock
+            #endif
+            if let error = player.playbackError {
+                Label(error, systemImage: "exclamationmark.triangle")
                     .font(.caption)
-                    .foregroundStyle(theme.palette.textIdle)
+                    .foregroundStyle(.red)
                     .lineLimit(2)
                     .fixedSize(horizontal: false, vertical: true)
             }
         }
     }
+
+    #if os(iOS)
+    /// The original text-only now-playing block, still used on iOS.
+    @ViewBuilder
+    private var legacyNowPlayingBlock: some View {
+        if let track = player.current {
+            VStack(alignment: .leading, spacing: 3) {
+                Text(track.title ?? "Unknown track")
+                    .font(theme.type.title(15))
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+                if let artist = track.artist {
+                    Text(artist)
+                        .font(.caption)
+                        .lineLimit(1)
+                        .truncationMode(.tail)
+                }
+                if let show = track.show {
+                    Text(show)
+                        .font(.caption)
+                        .foregroundStyle(theme.palette.textSecondary)
+                        .lineLimit(1)
+                        .truncationMode(.tail)
+                }
+                ElapsedTimeLine()
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(8)
+            .background(Color.clear.artWash(theme.washStyle, color: artColor))
+        } else {
+            Text(theme.copy.dashboardIdle)
+                .font(.caption)
+                .foregroundStyle(theme.palette.textIdle)
+                .lineLimit(2)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+    #endif
 
     // --- quality ----------------------------------------------------------------
 
@@ -227,6 +239,7 @@ struct DashboardPanel: View {
 /// The playback tick mutates currentTime ~4x/sec while playing. These leaves
 /// carry that @Observable dependency so the inspector's body — including the
 /// full queue ForEach — re-evaluates only on real state changes.
+#if os(iOS)
 private struct ElapsedTimeLine: View {
     @Environment(AppModel.self) private var app
     @Environment(\.theme) private var theme
@@ -240,6 +253,7 @@ private struct ElapsedTimeLine: View {
         }
     }
 }
+#endif
 
 private struct BufferedRow: View {
     @Environment(AppModel.self) private var app
