@@ -23,16 +23,18 @@ struct MiniPlayerClickWheel: View {
     private var trackCard: some View {
         HStack(spacing: 10) {
             ArtChip(image: player.nowPlayingImage,
-                    fallbackText: player.current?.artist ?? "?",
+                    fallbackText: player.current?.artist ?? player.current?.title ?? "?",
                     size: 34)
                 .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 1) {
-                Text(player.current?.artist ?? "—")
-                    .font(theme.type.body(11))
-                    .foregroundStyle(theme.palette.textSecondary)
-                    .lineLimit(1)
-                    .truncationMode(.tail)
-                Text(player.current?.title ?? "Nothing playing")
+                if let artist = player.current?.artist {
+                    Text(artist)
+                        .font(theme.type.body(11))
+                        .foregroundStyle(theme.palette.textSecondary)
+                        .lineLimit(1)
+                        .truncationMode(.tail)
+                }
+                Text(player.current?.title ?? "Unknown track")
                     .font(theme.type.title(14))
                     .foregroundStyle(theme.palette.textPrimary)
                     .lineLimit(1)
@@ -67,10 +69,10 @@ struct MiniPlayerClickWheel: View {
             .padding(.vertical, 12)
 
             HStack {
-                ringButton("backward.fill", label: "Previous track",
+                ringButton("backward.fill", label: "Previous track", help: "Previous (p)",
                            enabled: player.hasPrevious) { player.previous() }
                 Spacer()
-                ringButton("forward.fill", label: "Next track",
+                ringButton("forward.fill", label: "Next track", help: "Next (n)",
                            enabled: player.hasNext) { player.next() }
             }
             .padding(.horizontal, 10)
@@ -93,6 +95,7 @@ struct MiniPlayerClickWheel: View {
             }
             .buttonStyle(.plain)
             .disabled(player.current == nil)
+            .help("Play / pause (space)")
             .accessibilityLabel(player.isPlaying ? "Pause" : "Play")
             .accessibilityValue(player.isBuffering ? "Buffering" : "")
         }
@@ -101,6 +104,7 @@ struct MiniPlayerClickWheel: View {
 
     private func ringButton(_ system: String,
                             label: String,
+                            help: String,
                             enabled: Bool,
                             action: @escaping () -> Void) -> some View {
         HapticButton(.transportStep, action: action) {
@@ -112,6 +116,7 @@ struct MiniPlayerClickWheel: View {
         }
         .buttonStyle(.plain)
         .disabled(!enabled)
+        .help(help)
         .accessibilityLabel(label)
     }
 }

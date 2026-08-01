@@ -122,11 +122,13 @@ struct MiniPlayerCassette: View {
                     Spacer(minLength: 0)
                     losslessTick
                 }
-                Text(player.current?.artist ?? "—")
-                    .font(theme.type.body(10))
-                    .foregroundStyle(ink.opacity(0.78))
-                    .lineLimit(1)
-                    .truncationMode(.tail)
+                if let artist = player.current?.artist {
+                    Text(artist)
+                        .font(theme.type.body(10))
+                        .foregroundStyle(ink.opacity(0.78))
+                        .lineLimit(1)
+                        .truncationMode(.tail)
+                }
                 if let show = player.current?.show {
                     Text(show.uppercased())
                         .font(theme.type.numeric(9))
@@ -158,6 +160,7 @@ struct MiniPlayerCassette: View {
             .font(theme.type.numeric(7))
             .foregroundStyle(ink.opacity(0.5))
             .lineLimit(1)
+            .truncationMode(.tail)
             .fixedSize()
             .accessibilityHidden(true)
     }
@@ -193,7 +196,11 @@ struct MiniPlayerCassette: View {
         .lineLimit(1)
         .truncationMode(.tail)
         .fixedSize(horizontal: false, vertical: true)
-        .frame(width: 54, alignment: .leading)
+        // 62, not 54: "POSITION HIGH" at numeric(6)/tracking(0.75) measures
+        // 57.97 pt (NSFont.monospacedSystemFont equivalent); 54 clipped it to
+        // "POSITION HIG…" in every session. Keep in lockstep with rightShoulder
+        // so the window stays centred.
+        .frame(width: 62, alignment: .leading)
         .accessibilityHidden(true)
     }
 
@@ -230,7 +237,7 @@ struct MiniPlayerCassette: View {
                 .truncationMode(.tail)
                 .fixedSize()
         }
-        .frame(width: 54)
+        .frame(width: 62)   // matches leftShoulder — see its comment
     }
 
     /// The cover shows through the window behind the reels, and the exposed
@@ -275,7 +282,9 @@ struct MiniPlayerCassette: View {
             RoundedRectangle(cornerRadius: 3, style: .continuous)
                 .strokeBorder(.black.opacity(0.55), lineWidth: 1)
         }
-        .frame(minHeight: 62)
+        // The honest floor: 6 top pad + 36 reels + 2 spacer min + 20 scrub hit
+        // + 2 bottom pad = 66. (62 here was never reachable.)
+        .frame(minHeight: 66)
     }
 
     // --- ridged bottom edge -----------------------------------------------------
@@ -284,7 +293,7 @@ struct MiniPlayerCassette: View {
     /// bottom corners where a real cassette has its two round openings.
     private var ridgedBand: some View {
         HStack(spacing: 6) {
-            MiniPlayerClock(kind: .elapsed)
+            MiniPlayerClock(kind: .elapsed, size: 8)
                 .frame(width: 44, alignment: .leading)
 
             MiniPlayerTransportTriad(style: .bare, glyphSize: 12, playDiameter: 26)
@@ -298,7 +307,7 @@ struct MiniPlayerCassette: View {
                         }
                 }
 
-            MiniPlayerClock(kind: .remaining)
+            MiniPlayerClock(kind: .remaining, size: 8)
                 .frame(width: 44, alignment: .trailing)
         }
     }
@@ -316,6 +325,20 @@ struct CassetteReels: View {
     @Environment(\.theme) private var theme
 
     private let hubRadius: Double = 7.5
+
+    /// This is the number someone reaches for to draw bigger reels, so the
+    /// shell's 25:16 budget (`MiniPlayerCassette.shellRatio`) is recorded here
+    /// rather than left to a gitignored report — it has already slipped twice.
+    /// At the inspector's 340 pt column the shell renders 308 pt wide, so the
+    /// budget is 308 × 16/25 ≈ 197 pt tall. The rigid content — label ~42
+    /// (4 strip + 8 padding + 30 of title/artist text), ridged band 32, the
+    /// outer VStack's spacing/padding 38, plus the window's own 66 pt floor —
+    /// totals ~178 pt, leaving ~19 pt of slack that lives in the window's
+    /// `Spacer(minLength: 2)` between the reels and the scrub strip. Grow any
+    /// band past that headroom — a fourth label line, a bigger play puck, a
+    /// taller clock font, or a bigger `fullRadius` here — and the shell either
+    /// grows past 197 pt or clips, and stops being cassette-shaped. (Purely
+    /// horizontal changes, like shoulder width, don't touch this budget.)
     private let fullRadius: Double = 18
 
     private var player: PlayerService { app.player }

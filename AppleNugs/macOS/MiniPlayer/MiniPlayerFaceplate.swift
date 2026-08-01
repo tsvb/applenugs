@@ -71,6 +71,7 @@ struct MiniPlayerFaceplate: View {
                 player.previous()
             }
             .disabled(!player.hasPrevious)
+            .help("Previous (p)")
             .accessibilityLabel("Previous track")
 
             Spacer(minLength: 8)
@@ -81,6 +82,7 @@ struct MiniPlayerFaceplate: View {
                 player.togglePlayPause()
             }
             .disabled(player.current == nil)
+            .help("Play / pause (space)")
             .accessibilityLabel(player.isPlaying ? "Pause" : "Play")
             .accessibilityValue(player.isBuffering ? "Buffering" : "")
 
@@ -90,6 +92,7 @@ struct MiniPlayerFaceplate: View {
                 player.next()
             }
             .disabled(!player.hasNext)
+            .help("Next (n)")
             .accessibilityLabel("Next track")
         }
         .frame(maxWidth: .infinity)

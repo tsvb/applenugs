@@ -91,6 +91,9 @@ struct DashboardPanel: View {
                         .lineLimit(1)
                         .truncationMode(.tail)
                 }
+                // A leaf view: the 4Hz currentTime dependency registers
+                // here, not on the whole inspector (whose queue list
+                // would otherwise re-diff every tick).
                 ElapsedTimeLine()
             }
             .frame(maxWidth: .infinity, alignment: .leading)
