@@ -189,8 +189,7 @@ struct TransportBar: View {
     /// Lossless formats get the theme's dedicated lossless tint when it has one;
     /// everything else rides the accent.
     private func badgeColor(for format: AudioFormat) -> Color {
-        let lossless: Set<AudioFormat> = [.flac16, .alac16, .mqa24]
-        if lossless.contains(format), let badge = theme.palette.losslessBadge {
+        if format.isLossless, let badge = theme.palette.losslessBadge {
             return badge
         }
         return theme.palette.textSecondary

@@ -161,6 +161,27 @@ enum AudioFormat: String {
         default: return nil
         }
     }
+
+    /// Whether the format is compressed without loss — the single source of
+    /// truth for the lossless badge tint and the cassette's lossless tick.
+    ///
+    /// Deliberately an exhaustive switch rather than a `Set` literal or a
+    /// `default: false`: adding a case to `AudioFormat` should be a compile
+    /// error here, forcing a decision. Silently classifying a new format as
+    /// lossy is exactly the bug this property exists to prevent.
+    ///
+    /// Note this does NOT delegate to `impliedBitDepth != nil`, even though the
+    /// two select the same three cases today. They answer different questions —
+    /// one about compression, one about bit depth — and a lossless format whose
+    /// depth varies by stream would belong here but not there.
+    var isLossless: Bool {
+        switch self {
+        case .flac16, .alac16, .mqa24:
+            return true
+        case .s360ra, .aac150, .hls, .unknown:
+            return false
+        }
+    }
 }
 
 struct StreamPick: Equatable {

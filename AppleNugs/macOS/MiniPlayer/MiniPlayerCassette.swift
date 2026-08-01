@@ -154,8 +154,7 @@ struct MiniPlayerCassette: View {
     /// The `NR ☐YES ☐NO` corner of a real label, repurposed for the one bit of
     /// state worth printing there.
     private var losslessTick: some View {
-        let lossless: Set<AudioFormat> = [.flac16, .alac16, .mqa24]
-        let isLossless = player.nowPick.map { lossless.contains($0.format) } ?? false
+        let isLossless = player.nowPick?.format.isLossless ?? false
         return Text(isLossless ? "LOSSLESS ☑" : "LOSSLESS ☐")
             .font(theme.type.numeric(7))
             .foregroundStyle(ink.opacity(0.5))
