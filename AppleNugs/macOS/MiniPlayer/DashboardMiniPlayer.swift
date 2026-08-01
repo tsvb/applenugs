@@ -28,8 +28,8 @@ struct DashboardMiniPlayer: View {
         switch theme.transport {
         case .standard, .jCard: MiniPlayerStandard()
         case .tapeLabel:        MiniPlayerCassette()
-        case .faceplate:        MiniPlayerStandard()   // Task 5 replaces this
-        case .clickWheel:       MiniPlayerStandard()   // Task 6 replaces this
+        case .faceplate:        MiniPlayerFaceplate()
+        case .clickWheel:       MiniPlayerClickWheel()
         }
     }
 }
