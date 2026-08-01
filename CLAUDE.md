@@ -3,7 +3,7 @@
 Native **macOS + iOS SwiftUI** client for nugs.net. Public repo `tsvb/applenugs`. Unofficial client (talks nugs.net's reverse-engineered API) — Developer ID / direct-download distribution, not App Store (5.2.2). Shipped: **v1.1** (Developer ID notarized DMG + Sparkle auto-update + iOS personal-install).
 
 ## Read first
-- **Auto-memory index:** `/Users/tim/.claude/projects/-Users-tim-applenugs/memory/MEMORY.md` — the deep, current project context (parity program, distribution/release runbook, iOS port, theme system, player backlog, gotchas). Skim the notes relevant to your task before acting.
+- **Claude Code auto-memory:** this project's memory index at `~/.claude/projects/<project-slug>/memory/MEMORY.md` (loaded automatically at session start) holds the deep, current project context — parity program, distribution/release runbook, iOS port, theme system, player backlog, gotchas. Skim the notes relevant to your task before acting.
 
 ## Workflow (how every feature here is built)
 `superpowers:brainstorming` → spec in `docs/superpowers/specs/` → `superpowers:writing-plans` → `superpowers:subagent-driven-development` (fresh implementer per task + per-task spec/quality review + whole-branch review). Don't skip the design/spec step, even for "simple" changes.
