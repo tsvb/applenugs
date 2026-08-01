@@ -124,7 +124,12 @@ struct RootView: View {
         }
         .inspector(isPresented: $ui.inspectorOpen) {
             DashboardPanel()
-                .inspectorColumnWidth(min: 250, ideal: 300, max: 380)
+                // Pinned at 340: measured against real catalog strings, a 44-char
+                // venue line ("2024-03-14 Capitol Theatre, Port Chester, NY") fits
+                // whole at 340 pt and clips at 300. Type is a fixed point size, so
+                // narrowing is the only thing that can squeeze it. The floor costs
+                // 90 pt of window minimum while the inspector is open.
+                .inspectorColumnWidth(min: 340, ideal: 340, max: 380)
         }
         .toolbar {
             ToolbarItem(placement: .primaryAction) {

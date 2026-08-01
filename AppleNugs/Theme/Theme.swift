@@ -45,6 +45,8 @@ struct Palette: Sendable {
     let losslessBadge: Color?    // distinct lossless tint (Tape Room teal), else nil
     let playState: Color         // active/playing emphasis
     let vuPeak: Color?           // VU peak tick (The Receiver only)
+    let labelPaper: Color?       // write-on label stock (Tape Room only)
+    let labelInk: Color?         // pen on that stock (Tape Room only)
 }
 
 /// Fonts as size-taking closures so a point size is a call, not six stored fonts.
@@ -122,7 +124,8 @@ extension Theme {
             base: Color(hex: 0x14110E), raised: Color(hex: 0x1B1714), hairline: Color(hex: 0x2E2823),
             textPrimary: Color(hex: 0xF2EADF), textSecondary: Color(hex: 0xA89B8B), textIdle: Color(hex: 0x6E6357),
             accent: Color(hex: 0xE8A13A), losslessBadge: Color(hex: 0x5FB6A6),
-            playState: Color(hex: 0xE8A13A), vuPeak: nil),
+            playState: Color(hex: 0xE8A13A), vuPeak: nil,
+            labelPaper: Color(hex: 0xFBF9F3), labelInk: Color(hex: 0x241C12)),
         type: Typography(
             hero:    { .system(size: $0, weight: .semibold, design: .serif) },
             title:   { .system(size: $0, weight: .medium,   design: .serif) },
@@ -146,7 +149,8 @@ extension Theme {
             base: Color(hex: 0x0C0B0E), raised: Color(hex: 0x17161A), hairline: Color(hex: 0x26262A),
             textPrimary: Color(hex: 0xF4F1EC), textSecondary: Color(hex: 0x9A958E), textIdle: Color(hex: 0x6E6A63),
             accent: Color(hex: 0xE0902E), losslessBadge: nil,
-            playState: Color(hex: 0xE0902E), vuPeak: nil),
+            playState: Color(hex: 0xE0902E), vuPeak: nil,
+            labelPaper: nil, labelInk: nil),
         type: Typography(
             hero:    { .system(size: $0, weight: .bold,     design: .serif) },
             title:   { .system(size: $0, weight: .semibold, design: .serif) },
@@ -170,7 +174,8 @@ extension Theme {
             base: Color(hex: 0x16110D), raised: Color(hex: 0x1E1712), hairline: Color(hex: 0x2C2118),
             textPrimary: Color(hex: 0xEDE3CF), textSecondary: Color(hex: 0xA8987E), textIdle: Color(hex: 0x6E6151),
             accent: Color(hex: 0xE0922F), losslessBadge: nil,
-            playState: Color(hex: 0xB5561F), vuPeak: nil),
+            playState: Color(hex: 0xB5561F), vuPeak: nil,
+            labelPaper: nil, labelInk: nil),
         type: Typography(
             hero:    { .custom("AvenirNextCondensed-Heavy", size: $0) },
             title:   { .system(size: $0, weight: .medium, design: .serif) },
@@ -194,7 +199,8 @@ extension Theme {
             base: Color(hex: 0x0B0A08), raised: Color(hex: 0x1C1A17), hairline: Color(hex: 0x14120F),
             textPrimary: Color(hex: 0xEFE7D8), textSecondary: Color(hex: 0xB5701A), textIdle: Color(hex: 0x7A5414),
             accent: Color(hex: 0xFFA62B), losslessBadge: nil,
-            playState: Color(hex: 0x36C9C0), vuPeak: Color(hex: 0xFF4D2E)),
+            playState: Color(hex: 0x36C9C0), vuPeak: Color(hex: 0xFF4D2E),
+            labelPaper: nil, labelInk: nil),
         type: Typography(
             hero:    { .system(size: $0, weight: .semibold, design: .serif) },
             title:   { .system(size: $0, weight: .medium,   design: .serif) },
@@ -224,7 +230,8 @@ extension Theme {
             base: Color(hex: 0x0E0E0F), raised: Color(hex: 0x1C1C1E), hairline: Color(hex: 0x2A2A2C),
             textPrimary: Color(hex: 0xF5F5F5), textSecondary: Color(hex: 0x9A9A9E), textIdle: Color(hex: 0x5C5C60),
             accent: Color(hex: 0xE9E9EB), losslessBadge: nil,
-            playState: Color(hex: 0xF5F5F5), vuPeak: nil),
+            playState: Color(hex: 0xF5F5F5), vuPeak: nil,
+            labelPaper: nil, labelInk: nil),
         type: Typography(
             hero:    { .system(size: $0, weight: .bold) },
             title:   { .system(size: $0, weight: .semibold) },
