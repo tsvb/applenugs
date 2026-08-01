@@ -198,6 +198,9 @@ targets:
       - path: AppleNugs/Views/ArtistLibrary/CrateSection.swift
         # Same deal: pure Foundation (no SwiftUI, no Route/NugsConstants), so
         # the crate's month-sectioning and filter logic tests stay host-free.
+      - path: AppleNugs/macOS/MiniPlayer/TapeGeometry.swift
+        # Pure Foundation math (pack radius, progress clamping); compiled in
+        # rather than @testable-imported to keep the test bundle host-free.
     scheme:
       testTargets:
         - AppleNugsTests
