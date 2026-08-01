@@ -237,18 +237,27 @@ struct MiniPlayerCassette: View {
     /// tape span across the bottom **is** the scrubber — the detail the whole
     /// variant is built around. `MiniPlayerScrubTrack` already reserves a 20 pt
     /// hit area behind its 4 pt strip, so it is draggable despite being thin.
+    ///
+    /// The reels are pinned to the *top* of the window on purpose: now that
+    /// their tape packs are real (up to 42 pt across, Task 5), a bottom-anchor
+    /// would run the packs straight through the scrubber strip instead of a
+    /// real cassette's read: two full reels up top, a bare span of tape
+    /// exposed along the bottom edge underneath them.
     private var window: some View {
-        ZStack(alignment: .bottom) {
+        ZStack {
             LinearGradient(colors: [.white.opacity(0.16), .black.opacity(0.45)],
                            startPoint: .top, endPoint: .bottom)
 
-            CassetteReels()          // Task 5 gives these their progress-driven packs
-
-            MiniPlayerScrubTrack(trackHeight: 4,
-                                 showsClocks: false,
-                                 fillColor: theme.palette.accent)
-                .padding(.horizontal, 8)
-                .padding(.bottom, 2)
+            VStack(spacing: 0) {
+                CassetteReels()          // Task 5 gives these their progress-driven packs
+                    .padding(.top, 6)
+                Spacer(minLength: 2)
+                MiniPlayerScrubTrack(trackHeight: 4,
+                                     showsClocks: false,
+                                     fillColor: theme.palette.accent)
+                    .padding(.horizontal, 8)
+                    .padding(.bottom, 2)
+            }
         }
         .background {
             if let image = player.nowPlayingImage {
@@ -266,7 +275,7 @@ struct MiniPlayerCassette: View {
             RoundedRectangle(cornerRadius: 3, style: .continuous)
                 .strokeBorder(.black.opacity(0.55), lineWidth: 1)
         }
-        .frame(minHeight: 62)
+        .frame(minHeight: 78)
     }
 
     // --- ridged bottom edge -----------------------------------------------------
@@ -295,27 +304,59 @@ struct MiniPlayerCassette: View {
     }
 }
 
-/// The two reels in the cassette window.
+/// The two reels in the cassette window, with tape packs that trade size as the
+/// track runs — the supply reel on the left empties into the take-up on the right.
 ///
-/// **A leaf view.** Pack radii derive from `currentTime`, so this stays out of
-/// the shell body for the same reason `MiniPlayerScrubTrack` does — see the
-/// perf note in `DashboardPanel`.
+/// **A leaf view.** Pack radii derive from `currentTime`, which the playback
+/// tick mutates ~4×/sec. Keeping that read here — and not in
+/// `MiniPlayerCassette` — is what stops the whole shell, and the inspector's
+/// queue list below it, from re-diffing on every tick.
 struct CassetteReels: View {
     @Environment(AppModel.self) private var app
+    @Environment(\.theme) private var theme
+
+    private let hubRadius: Double = 7.5
+    private let fullRadius: Double = 21
+
+    private var player: PlayerService { app.player }
 
     var body: some View {
+        let progress = TapeGeometry.progress(currentTime: player.currentTime,
+                                             duration: player.duration)
         HStack {
-            ReelHub(isPlaying: app.player.isPlaying)
+            reel(fraction: 1 - progress)   // supply
             Spacer()
-            ReelHub(isPlaying: app.player.isPlaying)
+            reel(fraction: progress)       // take-up
         }
-        .padding(.horizontal, 14)
+        .padding(.horizontal, 10)
         .accessibilityHidden(true)
+    }
+
+    private func reel(fraction: Double) -> some View {
+        let radius = TapeGeometry.packRadius(fraction: fraction,
+                                             hub: hubRadius,
+                                             full: fullRadius)
+        return ZStack {
+            Circle()
+                .fill(RadialGradient(colors: [theme.palette.raised, theme.palette.base],
+                                     center: .center,
+                                     startRadius: 0,
+                                     endRadius: CGFloat(radius)))
+                .frame(width: CGFloat(radius) * 2, height: CGFloat(radius) * 2)
+            ReelHub(isPlaying: player.isPlaying)
+        }
+        // Reserve the full footprint so a shrinking pack never shifts the layout.
+        .frame(width: CGFloat(fullRadius) * 2, height: CGFloat(fullRadius) * 2)
     }
 }
 
 /// A splined hub that turns while the tape runs. `TimelineView` with
 /// `paused:` costs nothing when stopped — same idiom as `VUMeter`.
+///
+/// The schedule itself already stops advancing `timeline.date` once paused,
+/// so the angle derived from it holds at wherever the tape last stopped
+/// instead of springing back to a fixed rest position — a real reel doesn't
+/// snap backwards when you hit pause.
 struct ReelHub: View {
     @Environment(\.theme) private var theme
     let isPlaying: Bool
@@ -323,9 +364,7 @@ struct ReelHub: View {
 
     var body: some View {
         TimelineView(.animation(minimumInterval: 1.0 / 20.0, paused: !isPlaying)) { timeline in
-            let angle = isPlaying
-                ? Angle.degrees(timeline.date.timeIntervalSinceReferenceDate * 100)
-                : .zero
+            let angle = Angle.degrees(timeline.date.timeIntervalSinceReferenceDate * 100)
             ZStack {
                 Circle().fill(theme.palette.textPrimary)
                 ForEach(0..<3, id: \.self) { i in
