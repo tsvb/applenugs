@@ -191,6 +191,7 @@ struct MiniPlayerCassette: View {
         }
         .foregroundStyle(theme.palette.accent.opacity(0.85))
         .lineLimit(1)
+        .truncationMode(.tail)
         .fixedSize(horizontal: false, vertical: true)
         .frame(width: 54, alignment: .leading)
         .accessibilityHidden(true)
@@ -226,6 +227,7 @@ struct MiniPlayerCassette: View {
                 .tracking(0.9)
                 .foregroundStyle(theme.palette.accent.opacity(0.85))
                 .lineLimit(1)
+                .truncationMode(.tail)
                 .fixedSize()
         }
         .frame(width: 54)
@@ -237,14 +239,6 @@ struct MiniPlayerCassette: View {
     /// hit area behind its 4 pt strip, so it is draggable despite being thin.
     private var window: some View {
         ZStack(alignment: .bottom) {
-            if let image = player.nowPlayingImage {
-                Image(platformImage: image)
-                    .resizable()
-                    .aspectRatio(contentMode: .fill)
-                    .opacity(0.8)
-            } else {
-                theme.palette.raised
-            }
             LinearGradient(colors: [.white.opacity(0.16), .black.opacity(0.45)],
                            startPoint: .top, endPoint: .bottom)
 
@@ -255,6 +249,17 @@ struct MiniPlayerCassette: View {
                                  fillColor: theme.palette.accent)
                 .padding(.horizontal, 8)
                 .padding(.bottom, 2)
+        }
+        .background {
+            if let image = player.nowPlayingImage {
+                Image(platformImage: image)
+                    .resizable()
+                    .aspectRatio(contentMode: .fill)
+                    .opacity(0.8)
+                    .accessibilityHidden(true)
+            } else {
+                theme.palette.raised
+            }
         }
         .clipShape(RoundedRectangle(cornerRadius: 3, style: .continuous))
         .overlay {
@@ -271,7 +276,7 @@ struct MiniPlayerCassette: View {
     private var ridgedBand: some View {
         HStack(spacing: 6) {
             MiniPlayerClock(kind: .elapsed)
-                .frame(width: 34, alignment: .leading)
+                .frame(width: 44, alignment: .leading)
 
             MiniPlayerTransportTriad(style: .bare, glyphSize: 12, playDiameter: 26)
                 .padding(.vertical, 3)
@@ -285,7 +290,7 @@ struct MiniPlayerCassette: View {
                 }
 
             MiniPlayerClock(kind: .remaining)
-                .frame(width: 34, alignment: .trailing)
+                .frame(width: 44, alignment: .trailing)
         }
     }
 }
