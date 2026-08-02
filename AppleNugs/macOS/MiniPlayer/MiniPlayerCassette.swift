@@ -389,10 +389,13 @@ struct ReelHub: View {
             let angle = Angle.degrees(timeline.date.timeIntervalSinceReferenceDate * 100)
             ZStack {
                 Circle().fill(theme.palette.textPrimary)
+                // The splines must contrast with the disc: filled with the
+                // same textPrimary as the disc behind them, the rotation was
+                // invisible at any speed and pause-freeze unverifiable.
                 ForEach(0..<3, id: \.self) { i in
                     Capsule()
-                        .fill(theme.palette.textPrimary)
-                        .frame(width: diameter * 0.18, height: diameter)
+                        .fill(theme.palette.base)
+                        .frame(width: diameter * 0.18, height: diameter * 0.82)
                         .rotationEffect(.degrees(Double(i) * 60))
                 }
                 Circle()
