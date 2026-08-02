@@ -3,26 +3,31 @@
     <channel>
         <title>AppleNugs</title>
         <item>
-            <title>1.1</title>
-            <pubDate>Mon, 20 Jul 2026 09:16:48 -0400</pubDate>
-            <sparkle:version>2</sparkle:version>
-            <sparkle:shortVersionString>1.1</sparkle:shortVersionString>
+            <title>1.2</title>
+            <pubDate>Sun, 02 Aug 2026 00:01:47 -0400</pubDate>
+            <sparkle:version>3</sparkle:version>
+            <sparkle:shortVersionString>1.2</sparkle:shortVersionString>
             <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-            <description><![CDATA[<h2>macOS ↔ iOS feature parity</h2>
-<h3>macOS</h3>
+            <description><![CDATA[<h2>AppleNugs 1.2</h2>
+<p><strong>The Dashboard gets a real player.</strong> The inspector's now-playing
+section is now a per-theme miniplayer instead of a text block:</p>
 <ul>
-  <li><b>AirPlay output picker</b> in the transport bar.</li>
-  <li><b>Offline downloads</b> — a Downloads sidebar section, per-show download buttons, and a “Listen Offline” escape hatch when disconnected.</li>
-  <li><b>Now Playing window</b> (⌥⌘P, or the expand button) — the full themed player, including the Receiver faceplate and the Click Wheel.</li>
+  <li><strong>Tape Room</strong> — a Compact Cassette at true 25:16: your cover shows
+      through the shell window behind two reels whose tape packs actually trade size
+      as the track runs, the exposed tape span is the scrubber, and the write-on
+      label carries the track, artist, and show.</li>
+  <li><strong>The Receiver</strong> — a tuner faceplate with live L/R VU meters,
+      a RECEIVING lamp, and machined transport buttons.</li>
+  <li><strong>Click Wheel</strong> — a monochrome track card over a compact dial.</li>
+  <li><strong>Soundboard &amp; Shoebox</strong> — a token-driven compact player with
+      cover chip, scrubber, and transport (filled vs. keyline personality).</li>
 </ul>
-<h3>iOS / iPadOS</h3>
-<ul>
-  <li><b>Hardware-keyboard shortcuts</b> (iPad) — “/” search, Space play/pause, n/p skip, ←/→ seek, 0 and 1–9 jump.</li>
-  <li><b>Clear Queue</b> from the Now Playing screen.</li>
-</ul>
-<p>Plus fixes and polish.</p>
+<p>Every variant scrubs, shows elapsed/remaining time, and keeps prev/play/next a
+click away. The inspector column now sits at 340–380pt so the show line fits.</p>
+<p><strong>Fixes:</strong> cassette reel hubs now show their splines, so you can see
+them turn (and freeze in place on pause).</p>
 ]]></description>
-            <enclosure url="https://github.com/tsvb/applenugs/releases/download/v1.1/AppleNugs-1.1.dmg" length="3833007" type="application/octet-stream" sparkle:edSignature="l3B3PGnV3OC5YxA+cxemRWgUxGsI6xfphp8dbmoRa4j0Cu7ycEiUZRRSDSSxA6jql+i5U0+uTWDs6eh8Q+u+CQ=="/>
+            <enclosure url="https://github.com/tsvb/applenugs/releases/download/v1.2/AppleNugs-1.2.dmg" length="4038338" type="application/octet-stream" sparkle:edSignature="rJhVfrT2nzrdrySN0G/vGPGjalQ2hqZymu26WgqdPWc5XrVhHrtpoANbRI1Fq2DSnfxXg7rYDChjhOkMZlooCA=="/>
         </item>
     </channel>
 </rss>
