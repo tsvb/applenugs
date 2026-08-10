@@ -125,11 +125,26 @@ struct IOSRootView: View {
         // resets the path whenever the section changes, so a background
         // tab can never hold stale path entries).
         return TabView(selection: $ui.sidebarSelection) {
-            tab(.home, "Home", systemImage: "house") { HomeView() }
-            tab(.artists, "Artists", systemImage: "music.mic") { ArtistListView() }
-            tab(.search, "Search", systemImage: "magnifyingglass") { SearchView() }
-            tab(.favorites, "Library", systemImage: "star") { LibraryView() }
-            tab(.videos, "Videos", systemImage: "play.rectangle") { VideosView() }
+            Tab("Home", systemImage: "house",
+                value: UIState.SidebarItem?.some(.home)) {
+                tabStack { HomeView() }
+            }
+            Tab("Artists", systemImage: "music.mic",
+                value: UIState.SidebarItem?.some(.artists)) {
+                tabStack { ArtistListView() }
+            }
+            Tab("Search", systemImage: "magnifyingglass",
+                value: UIState.SidebarItem?.some(.search)) {
+                tabStack { SearchView() }
+            }
+            Tab("Library", systemImage: "star",
+                value: UIState.SidebarItem?.some(.favorites)) {
+                tabStack { LibraryView() }
+            }
+            Tab("Videos", systemImage: "play.rectangle",
+                value: UIState.SidebarItem?.some(.videos)) {
+                tabStack { VideosView() }
+            }
         }
         .overlay(alignment: .bottom) { toastOverlay }
         .fullScreenCover(isPresented: $nowPlayingPresented) {
@@ -150,15 +165,15 @@ struct IOSRootView: View {
         }
     }
 
-    /// One tab: its own NavigationStack over the shared navPath, the shared
-    /// Route destinations (so in-content pushes via UIState.open(_:) work
-    /// exactly as in the Mac shell's detail column), and the account menu.
-    private func tab<Content: View>(
-        _ item: UIState.SidebarItem, _ title: String, systemImage: String,
+    /// One tab's stack: its own NavigationStack over the shared navPath, the
+    /// shared Route destinations (so in-content pushes via UIState.open(_:)
+    /// work exactly as in the Mac shell's detail column), and the account menu.
+    @ViewBuilder
+    private func tabStack<Content: View>(
         @ViewBuilder content: @escaping () -> Content
     ) -> some View {
         @Bindable var ui = ui
-        return NavigationStack(path: $ui.navPath) {
+        NavigationStack(path: $ui.navPath) {
             content()
                 .navigationDestination(for: Route.self) { route in
                     switch route {
@@ -176,14 +191,13 @@ struct IOSRootView: View {
                     ToolbarItem(placement: .topBarTrailing) { accountMenu }
                 }
                 // Inset per tab (not on the TabView) so the bar docks above
-                // the tab bar instead of covering it.
+                // the tab bar instead of covering it. REMOVED IN TASK 4.
                 .safeAreaInset(edge: .bottom, spacing: 0) {
                     if app.player.current != nil {
                         VStack(spacing: 0) {
                             Divider()
                             TransportBar()
                         }
-                        // Buttons inside the bar win over this container tap.
                         .contentShape(Rectangle())
                         .onTapGesture { nowPlayingPresented = true }
                         .accessibilityAddTraits(.isButton)
@@ -191,8 +205,6 @@ struct IOSRootView: View {
                     }
                 }
         }
-        .tabItem { Label(title, systemImage: systemImage) }
-        .tag(UIState.SidebarItem?.some(item))
     }
 
     private var accountMenu: some View {

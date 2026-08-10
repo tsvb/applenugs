@@ -4,9 +4,7 @@ options:
   bundleIdPrefix: com.timvbs
   deploymentTarget:
     macOS: "14.0"
-    # iOS floor is set by pervasive @Observable/Observation usage — the same
-    # constraint that sets the macOS 14 floor.
-    iOS: "17.0"
+    iOS: "26.0"
   createIntermediateGroups: true
 
 settings:
