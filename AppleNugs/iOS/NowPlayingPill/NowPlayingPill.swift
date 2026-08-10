@@ -43,17 +43,7 @@ struct NowPlayingPill: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
 
-            // The full cluster arrives in Task 5.
-            HapticButton(.transportToggle) {
-                app.player.togglePlayPause()
-            } label: {
-                Image(systemName: app.player.isPlaying ? "pause.fill" : "play.fill")
-                    .font(.title3)
-                    .frame(width: PillLayout.controlWidth)
-            }
-            .buttonStyle(.plain)
-            .foregroundStyle(theme.palette.textPrimary)
-            .accessibilityLabel(app.player.isPlaying ? "Pause" : "Play")
+            PillTransportControls(slot: slot)
         }
         .padding(.horizontal, PillLayout.horizontalPadding)
         // Buttons inside the pill win over this container tap.
