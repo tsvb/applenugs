@@ -153,11 +153,6 @@ struct IOSRootView: View {
         // The accessory belongs to the TabView, so it rides above every screen
         // — including pushed detail views — instead of decorating each stack's
         // root the way the old safeAreaInset did.
-        //
-        // `isEnabled:` needs iOS 26.1; our deployment target is 26.0 (see
-        // project.yml), so the pre-26.1 branch below hides the pill by
-        // omitting it from the accessory's content instead. Every real test
-        // target (simulator OS 26.5+) takes the `#available` branch.
         .modifier(NowPlayingAccessory(app: app) { nowPlayingPresented = true })
         .fullScreenCover(isPresented: $nowPlayingPresented) {
             NowPlayingScreen()
