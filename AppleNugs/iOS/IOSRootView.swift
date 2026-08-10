@@ -22,6 +22,8 @@ struct IOSRootView: View {
         ProcessInfo.processInfo.arguments.contains("-UITestShowNowPlaying")
     /// Offline library sheet reachable from the connection-failed screen.
     @State private var offlineShown = false
+    /// The pill's expanded panel. Owned here, not by the pill — see the sheet.
+    @State private var panelShown = false
 
     /// The accent the chrome should use right now: the live art color when the
     /// active theme is art-driven, else nil (so static themes are untouched).
@@ -153,9 +155,23 @@ struct IOSRootView: View {
         // The accessory belongs to the TabView, so it rides above every screen
         // — including pushed detail views — instead of decorating each stack's
         // root the way the old safeAreaInset did.
-        .modifier(NowPlayingAccessory(app: app) { nowPlayingPresented = true })
+        .modifier(NowPlayingAccessory(
+            app: app,
+            onTap: { nowPlayingPresented = true },
+            onExpand: { panelShown = true }))
         .fullScreenCover(isPresented: $nowPlayingPresented) {
             NowPlayingScreen()
+        }
+        // Presented here rather than from inside the pill: a sheet attached
+        // within `tabViewBottomAccessory` runs its content's body but never
+        // appears, because the accessory is a system-hosted container rather
+        // than a normal presentation context.
+        .sheet(isPresented: $panelShown) {
+            ExpandedPlayerPanel()
+                .presentationDetents([.height(250)])
+                .presentationCornerRadius(26)
+                .presentationBackground(.thinMaterial)
+                .presentationDragIndicator(.visible)
         }
         .background(KeyCommandsHost(app: app, ui: ui))
         // A text field in the tab you just left keeps first responder across a
@@ -254,11 +270,12 @@ struct IOSRootView: View {
 private struct NowPlayingAccessory: ViewModifier {
     let app: AppModel
     let onTap: () -> Void
+    let onExpand: () -> Void
 
     func body(content: Content) -> some View {
         content
             .tabViewBottomAccessory(isEnabled: app.player.current != nil) {
-                NowPlayingPill(onTap: onTap)
+                NowPlayingPill(onTap: onTap, onExpand: onExpand)
             }
             .tabBarMinimizeBehavior(.onScrollDown)
     }

@@ -17,7 +17,12 @@ struct NowPlayingPill: View {
     /// presentation state of its own.
     let onTap: () -> Void
 
-    @State private var panelShown = false
+    /// What the chevron does. Injected for the same reason as `onTap`, and for
+    /// a second one: a `.sheet` attached inside `tabViewBottomAccessory` runs
+    /// its content's body but never becomes visible — the accessory is a
+    /// system-hosted container, not a normal presentation context. The shell
+    /// presents the panel instead.
+    let onExpand: () -> Void
 
     private var slot: PillLayout.Slot {
         // `.map` rather than `placement == .inline`: the latter would collapse
@@ -61,7 +66,7 @@ struct NowPlayingPill: View {
             // scroll-to-minimize handling (didn't recognize reliably against
             // the system gesture) — a plain tap into the panel instead.
             // Tap on the pill body still opens the full-screen player.
-            HapticButton(.transportStep) { panelShown = true } label: {
+            HapticButton(.transportStep, action: onExpand) {
                 Image(systemName: "chevron.up")
                     .font(.caption.weight(.semibold))
                     .frame(width: PillLayout.controlWidth, height: PillLayout.controlWidth)
@@ -75,14 +80,7 @@ struct NowPlayingPill: View {
         // Buttons inside the pill win over this container tap.
         .contentShape(Rectangle())
         .onTapGesture(perform: onTap)
-        .sheet(isPresented: $panelShown) {
-            ExpandedPlayerPanel()
-                .presentationDetents([.height(250)])
-                .presentationCornerRadius(26)
-                .presentationBackground(.thinMaterial)
-                .presentationDragIndicator(.visible)
-        }
-        .accessibilityAction(named: "Show playback controls") { panelShown = true }
+        .accessibilityAction(named: "Show playback controls", onExpand)
         .accessibilityElement(children: .contain)
         .accessibilityLabel(Text("Now playing: \(title), \(subtitle ?? "")"))
         .accessibilityHint("Opens full-screen now playing")
