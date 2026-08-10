@@ -89,26 +89,38 @@ final class BrowserAuthService: NSObject, ASWebAuthenticationPresentationContext
 
     // iOS 26 deprecated every scene-less UIWindow initializer (`init()` and
     // `init(frame:)` both; `init(windowScene:)` is the only survivor), but the
-    // last-resort branch below still needs one — the alternative is a
-    // force-unwrap that would crash the login flow instead of degrading. A
-    // deprecated declaration may use same-version deprecated API without
-    // warning, and nothing in this project calls this method (the system
-    // invokes it as an ASWebAuthenticationSession protocol witness), so the
-    // annotation costs nothing and keeps the build clean.
+    // last-resort branch still needs one — the alternative is a force-unwrap
+    // that would crash the login flow instead of degrading. A deprecated
+    // declaration may use same-version deprecated API without warning, and
+    // nothing in this project calls this method (the system invokes it as an
+    // ASWebAuthenticationSession protocol witness), so the annotation keeps the
+    // build clean at no call-site cost.
+    //
+    // The real lookup lives in `sceneAnchor()`, which is NOT deprecated: this
+    // body is kept to a single expression so the annotation can only ever
+    // suppress the one `UIWindow()` below, never a future deprecated call added
+    // here by mistake.
     @available(iOS, deprecated: 26.0, message: "Retains a scene-less UIWindow fallback by design.")
     func presentationAnchor(for _: ASWebAuthenticationSession) -> ASPresentationAnchor {
         #if os(macOS)
         return NSApp.windows.first(where: { $0.isKeyWindow }) ?? NSApp.windows.first ?? NSWindow()
         #else
-        let scenes = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
-        let window = scenes.flatMap(\.windows).first(where: \.isKeyWindow)
-            ?? scenes.first?.windows.first
-        // Prefer the modern UIWindow(windowScene:) when a scene exists; the
-        // parameterless initializer is the unreachable last resort that keeps
-        // this path crash-free (see the availability note above).
-        return window ?? scenes.first.map { UIWindow(windowScene: $0) } ?? UIWindow()
+        return Self.sceneAnchor() ?? UIWindow()
         #endif
     }
+
+    #if os(iOS)
+    /// The presentation anchor when a window scene exists: the key window, else
+    /// any window, else a fresh window on the first connected scene. Returns nil
+    /// only when there is no connected window scene at all — a state in which
+    /// ASWebAuthenticationSession could not be presenting in the first place.
+    private static func sceneAnchor() -> UIWindow? {
+        let scenes = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
+        return scenes.flatMap(\.windows).first(where: \.isKeyWindow)
+            ?? scenes.first?.windows.first
+            ?? scenes.first.map { UIWindow(windowScene: $0) }
+    }
+    #endif
 
     // --- PKCE helpers -------------------------------------------------------
 
