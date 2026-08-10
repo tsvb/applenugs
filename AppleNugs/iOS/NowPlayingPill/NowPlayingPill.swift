@@ -29,6 +29,12 @@ struct NowPlayingPill: View {
     /// worse than no chevron.
     let onExpand: (() -> Void)?
 
+    /// Trailing padding: the chevron's lane, only when the chevron renders.
+    private var trailingPadding: CGFloat {
+        PillLayout.horizontalPadding
+            + (onExpand != nil ? PillLayout.controlWidth + PillLayout.controlSpacing : 0)
+    }
+
     private var slot: PillLayout.Slot {
         // `.map` rather than `placement == .inline`: the latter would collapse
         // the optional to false before PillLayout sees it, so the nil case
@@ -64,7 +70,11 @@ struct NowPlayingPill: View {
         // even the pre-existing play/pause button does, since it shares this
         // view's tap-gesture region); `PillSeekEdge` is proof an overlay
         // wins hit-testing instead, so the chevron follows that shape.
-        .padding(.trailing, PillLayout.horizontalPadding + PillLayout.controlWidth + PillLayout.controlSpacing)
+        // The lane itself is only reserved when the chevron actually renders —
+        // when `onExpand` is nil (the offline Downloads sheet) there is no
+        // control to make room for, so the title/artist column gets the space
+        // back instead of truncating against dead space.
+        .padding(.trailing, trailingPadding)
         .overlay(alignment: .bottom) { PillSeekEdge() }
         .overlay(alignment: .trailing) {
             // Fallback for a drag-up gesture that fought the tab bar's own

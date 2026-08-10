@@ -1,15 +1,18 @@
 import SwiftUI
 
-/// The pill's drag-up destination: everything the 48pt capsule cannot hold —
+/// The pill chevron's destination: everything the 48pt capsule cannot hold —
 /// real scrub numerals with a thumb, the favourite star, AirPlay, the format
-/// badge, and a way into the queue.
+/// badge, and a way into the queue. (A drag-up gesture was tried first, but
+/// it fought the tab bar's own scroll-to-minimize handling and was replaced
+/// by the chevron tap.)
 ///
 /// A tap on the pill still goes straight to `NowPlayingScreen`; this is the
 /// in-between surface for scrubbing without losing the list you were browsing.
 struct ExpandedPlayerPanel: View {
     @Environment(AppModel.self) private var app
     @Environment(\.theme) private var theme
-    @Environment(\.dismiss) private var dismiss
+
+    @State private var dashboardShown = false
 
     private var player: PlayerService { app.player }
 
@@ -54,15 +57,22 @@ struct ExpandedPlayerPanel: View {
                         .foregroundStyle(theme.palette.textSecondary)
                 }
                 Spacer()
-                Button("Queue") { dismiss() }
+                Button("Queue") { dashboardShown = true }
                     .font(theme.type.body(12))
                     .foregroundStyle(theme.palette.accent)
-                    .accessibilityHint("Closes this panel")
+                    .accessibilityHint("Opens the queue and stream details")
             }
         }
         .padding(.horizontal, 18)
         .padding(.top, 10)
         .frame(maxHeight: .infinity, alignment: .top)
+        .sheet(isPresented: $dashboardShown) {
+            DashboardPanel()
+                #if os(iOS)
+                .presentationDetents([.medium, .large])
+                #endif
+                .presentationBackground(theme.palette.base)
+        }
     }
 
     private var favoriteStar: some View {
