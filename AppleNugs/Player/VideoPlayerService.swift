@@ -272,6 +272,36 @@ final class VideoPlayerService {
         resumeAudioOnStop = false
     }
 
+    // --- full screen --------------------------------------------------------
+
+    /// True while the player view is inside AVKit's full-screen presentation.
+    /// Reported by the macOS VideoPlayerSurface's delegate; iOS never sets it
+    /// (AVPlayerViewController exits full screen on its own at end of playback,
+    /// via `exitsFullScreenWhenPlaybackEnds`).
+    private(set) var isFullScreen = false
+
+    /// Set when a video finishes while full screen, so the arbiter hand-back is
+    /// deferred to the exit instead of firing under the full-screen window.
+    private var relinquishOnFullScreenExit = false
+
+    /// AVKit gives macOS no way to leave full screen programmatically — no exit
+    /// method, no state property, only the delegate notifications — so a video
+    /// that ends full screen leaves the viewer there until they press Esc. What
+    /// we can avoid is the arbiter handing back *underneath* that window, which
+    /// would resume the audio queue: music playing with no visible UI and no
+    /// obvious cause. Deferring to the exit keeps the hand-back where the user
+    /// can see it.
+    func setFullScreen(_ value: Bool) {
+        guard value != isFullScreen else { return }
+        isFullScreen = value
+        guard !value else { return }
+        // Skip if the viewer replayed the video while still full screen — it
+        // re-claimed the arbiter and is playing again.
+        let shouldRelinquish = relinquishOnFullScreenExit && !isPlaying
+        relinquishOnFullScreenExit = false
+        if shouldRelinquish { relinquishArbiter() }
+    }
+
     func stop() {
         recordProgress(force: true)
         loadGeneration += 1
@@ -283,6 +313,7 @@ final class VideoPlayerService {
         isLive = false
         atLiveEdge = false
         loadError = nil
+        relinquishOnFullScreenExit = false
         relinquishArbiter()
     }
 
@@ -382,8 +413,14 @@ final class VideoPlayerService {
                 if !self.isLive { self.progress.markFinished(video.id) }
                 // The video is done — relinquish the arbiter even though the view
                 // stays on screen, so audio's Now Playing / media keys aren't
-                // left dead until the user navigates away.
-                self.relinquishArbiter()
+                // left dead until the user navigates away. In full screen that
+                // hand-back would resume the audio queue behind a window the
+                // viewer can't see past, so defer it to the exit.
+                if self.isFullScreen {
+                    self.relinquishOnFullScreenExit = true
+                } else {
+                    self.relinquishArbiter()
+                }
             }
         }
     }
