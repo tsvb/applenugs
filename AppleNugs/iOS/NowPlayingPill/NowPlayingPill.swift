@@ -43,6 +43,23 @@ struct NowPlayingPill: View {
         PillLayout.slot(isInline: placement.map { $0 == .inline })
     }
 
+    /// Whether tapping the pill actually opens something. `onTap` stays a
+    /// plain non-optional `() -> Void` — giving it the same optionality as
+    /// `onExpand` would cascade into every call site for one accessibility
+    /// gate — so this keys off `onExpand` instead. At both current call
+    /// sites (the tab accessory, and the offline Downloads sheet) the two
+    /// are wired together on purpose: there is a full-screen player to open
+    /// exactly when there is a panel to expand into, and both are `nil`/no-op
+    /// together in the sheet.
+    private var canOpenFullScreen: Bool { onExpand != nil }
+
+    /// "Now playing: title, artist" — but without a trailing ", " when a
+    /// track has no artist.
+    private var accessibilityLabelText: String {
+        guard let subtitle else { return "Now playing: \(title)" }
+        return "Now playing: \(title), \(subtitle)"
+    }
+
     var body: some View {
         HStack(spacing: PillLayout.slotTextGap) {
             PillLeadingSlot()
@@ -65,17 +82,24 @@ struct NowPlayingPill: View {
         }
         .padding(.leading, PillLayout.horizontalPadding)
         // Trailing side reserves a lane for the panel-open chevron below —
-        // an `.overlay`, not an HStack sibling. A plain nested Button here
-        // loses the touch to the container's own `.onTapGesture` (measured:
-        // even the pre-existing play/pause button does, since it shares this
-        // view's tap-gesture region); `PillSeekEdge` is proof an overlay
-        // wins hit-testing instead, so the chevron follows that shape.
-        // The lane itself is only reserved when the chevron actually renders —
-        // when `onExpand` is nil (the offline Downloads sheet) there is no
-        // control to make room for, so the title/artist column gets the space
-        // back instead of truncating against dead space.
+        // rendered as an `.overlay` rather than an HStack sibling purely to
+        // keep it out of the row's layout flow: the lane is reserved above
+        // via `trailingPadding` regardless, and an overlay lets the chevron
+        // appear or disappear (when `onExpand` is nil) without shifting any
+        // other child in the HStack. The lane itself is only reserved when
+        // the chevron actually renders — when `onExpand` is nil (the offline
+        // Downloads sheet) there is no control to make room for, so the
+        // title/artist column gets the space back instead of truncating
+        // against dead space.
         .padding(.trailing, trailingPadding)
-        .overlay(alignment: .bottom) { PillSeekEdge() }
+        .overlay(alignment: .bottom) {
+            // The hit strip stops short of the transport cluster (see
+            // `PillSeekEdge`'s own doc comment) so it doesn't shadow those
+            // buttons; the visible track still spans the full pill width.
+            PillSeekEdge(
+                hitTrailingInset: PillLayout.controlsTrailingInset(
+                    for: slot, includesChevron: onExpand != nil))
+        }
         .overlay(alignment: .trailing) {
             // Fallback for a drag-up gesture that fought the tab bar's own
             // scroll-to-minimize handling (didn't recognize reliably against
@@ -94,13 +118,31 @@ struct NowPlayingPill: View {
                 .padding(.trailing, PillLayout.horizontalPadding)
             }
         }
-        // Buttons inside the pill win over this container tap.
-        .contentShape(Rectangle())
-        .onTapGesture(perform: onTap)
-        .modifier(PillExpandAccessibilityAction(onExpand: onExpand))
+        // The container tap lives BEHIND the children: a sibling
+        // `.onTapGesture` directly on this HStack captures touches that
+        // belong to the nested transport buttons (measured — even play/pause
+        // lost its taps that way, since it shared this view's tap-gesture
+        // region). As a `.background` it renders behind the HStack's own
+        // content, so the nested buttons win hit-testing over it, while it
+        // still catches the empty space around the text column — which is
+        // what "tap the pill" should mean.
+        .background {
+            Color.clear
+                .contentShape(Rectangle())
+                .onTapGesture(perform: onTap)
+        }
         .accessibilityElement(children: .contain)
-        .accessibilityLabel(Text("Now playing: \(title), \(subtitle ?? "")"))
-        .accessibilityHint("Opens full-screen now playing")
+        // Both of these accessibility actions have to be applied AFTER
+        // `.accessibilityElement(children: .contain)` above, or they attach
+        // to the pre-container element and get dropped instead of landing on
+        // the combined pill.
+        .modifier(PillExpandAccessibilityAction(onExpand: onExpand))
+        .modifier(PillOpenAccessibilityAction(canOpenFullScreen: canOpenFullScreen, onTap: onTap))
+        .accessibilityLabel(accessibilityLabelText)
+        // The offline Downloads sheet wires `onTap` to a no-op (there is no
+        // full-screen player to open from there), so the hint and action
+        // promising one are gated behind `canOpenFullScreen` too.
+        .accessibilityHint(canOpenFullScreen ? "Opens full-screen now playing" : "")
     }
 
     private var title: String {
@@ -122,6 +164,23 @@ private struct PillExpandAccessibilityAction: ViewModifier {
     func body(content: Content) -> some View {
         if let onExpand {
             content.accessibilityAction(named: "Show playback controls", onExpand)
+        } else {
+            content
+        }
+    }
+}
+
+/// Applies the "Open full-screen player" accessibility action only when
+/// there is somewhere for it to go — see `canOpenFullScreen` above. Same
+/// `if let`-style shape as `PillExpandAccessibilityAction`: there is no
+/// optional-closure overload of `.accessibilityAction` to lean on instead.
+private struct PillOpenAccessibilityAction: ViewModifier {
+    let canOpenFullScreen: Bool
+    let onTap: () -> Void
+
+    func body(content: Content) -> some View {
+        if canOpenFullScreen {
+            content.accessibilityAction(named: "Open full-screen player", onTap)
         } else {
             content
         }

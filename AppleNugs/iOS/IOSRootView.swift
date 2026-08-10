@@ -203,9 +203,14 @@ struct IOSRootView: View {
         @ViewBuilder content: @escaping () -> Content
     ) -> some View {
         @Bindable var ui = ui
+        // The toast overlay is attached to the NavigationStack itself, not
+        // to `content()` (the stack's root view): the root is covered the
+        // moment a destination is pushed, and its overlay along with it, so
+        // a toast fired from a pushed screen — AlbumDetailView's "Playing
+        // next" / "Added to queue" — would silently vanish. One level out,
+        // the overlay stays visible across every push in this stack.
         NavigationStack(path: $ui.navPath) {
             content()
-                .overlay(alignment: .bottom) { toastOverlay }
                 .navigationDestination(for: Route.self) { route in
                     switch route {
                     case .artist(let artist):
@@ -222,6 +227,7 @@ struct IOSRootView: View {
                     ToolbarItem(placement: .topBarTrailing) { accountMenu }
                 }
         }
+        .overlay(alignment: .bottom) { toastOverlay }
     }
 
     private var accountMenu: some View {
@@ -256,10 +262,19 @@ struct IOSRootView: View {
                 .padding(.vertical, 8)
                 .background(.regularMaterial, in: Capsule())
                 .shadow(radius: 4)
-                // The tab content sits inside the NavigationStack, whose safe
-                // area already excludes the accessory pill and the tab bar
-                // (unlike the TabView itself), so a plain 8pt clears them by
-                // construction at any chrome height.
+                // This overlay is attached to the NavigationStack itself, one
+                // level above `content()` (see `tabStack` above) — but the
+                // NavigationStack is still a Tab's content, and it's *being*
+                // a Tab's content that gets the accessory pill and the tab
+                // bar excluded from the safe area, not specifically being
+                // `content()`. So the exclusion still applies here, and a
+                // plain 8pt still clears the pill by construction at any
+                // chrome height. Confirmed live at the stack root (a deep
+                // link's failure toast, screenshot in the branch's
+                // final-review report); a pushed destination sits under the
+                // same overlay by construction, so the same safe area and
+                // padding apply there too, but that specific case wasn't
+                // exercised with a live tap (see the report for why).
                 .padding(.bottom, 8)
                 .transition(.opacity)
                 .allowsHitTesting(false)

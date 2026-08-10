@@ -69,4 +69,18 @@ enum PillLayout {
         let leading = hasLeadingSlot ? leadingSlotSize + slotTextGap : 0
         return max(width - horizontalPadding * 2 - controlsWidth - leading - slotTextGap, 0)
     }
+
+    /// Width, measured from the pill's trailing edge, occupied by the
+    /// transport-control cluster plus (when it renders) the chevron's lane.
+    /// `PillSeekEdge` subtracts this from its trailing side so its invisible
+    /// hit strip stops before the buttons instead of riding above them —
+    /// mirrors the same arithmetic `NowPlayingPill.trailingPadding` uses for
+    /// the chevron lane, plus the control cluster's own width.
+    static func controlsTrailingInset(for slot: Slot, includesChevron: Bool) -> CGFloat {
+        let set = controls(for: slot)
+        let controlsWidth = CGFloat(set.count) * controlWidth
+            + CGFloat(max(set.count - 1, 0)) * controlSpacing
+        let chevronLane = includesChevron ? controlWidth + controlSpacing : 0
+        return horizontalPadding + chevronLane + controlsWidth
+    }
 }
