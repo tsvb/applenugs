@@ -3,31 +3,19 @@
     <channel>
         <title>AppleNugs</title>
         <item>
-            <title>1.2</title>
-            <pubDate>Sun, 02 Aug 2026 00:01:47 -0400</pubDate>
-            <sparkle:version>3</sparkle:version>
-            <sparkle:shortVersionString>1.2</sparkle:shortVersionString>
+            <title>1.3</title>
+            <pubDate>Mon, 10 Aug 2026 10:15:08 -0400</pubDate>
+            <sparkle:version>4</sparkle:version>
+            <sparkle:shortVersionString>1.3</sparkle:shortVersionString>
             <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-            <description><![CDATA[<h2>AppleNugs 1.2</h2>
-<p><strong>The Dashboard gets a real player.</strong> The inspector's now-playing
-section is now a per-theme miniplayer instead of a text block:</p>
+            <description><![CDATA[<h2>Full-screen video on macOS</h2>
 <ul>
-  <li><strong>Tape Room</strong> — a Compact Cassette at true 25:16: your cover shows
-      through the shell window behind two reels whose tape packs actually trade size
-      as the track runs, the exposed tape span is the scrubber, and the write-on
-      label carries the track, artist, and show.</li>
-  <li><strong>The Receiver</strong> — a tuner faceplate with live L/R VU meters,
-      a RECEIVING lamp, and machined transport buttons.</li>
-  <li><strong>Click Wheel</strong> — a monochrome track card over a compact dial.</li>
-  <li><strong>Soundboard &amp; Shoebox</strong> — a token-driven compact player with
-      cover chip, scrubber, and transport (filled vs. keyline personality).</li>
+  <li><b>Full-screen toggle on the video player.</b> Hover the video to reveal the controls &mdash; the button enters full screen, and the same button (or Esc) exits. Previously there was no full-screen affordance at all, so video played in a letterbox between the sidebar, transport bar, and inspector.</li>
+  <li><b>No more phantom music.</b> A video finishing while full screen used to hand playback straight back to the audio queue, starting music behind a window you couldn't see past. That hand-back now waits until you leave full screen.</li>
 </ul>
-<p>Every variant scrubs, shows elapsed/remaining time, and keeps prev/play/next a
-click away. The inspector column now sits at 340–380pt so the show line fits.</p>
-<p><strong>Fixes:</strong> cassette reel hubs now show their splines, so you can see
-them turn (and freeze in place on pause).</p>
+<p>iOS is unchanged &mdash; it already had full-screen video.</p>
 ]]></description>
-            <enclosure url="https://github.com/tsvb/applenugs/releases/download/v1.2/AppleNugs-1.2.dmg" length="4038338" type="application/octet-stream" sparkle:edSignature="rJhVfrT2nzrdrySN0G/vGPGjalQ2hqZymu26WgqdPWc5XrVhHrtpoANbRI1Fq2DSnfxXg7rYDChjhOkMZlooCA=="/>
+            <enclosure url="https://github.com/tsvb/applenugs/releases/download/v1.3/AppleNugs-1.3.dmg" length="4042133" type="application/octet-stream" sparkle:edSignature="SXfhrGrlhaD31nhvXIQzBDrrzcZ6WciNRqOPUutHpfuG0acaXbFMdDN9OkbUi7mhke8J65jxXZ2XL2PLhRKUAg=="/>
         </item>
     </channel>
 </rss>
