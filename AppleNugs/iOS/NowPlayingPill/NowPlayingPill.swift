@@ -118,19 +118,14 @@ struct NowPlayingPill: View {
                 .padding(.trailing, PillLayout.horizontalPadding)
             }
         }
-        // The container tap lives BEHIND the children: a sibling
-        // `.onTapGesture` directly on this HStack captures touches that
-        // belong to the nested transport buttons (measured — even play/pause
-        // lost its taps that way, since it shared this view's tap-gesture
-        // region). As a `.background` it renders behind the HStack's own
-        // content, so the nested buttons win hit-testing over it, while it
-        // still catches the empty space around the text column — which is
-        // what "tap the pill" should mean.
-        .background {
-            Color.clear
-                .contentShape(Rectangle())
-                .onTapGesture(perform: onTap)
-        }
+        // The container tap sits in front, over the whole pill, and the nested
+        // transport Buttons still win hit-testing against it — verified in the
+        // simulator: tapping play/pause does NOT open the full-screen player,
+        // and tapping the text column does. An earlier attempt to move this
+        // into a `.background` broke the text-column tap entirely (the tap
+        // never reached the background layer), so it stays here.
+        .contentShape(Rectangle())
+        .onTapGesture(perform: onTap)
         .accessibilityElement(children: .contain)
         // Both of these accessibility actions have to be applied AFTER
         // `.accessibilityElement(children: .contain)` above, or they attach
