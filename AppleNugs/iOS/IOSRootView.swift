@@ -113,10 +113,17 @@ struct IOSRootView: View {
                     }
                     .safeAreaInset(edge: .bottom, spacing: 0) {
                         if app.player.current != nil {
-                            VStack(spacing: 0) {
-                                Divider()
-                                TransportBar()
-                            }
+                            // Sheets cannot host a tab accessory, so this is the
+                            // one legitimate place the pill is mounted by hand.
+                            // `tabViewBottomAccessoryPlacement` is nil here and
+                            // PillLayout treats nil as .expanded. There is no
+                            // full-screen player or panel to open from a
+                            // connection-failed sheet, so both are no-ops/nil.
+                            NowPlayingPill(onTap: { }, onExpand: nil)
+                                .frame(height: 48)
+                                .background(.thinMaterial, in: Capsule())
+                                .padding(.horizontal, 12)
+                                .padding(.bottom, 8)
                         }
                     }
             }

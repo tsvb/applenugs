@@ -22,7 +22,12 @@ struct NowPlayingPill: View {
     /// its content's body but never becomes visible — the accessory is a
     /// system-hosted container, not a normal presentation context. The shell
     /// presents the panel instead.
-    let onExpand: () -> Void
+    ///
+    /// Optional because the pill is also hand-mounted outside a tab accessory
+    /// (the offline Downloads sheet), where there is no panel to expand into.
+    /// `nil` hides the chevron entirely — a chevron that does nothing is
+    /// worse than no chevron.
+    let onExpand: (() -> Void)?
 
     private var slot: PillLayout.Slot {
         // `.map` rather than `placement == .inline`: the latter would collapse
@@ -66,21 +71,23 @@ struct NowPlayingPill: View {
             // scroll-to-minimize handling (didn't recognize reliably against
             // the system gesture) — a plain tap into the panel instead.
             // Tap on the pill body still opens the full-screen player.
-            HapticButton(.transportStep, action: onExpand) {
-                Image(systemName: "chevron.up")
-                    .font(.caption.weight(.semibold))
-                    .frame(width: PillLayout.controlWidth, height: PillLayout.controlWidth)
-                    .contentShape(Rectangle())
+            if let onExpand {
+                HapticButton(.transportStep, action: onExpand) {
+                    Image(systemName: "chevron.up")
+                        .font(.caption.weight(.semibold))
+                        .frame(width: PillLayout.controlWidth, height: PillLayout.controlWidth)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(theme.palette.textSecondary)
+                .accessibilityLabel("Show playback controls")
+                .padding(.trailing, PillLayout.horizontalPadding)
             }
-            .buttonStyle(.plain)
-            .foregroundStyle(theme.palette.textSecondary)
-            .accessibilityLabel("Show playback controls")
-            .padding(.trailing, PillLayout.horizontalPadding)
         }
         // Buttons inside the pill win over this container tap.
         .contentShape(Rectangle())
         .onTapGesture(perform: onTap)
-        .accessibilityAction(named: "Show playback controls", onExpand)
+        .modifier(PillExpandAccessibilityAction(onExpand: onExpand))
         .accessibilityElement(children: .contain)
         .accessibilityLabel(Text("Now playing: \(title), \(subtitle ?? "")"))
         .accessibilityHint("Opens full-screen now playing")
@@ -92,5 +99,21 @@ struct NowPlayingPill: View {
 
     private var subtitle: String? {
         app.player.current?.artist
+    }
+}
+
+/// Applies the "Show playback controls" accessibility action only when the
+/// pill actually has a panel to expand into. `.accessibilityAction` has no
+/// optional-closure overload, so this conditionally attaches it rather than
+/// wiring a no-op — mirrors the chevron's own `if let onExpand` above.
+private struct PillExpandAccessibilityAction: ViewModifier {
+    let onExpand: (() -> Void)?
+
+    func body(content: Content) -> some View {
+        if let onExpand {
+            content.accessibilityAction(named: "Show playback controls", onExpand)
+        } else {
+            content
+        }
     }
 }
