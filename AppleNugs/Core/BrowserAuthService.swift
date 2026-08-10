@@ -87,6 +87,15 @@ final class BrowserAuthService: NSObject, ASWebAuthenticationPresentationContext
         return (code, verifier)
     }
 
+    // iOS 26 deprecated every scene-less UIWindow initializer (`init()` and
+    // `init(frame:)` both; `init(windowScene:)` is the only survivor), but the
+    // last-resort branch below still needs one — the alternative is a
+    // force-unwrap that would crash the login flow instead of degrading. A
+    // deprecated declaration may use same-version deprecated API without
+    // warning, and nothing in this project calls this method (the system
+    // invokes it as an ASWebAuthenticationSession protocol witness), so the
+    // annotation costs nothing and keeps the build clean.
+    @available(iOS, deprecated: 26.0, message: "Retains a scene-less UIWindow fallback by design.")
     func presentationAnchor(for _: ASWebAuthenticationSession) -> ASPresentationAnchor {
         #if os(macOS)
         return NSApp.windows.first(where: { $0.isKeyWindow }) ?? NSApp.windows.first ?? NSWindow()
@@ -94,10 +103,9 @@ final class BrowserAuthService: NSObject, ASWebAuthenticationPresentationContext
         let scenes = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
         let window = scenes.flatMap(\.windows).first(where: \.isKeyWindow)
             ?? scenes.first?.windows.first
-        // ASWebAuthenticationSession may call this from a background callback. We
-        // prefer the modern UIWindow(windowScene:) initializer when a scene exists;
-        // the deprecated parameterless UIWindow() is kept as a last resort to ensure
-        // this path cannot crash when no scene is available.
+        // Prefer the modern UIWindow(windowScene:) when a scene exists; the
+        // parameterless initializer is the unreachable last resort that keeps
+        // this path crash-free (see the availability note above).
         return window ?? scenes.first.map { UIWindow(windowScene: $0) } ?? UIWindow()
         #endif
     }
