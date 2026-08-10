@@ -159,7 +159,6 @@ struct IOSRootView: View {
         // omitting it from the accessory's content instead. Every real test
         // target (simulator OS 26.5+) takes the `#available` branch.
         .modifier(NowPlayingAccessory(app: app) { nowPlayingPresented = true })
-        .overlay(alignment: .bottom) { toastOverlay }
         .fullScreenCover(isPresented: $nowPlayingPresented) {
             NowPlayingScreen()
         }
@@ -188,6 +187,7 @@ struct IOSRootView: View {
         @Bindable var ui = ui
         NavigationStack(path: $ui.navPath) {
             content()
+                .overlay(alignment: .bottom) { toastOverlay }
                 .navigationDestination(for: Route.self) { route in
                     switch route {
                     case .artist(let artist):
@@ -238,7 +238,11 @@ struct IOSRootView: View {
                 .padding(.vertical, 8)
                 .background(.regularMaterial, in: Capsule())
                 .shadow(radius: 4)
-                .padding(.bottom, 78)  // float above the transport bar
+                // The tab content sits inside the NavigationStack, whose safe
+                // area already excludes the accessory pill and the tab bar
+                // (unlike the TabView itself), so a plain 8pt clears them by
+                // construction at any chrome height.
+                .padding(.bottom, 8)
                 .transition(.opacity)
                 .allowsHitTesting(false)
         }
