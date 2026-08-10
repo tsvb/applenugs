@@ -4,7 +4,9 @@ options:
   bundleIdPrefix: com.timvbs
   deploymentTarget:
     macOS: "14.0"
-    iOS: "26.0"
+    # 26.1, not 26.0: tabViewBottomAccessory(isEnabled:) — the overload that
+    # reclaims the slot when nothing is playing — is 26.1+.
+    iOS: "26.1"
   createIntermediateGroups: true
 
 settings:

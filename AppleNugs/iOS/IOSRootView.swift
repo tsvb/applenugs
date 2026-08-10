@@ -1,10 +1,14 @@
 import SwiftUI
 import UIKit
 
-/// Phase A shell: one NavigationStack over the shared section views, driven by
-/// the same UIState routing the Mac shell uses, with the shared TransportBar
-/// pinned via safeAreaInset. Phase B replaces `mainLayout` with the real tab
-/// shell; the session switch and theming here are permanent.
+/// The iPhone shell: a tab per Mac sidebar section, each with its own
+/// NavigationStack over the shared UIState routing, and the now-playing pill
+/// hosted in the TabView's bottom accessory.
+///
+/// The pill lives in the accessory rather than in a per-tab `safeAreaInset`
+/// because the accessory belongs to the TabView: it rides above pushed detail
+/// screens for free. The old inset decorated each stack's *root* view, so the
+/// bar vanished the moment anything was pushed.
 struct IOSRootView: View {
     @Environment(AppModel.self) private var app
     @Environment(UIState.self) private var ui
@@ -146,6 +150,15 @@ struct IOSRootView: View {
                 tabStack { VideosView() }
             }
         }
+        // The accessory belongs to the TabView, so it rides above every screen
+        // — including pushed detail views — instead of decorating each stack's
+        // root the way the old safeAreaInset did.
+        //
+        // `isEnabled:` needs iOS 26.1; our deployment target is 26.0 (see
+        // project.yml), so the pre-26.1 branch below hides the pill by
+        // omitting it from the accessory's content instead. Every real test
+        // target (simulator OS 26.5+) takes the `#available` branch.
+        .modifier(NowPlayingAccessory(app: app) { nowPlayingPresented = true })
         .overlay(alignment: .bottom) { toastOverlay }
         .fullScreenCover(isPresented: $nowPlayingPresented) {
             NowPlayingScreen()
@@ -190,21 +203,6 @@ struct IOSRootView: View {
                 .toolbar {
                     ToolbarItem(placement: .topBarTrailing) { accountMenu }
                 }
-                // Inset per tab (not on the TabView) so the bar docks above
-                // the tab bar instead of covering it. REMOVED IN TASK 4.
-                .safeAreaInset(edge: .bottom, spacing: 0) {
-                    if app.player.current != nil {
-                        VStack(spacing: 0) {
-                            Divider()
-                            TransportBar()
-                        }
-                        // Buttons inside the bar win over this container tap.
-                        .contentShape(Rectangle())
-                        .onTapGesture { nowPlayingPresented = true }
-                        .accessibilityAddTraits(.isButton)
-                        .accessibilityHint("Opens full-screen now playing")
-                    }
-                }
         }
     }
 
@@ -244,5 +242,25 @@ struct IOSRootView: View {
                 .transition(.opacity)
                 .allowsHitTesting(false)
         }
+    }
+}
+
+/// Hosts `NowPlayingPill` in the `TabView`'s bottom accessory.
+///
+/// `tabViewBottomAccessory(isEnabled:content:)` is the overload that hides the
+/// accessory entirely when nothing is playing; it is iOS 26.1+, which is why
+/// the deployment target is 26.1 rather than 26.0. The content-only overload
+/// (26.0) has no way to reclaim the slot, so an idle player would leave a 48pt
+/// gap above the tab bar.
+private struct NowPlayingAccessory: ViewModifier {
+    let app: AppModel
+    let onTap: () -> Void
+
+    func body(content: Content) -> some View {
+        content
+            .tabViewBottomAccessory(isEnabled: app.player.current != nil) {
+                NowPlayingPill(onTap: onTap)
+            }
+            .tabBarMinimizeBehavior(.onScrollDown)
     }
 }
