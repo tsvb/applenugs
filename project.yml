@@ -199,6 +199,11 @@ targets:
       - path: AppleNugs/macOS/MiniPlayer/TapeGeometry.swift
         # Pure Foundation math (pack radius, progress clamping); compiled in
         # rather than @testable-imported to keep the test bundle host-free.
+      - path: AppleNugs/iOS/NowPlayingPill/PillLayout.swift
+        # Pure Foundation policy (control sets, width budgets) for the iOS
+        # now-playing pill; compiled in rather than @testable-imported so the
+        # test bundle stays host-free — and so macOS-hosted tests can cover
+        # iOS-only layout logic.
     scheme:
       testTargets:
         - AppleNugsTests
