@@ -198,6 +198,7 @@ struct IOSRootView: View {
                             Divider()
                             TransportBar()
                         }
+                        // Buttons inside the bar win over this container tap.
                         .contentShape(Rectangle())
                         .onTapGesture { nowPlayingPresented = true }
                         .accessibilityAddTraits(.isButton)

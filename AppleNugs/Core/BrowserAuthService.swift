@@ -94,11 +94,11 @@ final class BrowserAuthService: NSObject, ASWebAuthenticationPresentationContext
         let scenes = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
         let window = scenes.flatMap(\.windows).first(where: \.isKeyWindow)
             ?? scenes.first?.windows.first
-        // ASWebAuthenticationSession only calls this while presenting UI in the
-        // foreground, so a connected window scene always exists here. The bare
-        // UIWindow() initializer used as a last resort is deprecated as of iOS 26
-        // in favor of the windowScene-based one.
-        return window ?? UIWindow(windowScene: scenes.first!)
+        // ASWebAuthenticationSession may call this from a background callback. We
+        // prefer the modern UIWindow(windowScene:) initializer when a scene exists;
+        // the deprecated parameterless UIWindow() is kept as a last resort to ensure
+        // this path cannot crash when no scene is available.
+        return window ?? scenes.first.map { UIWindow(windowScene: $0) } ?? UIWindow()
         #endif
     }
 
