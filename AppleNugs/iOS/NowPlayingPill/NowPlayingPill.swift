@@ -46,6 +46,7 @@ struct NowPlayingPill: View {
             PillTransportControls(slot: slot)
         }
         .padding(.horizontal, PillLayout.horizontalPadding)
+        .overlay(alignment: .bottom) { PillSeekEdge() }
         // Buttons inside the pill win over this container tap.
         .contentShape(Rectangle())
         .onTapGesture(perform: onTap)
