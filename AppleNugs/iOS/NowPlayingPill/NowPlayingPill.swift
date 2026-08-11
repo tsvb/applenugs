@@ -92,14 +92,6 @@ struct NowPlayingPill: View {
         // title/artist column gets the space back instead of truncating
         // against dead space.
         .padding(.trailing, trailingPadding)
-        .overlay(alignment: .bottom) {
-            // The hit strip stops short of the transport cluster (see
-            // `PillSeekEdge`'s own doc comment) so it doesn't shadow those
-            // buttons; the visible track still spans the full pill width.
-            PillSeekEdge(
-                hitTrailingInset: PillLayout.controlsTrailingInset(
-                    for: slot, includesChevron: onExpand != nil))
-        }
         .overlay(alignment: .trailing) {
             // Fallback for a drag-up gesture that fought the tab bar's own
             // scroll-to-minimize handling (didn't recognize reliably against
