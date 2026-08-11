@@ -42,12 +42,6 @@ enum PillLayout {
     static let ringLineWidth: CGFloat = 2
     static let ringGap: CGFloat = 1
 
-    /// The visible seek track, and the invisible strip that actually catches
-    /// the drag. 2.5pt is untappable; 20pt is comfortable without swallowing
-    /// the container tap (which is gated behind a drag minimumDistance).
-    static let seekEdgeHeight: CGFloat = 2.5
-    static let seekHitHeight: CGFloat = 20
-
     // --- policy -------------------------------------------------------------
 
     /// `tabViewBottomAccessoryPlacement` is optional: it is nil wherever the
@@ -75,20 +69,6 @@ enum PillLayout {
             + CGFloat(max(set.count - 1, 0)) * controlSpacing
         let leading = hasLeadingSlot ? leadingSlotSize + slotTextGap : 0
         return max(width - horizontalPadding * 2 - controlsWidth - leading - slotTextGap, 0)
-    }
-
-    /// Width, measured from the pill's trailing edge, occupied by the
-    /// transport-control cluster plus (when it renders) the chevron's lane.
-    /// `PillSeekEdge` subtracts this from its trailing side so its invisible
-    /// hit strip stops before the buttons instead of riding above them —
-    /// mirrors the same arithmetic `NowPlayingPill.trailingPadding` uses for
-    /// the chevron lane, plus the control cluster's own width.
-    static func controlsTrailingInset(for slot: Slot, includesChevron: Bool) -> CGFloat {
-        let set = controls(for: slot)
-        let controlsWidth = CGFloat(set.count) * controlWidth
-            + CGFloat(max(set.count - 1, 0)) * controlSpacing
-        let chevronLane = includesChevron ? controlWidth + controlSpacing : 0
-        return horizontalPadding + chevronLane + controlsWidth
     }
 
     /// Side of the `ArtChip` that sits inside the progress ring: the slot

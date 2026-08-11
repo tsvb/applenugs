@@ -63,30 +63,6 @@ final class PillLayoutTests: XCTestCase {
                        0, accuracy: 0.001)
     }
 
-    // --- seek hit inset -------------------------------------------------------
-
-    /// Expanded, chevron showing: 10pt padding + chevron lane (28+4) + five
-    /// controls (5*28 + 4*4 = 156) = 198.
-    func testControlsTrailingInsetExpandedWithChevron() {
-        XCTAssertEqual(
-            PillLayout.controlsTrailingInset(for: .expanded, includesChevron: true),
-            198, accuracy: 0.001)
-    }
-
-    /// No chevron: drop its 32pt lane, keep the five controls.
-    func testControlsTrailingInsetExpandedWithoutChevron() {
-        XCTAssertEqual(
-            PillLayout.controlsTrailingInset(for: .expanded, includesChevron: false),
-            166, accuracy: 0.001)
-    }
-
-    /// Inline sheds three controls: 10 + 32 (chevron) + (2*28 + 4) = 102.
-    func testControlsTrailingInsetInlineWithChevron() {
-        XCTAssertEqual(
-            PillLayout.controlsTrailingInset(for: .inline, includesChevron: true),
-            102, accuracy: 0.001)
-    }
-
     // --- progress ring --------------------------------------------------------
 
     /// The ring is drawn INSIDE the 32pt slot so the slot's footprint — and
