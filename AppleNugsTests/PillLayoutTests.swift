@@ -86,4 +86,49 @@ final class PillLayoutTests: XCTestCase {
             PillLayout.controlsTrailingInset(for: .inline, includesChevron: true),
             102, accuracy: 0.001)
     }
+
+    // --- progress ring --------------------------------------------------------
+
+    /// The ring is drawn INSIDE the 32pt slot so the slot's footprint — and
+    /// therefore `textBudget` — is unchanged. 32 - 2*(2 + 1) = 26.
+    func testArtChipShrinksToLeaveRoomForTheRing() {
+        XCTAssertEqual(PillLayout.artChipSize(slot: PillLayout.leadingSlotSize),
+                       26, accuracy: 0.001)
+    }
+
+    /// A slot too small to hold the ring's band must clamp at zero rather
+    /// than hand SwiftUI a negative frame.
+    func testArtChipSizeNeverGoesNegative() {
+        XCTAssertEqual(PillLayout.artChipSize(slot: 4), 0, accuracy: 0.001)
+    }
+
+    /// The whole point of the ring's guard: a stream that reports no duration
+    /// gets an EMPTY ring, never a full one. A full ring would read as
+    /// "finished" — the same defect 11dae49 fixed on the scrub sliders.
+    func testProgressIsEmptyWhenDurationIsUnknown() {
+        XCTAssertEqual(PillLayout.progressFraction(currentTime: 240, duration: 0),
+                       0, accuracy: 0.001)
+    }
+
+    func testProgressIsEmptyWhenDurationIsNegative() {
+        XCTAssertEqual(PillLayout.progressFraction(currentTime: 240, duration: -1),
+                       0, accuracy: 0.001)
+    }
+
+    func testProgressTracksPositionThroughTheTrack() {
+        XCTAssertEqual(PillLayout.progressFraction(currentTime: 150, duration: 600),
+                       0.25, accuracy: 0.001)
+    }
+
+    /// A position past the end (a stream whose reported duration lags) clamps
+    /// at a full ring instead of overdrawing the arc.
+    func testProgressClampsAtOne() {
+        XCTAssertEqual(PillLayout.progressFraction(currentTime: 900, duration: 600),
+                       1, accuracy: 0.001)
+    }
+
+    func testProgressClampsAtZeroForNegativePosition() {
+        XCTAssertEqual(PillLayout.progressFraction(currentTime: -5, duration: 600),
+                       0, accuracy: 0.001)
+    }
 }

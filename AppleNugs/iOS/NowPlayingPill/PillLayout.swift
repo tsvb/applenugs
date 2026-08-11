@@ -35,6 +35,13 @@ enum PillLayout {
     static let horizontalPadding: CGFloat = 10
     static let slotTextGap: CGFloat = 8
 
+    /// The progress ring's stroke, and the breathing room between it and the
+    /// cover it encircles. The ring is drawn INSIDE `leadingSlotSize` — the
+    /// slot's footprint is load-bearing for `textBudget`, so the art shrinks
+    /// to make room rather than the slot growing.
+    static let ringLineWidth: CGFloat = 2
+    static let ringGap: CGFloat = 1
+
     /// The visible seek track, and the invisible strip that actually catches
     /// the drag. 2.5pt is untappable; 20pt is comfortable without swallowing
     /// the container tap (which is gated behind a drag minimumDistance).
@@ -82,5 +89,22 @@ enum PillLayout {
             + CGFloat(max(set.count - 1, 0)) * controlSpacing
         let chevronLane = includesChevron ? controlWidth + controlSpacing : 0
         return horizontalPadding + chevronLane + controlsWidth
+    }
+
+    /// Side of the `ArtChip` that sits inside the progress ring: the slot
+    /// less the ring's band on both sides. Clamped so a pathologically small
+    /// slot yields zero rather than a negative frame.
+    static func artChipSize(slot: CGFloat) -> CGFloat {
+        max(slot - 2 * (ringLineWidth + ringGap), 0)
+    }
+
+    /// How much of the ring is filled, in 0...1.
+    ///
+    /// **Empty when the duration is unknown.** A full ring on a stream that
+    /// reports no duration would read as "finished" — the same defect
+    /// `11dae49` fixed on the four iOS scrub sliders.
+    static func progressFraction(currentTime: Double, duration: Double) -> Double {
+        guard duration > 0 else { return 0 }
+        return min(max(currentTime / duration, 0), 1)
     }
 }
