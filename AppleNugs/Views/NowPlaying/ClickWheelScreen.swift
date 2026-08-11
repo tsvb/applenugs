@@ -150,7 +150,10 @@ struct ClickWheelScreen: View {
         VStack(spacing: 4) {
             Slider(
                 value: Binding(
-                    get: { scrubbing ? scrubValue : min(player.currentTime, sliderMax) },
+                    // Duration-less streams would pin the thumb hard right
+                    // (sliderMax falls back to 1), reading as "finished".
+                    get: { scrubbing ? scrubValue
+                                     : (player.duration > 0 ? min(player.currentTime, sliderMax) : 0) },
                     set: { scrubValue = $0 }),
                 in: 0...sliderMax
             ) { editing in

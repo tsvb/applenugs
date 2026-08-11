@@ -187,7 +187,13 @@ struct StandardNowPlayingScreen: View {
         VStack(spacing: 4) {
             Slider(
                 value: Binding(
-                    get: { scrubbing ? scrubValue : min(player.currentTime, sliderMax) },
+                    // A stream that reports no duration would otherwise pin the
+                    // thumb hard right — `sliderMax` falls back to 1 and the
+                    // position clamps to it — which reads as "finished" while
+                    // the track is only seconds in. Sit at 0 instead; the
+                    // slider is already disabled in that state.
+                    get: { scrubbing ? scrubValue
+                                     : (player.duration > 0 ? min(player.currentTime, sliderMax) : 0) },
                     set: { scrubValue = $0 }),
                 in: 0...sliderMax
             ) { editing in
