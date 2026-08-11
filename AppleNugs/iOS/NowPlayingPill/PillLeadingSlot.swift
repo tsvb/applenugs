@@ -18,13 +18,19 @@ struct PillLeadingSlot: View {
     private var size: CGFloat { PillLayout.leadingSlotSize }
 
     var body: some View {
-        // The ring is drawn inside the 32pt footprint and the art shrinks to
-        // make room, so the slot's width — which `PillLayout.textBudget`
-        // subtracts — is unchanged.
+        // `artChipSize` is the diameter of the inscribed circle that fits
+        // inside the ring's inner edge — correct by construction only
+        // because the chip below is clipped to a circle. A rounded-square
+        // chip at that same size would still reach past the ring at its
+        // corners; the circular clip is what holds the 1pt `ringGap` at
+        // every angle, not just on the 12/3/6/9 o'clock axes. The slot's
+        // outer footprint — what `PillLayout.textBudget` subtracts — stays
+        // 32pt regardless.
         ArtChip(image: app.player.nowPlayingImage,
                 fallbackText: app.player.current?.artist
                     ?? app.player.current?.title ?? "?",
                 size: PillLayout.artChipSize(slot: size))
+            .clipShape(Circle())
             .frame(width: size, height: size)
             .overlay { PillProgressRing() }
             .accessibilityHidden(true)   // the pill's label already says what's playing

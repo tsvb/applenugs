@@ -91,7 +91,8 @@ struct ExpandedPlayerPanel: View {
 }
 
 /// **A leaf view** — the second and last place in this feature allowed to read
-/// `currentTime`, for the same reason as `PillSeekEdge`.
+/// `currentTime`. The playback clock ticks ~4Hz; isolating the read here
+/// keeps that churn from re-diffing the panel's body around it.
 private struct PanelScrubRow: View {
     @Environment(AppModel.self) private var app
     @Environment(\.theme) private var theme
