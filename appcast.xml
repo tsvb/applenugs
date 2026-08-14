@@ -3,19 +3,12 @@
     <channel>
         <title>AppleNugs</title>
         <item>
-            <title>1.3</title>
-            <pubDate>Mon, 10 Aug 2026 10:15:08 -0400</pubDate>
-            <sparkle:version>4</sparkle:version>
-            <sparkle:shortVersionString>1.3</sparkle:shortVersionString>
+            <title>1.4</title>
+            <pubDate>Thu, 13 Aug 2026 21:57:05 -0400</pubDate>
+            <sparkle:version>5</sparkle:version>
+            <sparkle:shortVersionString>1.4</sparkle:shortVersionString>
             <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-            <description><![CDATA[<h2>Full-screen video on macOS</h2>
-<ul>
-  <li><b>Full-screen toggle on the video player.</b> Hover the video to reveal the controls &mdash; the button enters full screen, and the same button (or Esc) exits. Previously there was no full-screen affordance at all, so video played in a letterbox between the sidebar, transport bar, and inspector.</li>
-  <li><b>No more phantom music.</b> A video finishing while full screen used to hand playback straight back to the audio queue, starting music behind a window you couldn't see past. That hand-back now waits until you leave full screen.</li>
-</ul>
-<p>iOS is unchanged &mdash; it already had full-screen video.</p>
-]]></description>
-            <enclosure url="https://github.com/tsvb/applenugs/releases/download/v1.3/AppleNugs-1.3.dmg" length="4042133" type="application/octet-stream" sparkle:edSignature="SXfhrGrlhaD31nhvXIQzBDrrzcZ6WciNRqOPUutHpfuG0acaXbFMdDN9OkbUi7mhke8J65jxXZ2XL2PLhRKUAg=="/>
+            <enclosure url="https://github.com/tsvb/applenugs/releases/download/v1.4/AppleNugs-1.4.dmg" length="4043765" type="application/octet-stream" sparkle:edSignature="OjC/KX3WJk6XjpRDzbEZpYaKK8TMrv4lQtTZL/6zP34qw/24PLS5c8eh+xeSl75iI2rlb/M4VeUsOd6A1jWHDQ=="/>
         </item>
     </channel>
 </rss>
