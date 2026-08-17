@@ -11,7 +11,7 @@ Native **macOS + iOS SwiftUI** client for nugs.net. Public repo `tsvb/applenugs`
 ## Environment & build
 - Work in the git **worktree** you were started in; **don't `cd` to the main checkout** (the repo-root clone). Merge to `main` via a fast-forward from the main checkout using `git -C`, then push (releases/pushes are the maintainer's call).
 - `xcodegen generate` after any `project.yml` edit (`AppleNugs.xcodeproj/` is **gitignored**). Regenerate before building/opening.
-- Schemes: `AppleNugs` (macOS, `-destination 'platform=macOS'`), `AppleNugs-iOS` (`-destination 'generic/platform=iOS Simulator'` or a device id), `AppleNugsTests` (host-free unit tests, 81 currently).
+- Schemes: `AppleNugs` (macOS, `-destination 'platform=macOS'`), `AppleNugs-iOS` (`-destination 'generic/platform=iOS Simulator'` or a device id), `AppleNugsTests` (host-free unit tests, **98** as of 2026-08-17 — CI runs them on every push, so take the count from the suite rather than from this line).
 - **Always build/verify with a fresh `-derivedDataPath`** — incremental builds can report a false "clean". Project must stay warning-free under `SWIFT_STRICT_CONCURRENCY=complete` on **both** schemes. SourceKit "No such module 'UIKit'" on iOS-only files = per-target index noise; `xcodebuild` is authoritative.
 - `docs/superpowers/` is **gitignored** (specs, plans, reports — local only, and therefore NOT a safe place for handoff state: a worktree removal deletes it. Durable session state belongs in this file plus the auto-memory index).
 - Visual verify without a login: launch with `-UITEST -UITestSeedQueue` (bypasses login, seeds a now-playing queue). Theme switcher = account menu (person icon). Dashboard = `sidebar.right` toolbar button / ⌥⌘I.
@@ -51,7 +51,13 @@ Native **macOS + iOS SwiftUI** client for nugs.net. Public repo `tsvb/applenugs`
 
 **`11dae49` fixed a cross-cutting scrub bug:** `sliderMax = max(duration, 1)` meant a stream reporting no duration pinned the thumb hard right, reading as "finished". Fixed on four iOS surfaces (`NowPlayingScreen`, `ClickWheelScreen`, `TouchFaceplate`, `ExpandedPlayerPanel`), and **the two macOS surfaces are now fixed too** — `FaceplateTransport` and `TransportBar.seekBlock` (`be51ccf`, merged to main). **All six scrub surfaces now carry the same guard**; grep `player.duration > 0 ? min(player.currentTime, sliderMax) : 0` to confirm the count is still six if you add a seventh slider.
 
-**⚠️ TOOLCHAIN IS CURRENTLY ON THE BETA.** `xcode-select` points at `/Applications/Xcode-beta.app/Contents/Developer` — required to install to Tim's iPhone (it runs iOS 27, and CoreDevice's DDI comes from the *selected* Xcode, not from `DEVELOPER_DIR`). **Switch it back before any release work**, since the notarized DMG and Sparkle build from the same `project.yml`: `sudo xcode-select -s /Applications/Xcode.app/Contents/Developer`.
+**TOOLCHAIN — check it, don't assume it.** As of 2026-08-17 `xcode-select` points at the **stable** `/Applications/Xcode.app/Contents/Developer` (Xcode 26.6, build 17F113), which is also what CI now uses, so local and CI agree. The durable fact behind the old warning still holds: **CoreDevice's developer disk image comes from the *selected* Xcode, not from `DEVELOPER_DIR`**, so installing to Tim's iPhone while it runs a newer iOS than the stable SDK supports means selecting the beta first — and switching back before any release work, since the notarized DMG and Sparkle build from the same `project.yml`:
+
+```sh
+xcode-select -p                                                    # check first
+sudo xcode-select -s /Applications/Xcode-beta.app/Contents/Developer   # device install
+sudo xcode-select -s /Applications/Xcode.app/Contents/Developer        # back for releases
+```
 
 **Device-install recipe that actually worked** (`APPLENUGS_TEAM_ID=U44N9ZPFP2 xcodegen generate`, then `xcodebuild -destination 'generic/platform=iOS' -allowProvisioningUpdates`, then `xcrun devicectl device install app`): `devicectl list devices` showed a **stale identifier stuck at `connecting` forever** and every call against it hung. `xcrun xctrace list devices` reveals the **real** UDID (`00008140-…`) and the device's iOS version. The actual unblocker was **untrust + retrust on the phone**, which rebuilt the pairing record; a connected VPN turned out NOT to be the problem.
 

@@ -41,6 +41,15 @@ jobs:
             CODE_SIGNING_ALLOWED=NO \
             build
 
+      - name: Test (host-free unit bundle)
+        run: |
+          xcodebuild test \
+            -project AppleNugs.xcodeproj \
+            -scheme AppleNugsTests \
+            -destination 'platform=macOS' \
+            -derivedDataPath build-tests \
+            CODE_SIGNING_ALLOWED=NO
+
       - name: Build iOS (Simulator)
         run: |
           xcodebuild \
