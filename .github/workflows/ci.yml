@@ -13,7 +13,12 @@ concurrency:
 jobs:
   build:
     name: Build (macOS)
-    runs-on: macos-15
+    # macos-26, not macos-15: the iOS target's deployment floor is iOS 26.1, and
+    # the macos-15 image tops out at Xcode 16.4 / MacOSX15.5.sdk with no iOS 26
+    # SDK at all, so "Build iOS (Simulator)" could not compile there. macos-26
+    # defaults to Xcode 26.6 and carries iOS Simulator SDKs 26.0 through 26.5.
+    # Don't lower this without also lowering project.yml's iOS deploymentTarget.
+    runs-on: macos-26
     steps:
       - uses: actions/checkout@v4
 
