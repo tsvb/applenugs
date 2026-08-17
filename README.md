@@ -53,10 +53,11 @@ MQA → AAC → HLS, with automatic fallthrough if one fails. A real queue you c
 channels and buffer-ahead come from the decoder. If the dashboard says ALAC 24/96, it is
 ALAC 24/96.
 
-**Library.** Each artist opens as an expandable outline — Albums, Videos and Shows as collapsible
-nodes, videos and shows grouped by year, rendered as dense scannable rows instead of a wall of
-posters. Rows page in on scroll and each year builds lazily, so a catalog of hundreds stays fast.
-Search, follow artists, save shows and videos.
+**Library.** An artist opens on one scope at a time — Shows, Videos or Albums, each with its
+count — over a filter that takes a venue, a city or a date, as a flat reverse-chronological list
+under sticky month headers. Filtering, grouping and sorting are derived state rebuilt only when
+the inputs change, not recomputed in `body`, so theme switches and playback ticks don't re-sort
+the catalog. Search, follow artists, save shows and videos.
 
 **Video.** Continue Watching with resume positions, Live & Upcoming, Recent Exclusives for
 just-ended livestream replays, a paged on-demand grid, chapters, a quality cap, and a full-screen
@@ -71,11 +72,15 @@ password. Tokens live in the Keychain and refresh about a minute before they exp
 
 ## The artist library
 
-A catalog of live music is not an album grid. An artist with hundreds of shows is a list, not a
-wall of near-identical posters, so the artist page is a list: collapsible nodes, years, dense
-rows, and a VU-and-LCD header over the top.
+A catalog of live music is not an album grid. Goose has 484 shows in here, and they differ by
+date and venue rather than by cover art, so the page is a filter over dense one-line rows under
+sticky month headers, newest first.
 
-<img src="docs/images/artist-outline.png" alt="An artist page in AppleNugs with Albums, Videos and Shows as collapsible nodes, shows grouped by year, and dense one-line rows" width="838">
+It used to be a three-level Category → Year → row tree. That cost two clicks before a single show
+was visible, buried what's recent three levels down, and then dumped 84 undifferentiated rows the
+moment you opened a year. This is the replacement.
+
+<img src="docs/images/artist-outline.png" alt="The Goose artist page in AppleNugs: a Shows/Videos/Albums scope picker reading 484 shows, a filter field, and dense one-line rows of venue, city and date under sticky month headers" width="838">
 
 ## On the phone
 
@@ -88,7 +93,7 @@ Download whole shows in the best lossless format offered and they play with no n
 included; the player prefers a local file whenever it has one. Launch in airplane mode and it
 offers to listen offline directly.
 
-<img src="docs/images/ios.png" alt="Two iPhone screens side by side: the now-playing pill above the tab bar with a progress ring around the cover art, and the Downloads segment of the Library tab listing shows saved for offline listening" width="838">
+<img src="docs/images/ios.png" alt="The AppleNugs iPhone app on the Library tab's Downloads segment: one Goose show saved offline at 12 tracks and 1.2 GB, with the now-playing pill above the tab bar showing cover art ringed by a progress arc" width="380">
 
 The iPhone app is **personal-install only** — build it yourself and run it on your own device.
 There is no App Store build and no TestFlight.
