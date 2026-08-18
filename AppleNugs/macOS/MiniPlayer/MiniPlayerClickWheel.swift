@@ -27,13 +27,11 @@ struct MiniPlayerClickWheel: View {
                     size: 34)
                 .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 1) {
-                if let artist = player.current?.artist {
-                    Text(artist)
-                        .font(theme.type.body(11))
-                        .foregroundStyle(theme.palette.textSecondary)
-                        .lineLimit(1)
-                        .truncationMode(.tail)
-                }
+                NowPlayingMetaText(track: player.current, fields: [.artist])
+                    .font(theme.type.body(11))
+                    .foregroundStyle(theme.palette.textSecondary)
+                    .lineLimit(1)
+                    .truncationMode(.tail)
                 Text(player.current?.title ?? "Unknown track")
                     .font(theme.type.title(14))
                     .foregroundStyle(theme.palette.textPrimary)

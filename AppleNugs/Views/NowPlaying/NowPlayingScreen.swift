@@ -34,6 +34,7 @@ struct StandardNowPlayingScreen: View {
     @Environment(\.theme) private var theme
     @Environment(\.artColor) private var artColor
     @Environment(\.dismiss) private var dismiss
+    @Environment(UIState.self) private var ui
 
     @State private var scrubbing = false
     @State private var scrubValue: Double = 0
@@ -73,14 +74,14 @@ struct StandardNowPlayingScreen: View {
                     // Shoebox liner-note treatment: typed-out tracked caps,
                     // as on its J-card spine.
                     if theme.transport == .jCard {
-                        Text(NowPlayingMeta.line(track).uppercased())
+                        NowPlayingMetaText(track: track, casing: .upper)
                             .font(theme.type.numeric(11))
                             .tracking(0.9)
                             .foregroundStyle(theme.palette.textSecondary)
                             .lineLimit(2)
                             .multilineTextAlignment(.center)
                     } else {
-                        Text(NowPlayingMeta.line(track))
+                        NowPlayingMetaText(track: track)
                             .font(theme.type.title(14))
                             .foregroundStyle(theme.palette.textSecondary)
                             .lineLimit(2)
@@ -115,6 +116,7 @@ struct StandardNowPlayingScreen: View {
                 }
                 .ignoresSafeArea()
         }
+        .dismissesOnNavigation($dashboardShown, ui: ui)
         .sheet(isPresented: $dashboardShown) {
             DashboardPanel()
                 #if os(iOS)

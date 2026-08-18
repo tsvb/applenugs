@@ -24,6 +24,7 @@ struct RootView: View {
             }
         }
         .providesArtColor(app: app, theme: theme)
+        .nowPlayingMetaLinks(app: app, ui: ui)
         .task { await app.bootstrap() }
         .onAppear { KeyboardShortcuts.install(app: app, ui: ui) }
     }
@@ -247,5 +248,13 @@ private struct WindowMinSizeUpdater: NSViewRepresentable {
         // + 1pt per visible column divider
         let width: CGFloat = 150 + 480 + (inspectorOpen ? 250 + 1 : 0) + 1
         window.minSize = CGSize(width: width, height: 600)
+        // Stamp the main window so NowPlayingMetaRouter can raise it when a
+        // meta link is tapped from the separate Now Playing window scene.
+        // NSApp.mainWindow is whichever window is key — which is precisely the
+        // Now Playing window in the case that needs handling.
+        if window.identifier == nil {
+            window.identifier = NSUserInterfaceItemIdentifier(
+                NowPlayingMetaRouter.mainWindowIdentifier)
+        }
     }
 }

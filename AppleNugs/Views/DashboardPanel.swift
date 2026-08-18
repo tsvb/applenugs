@@ -85,19 +85,15 @@ struct DashboardPanel: View {
                     .font(theme.type.title(15))
                     .lineLimit(1)
                     .truncationMode(.tail)
-                if let artist = track.artist {
-                    Text(artist)
-                        .font(.caption)
-                        .lineLimit(1)
-                        .truncationMode(.tail)
-                }
-                if let show = track.show {
-                    Text(show)
-                        .font(.caption)
-                        .foregroundStyle(theme.palette.textSecondary)
-                        .lineLimit(1)
-                        .truncationMode(.tail)
-                }
+                NowPlayingMetaText(track: track, fields: [.artist])
+                    .font(.caption)
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+                NowPlayingMetaText(track: track, fields: [.show])
+                    .font(.caption)
+                    .foregroundStyle(theme.palette.textSecondary)
+                    .lineLimit(1)
+                    .truncationMode(.tail)
                 // A leaf view: the 4Hz currentTime dependency registers
                 // here, not on the whole inspector (whose queue list
                 // would otherwise re-diff every tick).

@@ -206,6 +206,11 @@ targets:
         # now-playing pill; compiled in rather than @testable-imported so the
         # test bundle stays host-free — and so macOS-hosted tests can cover
         # iOS-only layout logic.
+      - path: AppleNugs/Theme/Transport/NowPlayingMetaLine.swift
+        # Pure Foundation policy for the now-playing meta line's linkable runs
+        # (and their URL vocabulary). Compiled in so the segmentation rules —
+        # including the guard that the rendered text still matches the flat
+        # string it replaced — stay host-free.
       - path: AppleNugs/Core/SignalReadout.swift
         # Pure Foundation policy for the dashboard inspector's Signal rows. The
         # tests pin the constant-shape invariant that keeps the section from

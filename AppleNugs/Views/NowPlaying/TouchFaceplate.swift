@@ -8,6 +8,7 @@ struct TouchFaceplate: View {
     @Environment(AppModel.self) private var app
     @Environment(\.theme) private var theme
     @Environment(\.dismiss) private var dismiss
+    @Environment(UIState.self) private var ui
 
     @State private var scrubbing = false
     @State private var scrubValue: Double = 0
@@ -45,6 +46,7 @@ struct TouchFaceplate: View {
                 startPoint: .top, endPoint: .bottom)
             .ignoresSafeArea()
         }
+        .dismissesOnNavigation($dashboardShown, ui: ui)
         .sheet(isPresented: $dashboardShown) {
             DashboardPanel()
                 #if os(iOS)
@@ -99,7 +101,8 @@ struct TouchFaceplate: View {
                         .foregroundStyle(theme.palette.textPrimary)
                         .lineLimit(1)
                 }
-                Text(tickerText)
+                NowPlayingMetaText(track: player.current, casing: .upper,
+                                   idle: theme.copy.nowPlaying.uppercased())
                     .font(theme.type.numeric(10))
                     .tracking(0.6)
                     .foregroundStyle(theme.palette.textSecondary)
@@ -135,11 +138,6 @@ struct TouchFaceplate: View {
     private var channelText: String {
         guard player.current != nil else { return "—" }
         return "\(player.index + 1)/\(player.queue.count)"
-    }
-
-    private var tickerText: String {
-        guard let track = player.current else { return theme.copy.nowPlaying.uppercased() }
-        return NowPlayingMeta.line(track).uppercased()
     }
 
     // --- tuner seek -----------------------------------------------------------

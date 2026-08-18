@@ -22,7 +22,7 @@ struct JCardStrip: View {
                     Text(track.title ?? "Unknown track")
                         .font(theme.type.title(15))
                         .lineLimit(1)
-                    Text(NowPlayingMeta.line(track).uppercased())
+                    NowPlayingMetaText(track: track, casing: .upper)
                         .font(theme.type.numeric(9))
                         .tracking(0.9)
                         .foregroundStyle(theme.palette.textSecondary)

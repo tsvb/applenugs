@@ -52,14 +52,12 @@ struct MiniPlayerFaceplate: View {
                 .foregroundStyle(theme.palette.textPrimary)
                 .lineLimit(1)
                 .truncationMode(.tail)
-            if let artist = player.current?.artist {
-                Text(artist.uppercased())
-                    .font(theme.type.numeric(9))
-                    .tracking(0.8)
-                    .foregroundStyle(theme.palette.textSecondary)
-                    .lineLimit(1)
-                    .truncationMode(.tail)
-            }
+            NowPlayingMetaText(track: player.current, fields: [.artist], casing: .upper)
+                .font(theme.type.numeric(9))
+                .tracking(0.8)
+                .foregroundStyle(theme.palette.textSecondary)
+                .lineLimit(1)
+                .truncationMode(.tail)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .fixedSize(horizontal: false, vertical: true)

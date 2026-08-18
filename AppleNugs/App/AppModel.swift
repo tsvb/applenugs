@@ -171,6 +171,37 @@ final class AppModel {
         return parsed
     }
 
+    /// Resolve a display name to the catalog's own entry.
+    ///
+    /// The player only ever knows an artist's NAME — `QueueTrack` carries no
+    /// artist id, and neither does the album feed it is built from — so every
+    /// "go to this artist" path (deep links, the now-playing meta line) has to
+    /// come through here.
+    ///
+    /// Both sides are trimmed: catalog names occasionally carry stray
+    /// whitespace (see `ArtistListView`, which trims for the same reason), and
+    /// an untrimmed comparison silently fails to match those artists at all.
+    func artist(named name: String) async throws -> ArtistEntry? {
+        let target = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !target.isEmpty else { return nil }
+        return try await artists().first { matches($0, target) }
+    }
+
+    /// Synchronous fast path: the answer when the catalog is already cached,
+    /// `nil` when it isn't. Only ever used to SKIP the await — never to decide
+    /// whether to offer an affordance, which would make the same name clickable
+    /// on one launch and not the next.
+    func cachedArtist(named name: String) -> ArtistEntry? {
+        let target = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !target.isEmpty, let cachedArtists else { return nil }
+        return cachedArtists.first { matches($0, target) }
+    }
+
+    private func matches(_ entry: ArtistEntry, _ trimmedName: String) -> Bool {
+        entry.name.trimmingCharacters(in: .whitespacesAndNewlines)
+            .caseInsensitiveCompare(trimmedName) == .orderedSame
+    }
+
     // MARK: - deep links
 
     /// Entry point from `.onOpenURL`: act now if logged in, else stash for the

@@ -137,6 +137,9 @@ struct AppleNugsApp: App {
                 .environment(themes)
                 .environment(\.theme, themes.theme)
                 .providesArtColor(app: app, theme: themes.theme)
+                // A separate scene root with its own environment, so the meta
+                // link interceptor has to be installed here too.
+                .nowPlayingMetaLinks(app: app, ui: ui)
         }
         .defaultSize(width: 400, height: 680)
     }

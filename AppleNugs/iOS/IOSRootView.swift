@@ -55,6 +55,9 @@ struct IOSRootView: View {
         }
         .themed(theme, art: activeArtColor)
         .environment(\.artColor, activeArtColor)
+        // One scene, so one install point; the cover, the panel and the
+        // dashboard sheet nested inside them all inherit it.
+        .nowPlayingMetaLinks(app: app, ui: ui)
         .task(id: artTaskID) {
             artProvider.update(
                 image: app.player.nowPlayingImage,
@@ -63,14 +66,15 @@ struct IOSRootView: View {
         }
         .task { await app.bootstrap() }
         // Deep links (applenugs://show/…). Parse here; AppModel acts now if the
-        // session is up, or stashes for the drain below. Drop the now-playing
-        // cover on receipt — the router pushes the linked show onto the shared
-        // stack, and a video's playback only starts once VideoDetailView is on
-        // screen, so behind an opaque cover it would play blind. None of the
-        // Mac's NSApp plumbing: iOS foregrounds us on open, and there is one scene.
+        // session is up, or stashes for the drain below. The now-playing cover
+        // still has to come down before the push lands — a video's playback only
+        // starts once VideoDetailView is on screen, so behind an opaque cover it
+        // would play blind — but that is no longer done by hand here: the router
+        // navigates through UIState.navigate(to:), and every presentation owner
+        // observes it via dismissesOnNavigation. None of the Mac's NSApp
+        // plumbing: iOS foregrounds us on open, and there is one scene.
         .onOpenURL { url in
             guard let link = DeepLink.parse(url) else { return }
-            nowPlayingPresented = false
             app.receiveDeepLink(link, ui: ui)
         }
         // Replay a link that arrived before login/bootstrap finished — which is
@@ -80,7 +84,6 @@ struct IOSRootView: View {
         .task(id: app.isLoggedIn) {
             if app.isLoggedIn, let link = app.pendingDeepLink {
                 app.pendingDeepLink = nil
-                nowPlayingPresented = false
                 app.handleDeepLink(link, ui: ui)
             }
         }
@@ -166,6 +169,7 @@ struct IOSRootView: View {
             app: app,
             onTap: { nowPlayingPresented = true },
             onExpand: { panelShown = true }))
+        .dismissesOnNavigation($nowPlayingPresented, ui: ui)
         .fullScreenCover(isPresented: $nowPlayingPresented) {
             NowPlayingScreen()
         }
@@ -173,6 +177,7 @@ struct IOSRootView: View {
         // within `tabViewBottomAccessory` runs its content's body but never
         // appears, because the accessory is a system-hosted container rather
         // than a normal presentation context.
+        .dismissesOnNavigation($panelShown, ui: ui)
         .sheet(isPresented: $panelShown) {
             ExpandedPlayerPanel()
                 .presentationDetents([.height(250)])

@@ -8,6 +8,7 @@ struct ClickWheelScreen: View {
     @Environment(AppModel.self) private var app
     @Environment(\.theme) private var theme
     @Environment(\.dismiss) private var dismiss
+    @Environment(UIState.self) private var ui
 
     @State private var scrubbing = false
     @State private var scrubValue: Double = 0
@@ -40,6 +41,7 @@ struct ClickWheelScreen: View {
         .padding(.vertical, 16)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background { theme.palette.base.ignoresSafeArea() }
+        .dismissesOnNavigation($dashboardShown, ui: ui)
         .sheet(isPresented: $dashboardShown) {
             DashboardPanel()
                 #if os(iOS)
@@ -104,7 +106,7 @@ struct ClickWheelScreen: View {
                     size: 34)
 
             VStack(alignment: .leading, spacing: 1) {
-                Text(player.current?.artist ?? "—")
+                NowPlayingMetaText(track: player.current, fields: [.artist], idle: "—")
                     .font(theme.type.body(12))
                     .foregroundStyle(theme.palette.textSecondary)
                     .lineLimit(1)

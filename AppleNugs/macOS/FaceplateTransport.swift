@@ -67,7 +67,8 @@ struct FaceplateTransport: View {
                         .lineLimit(1)
                 }
             }
-            Text(tickerText)
+            NowPlayingMetaText(track: player.current, casing: .upper,
+                               idle: theme.copy.nowPlaying.uppercased())
                 .font(theme.type.numeric(9))
                 .tracking(0.6)
                 .foregroundStyle(theme.palette.textSecondary)
@@ -79,11 +80,6 @@ struct FaceplateTransport: View {
     private var channelText: String {
         guard player.current != nil else { return "—" }
         return "\(player.index + 1)/\(player.queue.count)"
-    }
-
-    private var tickerText: String {
-        guard let track = player.current else { return theme.copy.nowPlaying.uppercased() }
-        return NowPlayingMeta.line(track).uppercased()
     }
 
     // --- center: knurled transport buttons ----------------------------------

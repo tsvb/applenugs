@@ -122,21 +122,21 @@ struct MiniPlayerCassette: View {
                     Spacer(minLength: 0)
                     losslessTick
                 }
-                if let artist = player.current?.artist {
-                    Text(artist)
-                        .font(theme.type.body(10))
-                        .foregroundStyle(ink.opacity(0.78))
-                        .lineLimit(1)
-                        .truncationMode(.tail)
-                }
-                if let show = player.current?.show {
-                    Text(show.uppercased())
-                        .font(theme.type.numeric(9))
-                        .tracking(0.5)
-                        .foregroundStyle(ink.opacity(0.55))
-                        .lineLimit(1)
-                        .truncationMode(.tail)
-                }
+                // `tint:` rather than `.foregroundStyle`: these draw in the
+                // simulated paper's local ink, not a theme token, and a link
+                // run's color has to be set on the attributed string itself or
+                // it stops matching the line around it.
+                NowPlayingMetaText(track: player.current, fields: [.artist],
+                                   tint: ink.opacity(0.78))
+                    .font(theme.type.body(10))
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+                NowPlayingMetaText(track: player.current, fields: [.show],
+                                   casing: .upper, tint: ink.opacity(0.55))
+                    .font(theme.type.numeric(9))
+                    .tracking(0.5)
+                    .lineLimit(1)
+                    .truncationMode(.tail)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .fixedSize(horizontal: false, vertical: true)

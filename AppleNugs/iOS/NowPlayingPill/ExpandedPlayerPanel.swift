@@ -11,6 +11,7 @@ import SwiftUI
 struct ExpandedPlayerPanel: View {
     @Environment(AppModel.self) private var app
     @Environment(\.theme) private var theme
+    @Environment(UIState.self) private var ui
 
     @State private var dashboardShown = false
 
@@ -27,12 +28,10 @@ struct ExpandedPlayerPanel: View {
                         .font(theme.type.body(15).weight(.semibold))
                         .foregroundStyle(theme.palette.textPrimary)
                         .lineLimit(1)
-                    if let show = player.current?.show ?? player.current?.artist {
-                        Text(show)
-                            .font(theme.type.body(12))
-                            .foregroundStyle(theme.palette.textSecondary)
-                            .lineLimit(1)
-                    }
+                    NowPlayingMetaText(track: player.current, mode: .firstAvailable)
+                        .font(theme.type.body(12))
+                        .foregroundStyle(theme.palette.textSecondary)
+                        .lineLimit(1)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
 
@@ -66,6 +65,7 @@ struct ExpandedPlayerPanel: View {
         .padding(.horizontal, 18)
         .padding(.top, 10)
         .frame(maxHeight: .infinity, alignment: .top)
+        .dismissesOnNavigation($dashboardShown, ui: ui)
         .sheet(isPresented: $dashboardShown) {
             DashboardPanel()
                 #if os(iOS)

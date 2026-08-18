@@ -19,7 +19,7 @@ struct StandardNowPlaying: View {
                         .font(theme.type.title(14))
                         .lineLimit(1)
                 }
-                Text(NowPlayingMeta.line(track))
+                NowPlayingMetaText(track: track)
                     .font(.caption)
                     .foregroundStyle(theme.palette.textSecondary)
                     .lineLimit(1)
@@ -33,8 +33,23 @@ struct StandardNowPlaying: View {
 }
 
 /// Shared helper for the "artist · show" subtitle.
+///
+/// The segmentation lives in `NowPlayingMetaLine` (pure, unit-tested) so the
+/// artist and the show can be individually linkable; this stays as the plain-string
+/// accessor for callers that only want text.
 enum NowPlayingMeta {
     static func line(_ track: QueueTrack) -> String {
-        [track.artist, track.show].compactMap { $0 }.joined(separator: " · ")
+        NowPlayingMetaLine.text(artist: track.artist, show: track.show)
+    }
+
+    /// The runs, for `NowPlayingMetaText`.
+    static func segments(_ track: QueueTrack?,
+                         fields: [NowPlayingMetaLine.Field] = [.artist, .show],
+                         mode: NowPlayingMetaLine.Mode = .joined,
+                         casing: NowPlayingMetaLine.Casing = .asIs) -> [NowPlayingMetaLine.Segment] {
+        guard let track else { return [] }
+        return NowPlayingMetaLine.segments(artist: track.artist, show: track.show,
+                                           showId: track.showId,
+                                           fields: fields, mode: mode, casing: casing)
     }
 }

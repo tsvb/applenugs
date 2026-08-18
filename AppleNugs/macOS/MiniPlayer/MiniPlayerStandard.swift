@@ -42,29 +42,29 @@ struct MiniPlayerStandard: View {
                     .font(theme.type.title(15))
                     .lineLimit(1)
                     .truncationMode(.tail)
-                if let artist = player.current?.artist {
-                    meta(artist)
-                }
-                if let show = player.current?.show {
-                    meta(show)
-                        .foregroundStyle(theme.palette.textSecondary)
-                }
+                meta(fields: [.artist])
+                meta(fields: [.show])
+                    .foregroundStyle(theme.palette.textSecondary)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .fixedSize(horizontal: false, vertical: true)
         }
     }
 
+    /// One field of the meta line. Nothing renders when the field is absent, so
+    /// the block keeps the height it had when these were `if let` Texts.
     @ViewBuilder
-    private func meta(_ text: String) -> some View {
+    private func meta(fields: [NowPlayingMetaLine.Field]) -> some View {
+        let line = NowPlayingMetaText(track: player.current, fields: fields,
+                                      casing: isJCard ? .upper : .asIs)
         if isJCard {
-            Text(text.uppercased())
+            line
                 .font(theme.type.numeric(9))
                 .tracking(0.9)
                 .lineLimit(1)
                 .truncationMode(.tail)
         } else {
-            Text(text)
+            line
                 .font(.caption)
                 .lineLimit(1)
                 .truncationMode(.tail)

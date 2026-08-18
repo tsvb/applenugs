@@ -121,7 +121,11 @@ struct HomeView: View {
                             .font(theme.type.hero(resumeTitleSize))
                             .foregroundStyle(theme.palette.textPrimary)
                             .lineLimit(1)
-                        Text(NowPlayingMeta.line(track))
+                        // `tappableText: false` — this sits inside the hero's
+                        // play/pause Button, so a rival hit area here would make
+                        // the card's single primary action ambiguous. Right-click
+                        // / long-press reaches the artist and the show instead.
+                        NowPlayingMetaText(track: track, tappableText: false)
                             .font(theme.type.title(14))
                             .foregroundStyle(theme.palette.textSecondary)
                             .lineLimit(1)

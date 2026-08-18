@@ -36,7 +36,7 @@ enum DeepLinkRouter {
             QueueTrack(trackId: $0.id, title: $0.title, artist: album.artistName,
                        show: album.title, artworkPath: album.imagePath, showId: album.id)
         }
-        ui.open(.album(id: containerId, title: nil))      // now navigate…
+        ui.navigate(to: .album(id: containerId, title: nil))   // now navigate…
         guard !queue.isEmpty else { return }
         // …and start playback (the user came from a "Listen" link).
         if let song = link.song,
@@ -103,7 +103,7 @@ enum DeepLinkRouter {
             let page = try await app.client.artistVideos(id: artistId, offset: offset, limit: pageSize)
             // VideoSummary has no venue field, so disambiguation is date-only.
             if let hit = page.first(where: { $0.dateText == link.date }) {
-                ui.open(.video(id: hit.id, title: hit.title))   // VideoDetailView drives playback
+                ui.navigate(to: .video(id: hit.id, title: hit.title))  // VideoDetailView drives playback
                 return
             }
             if page.count < pageSize { break }            // last page
@@ -115,7 +115,11 @@ enum DeepLinkRouter {
     // MARK: - helpers
 
     private static func artistId(matching name: String, app: AppModel) async throws -> String? {
-        try await app.artists().first { $0.name.caseInsensitiveCompare(name) == .orderedSame }?.id
+        // Shared with the now-playing meta line's artist links. It trims both
+        // sides, which this used not to — so an artist whose catalog name
+        // carries leading whitespace used to miss here and fall through to the
+        // slower search path on every deep link.
+        try await app.artist(named: name)?.id
     }
 
     /// Date already filtered. With a venue hint, REQUIRE a venue match — return

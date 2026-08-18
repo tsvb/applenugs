@@ -18,7 +18,7 @@ struct TapeLabelCard: View {
                     Text(track.title ?? "Unknown track")
                         .font(theme.type.title(14))
                         .lineLimit(1)
-                    Text(NowPlayingMeta.line(track))
+                    NowPlayingMetaText(track: track)
                         .font(theme.type.numeric(10))
                         .foregroundStyle(theme.palette.textSecondary)
                         .lineLimit(1)
