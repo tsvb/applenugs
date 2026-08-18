@@ -11,7 +11,7 @@ Native **macOS + iOS SwiftUI** client for nugs.net. Public repo `tsvb/applenugs`
 ## Environment & build
 - Work in the git **worktree** you were started in; **don't `cd` to the main checkout** (the repo-root clone). Merge to `main` via a fast-forward from the main checkout using `git -C`, then push (releases/pushes are the maintainer's call).
 - `xcodegen generate` after any `project.yml` edit (`AppleNugs.xcodeproj/` is **gitignored**). Regenerate before building/opening.
-- Schemes: `AppleNugs` (macOS, `-destination 'platform=macOS'`), `AppleNugs-iOS` (`-destination 'generic/platform=iOS Simulator'` or a device id), `AppleNugsTests` (host-free unit tests, **128** as of 2026-08-17 — CI runs them on every push, so take the count from the suite rather than from this line).
+- Schemes: `AppleNugs` (macOS, `-destination 'platform=macOS'`), `AppleNugs-iOS` (`-destination 'generic/platform=iOS Simulator'` or a device id), `AppleNugsTests` (host-free unit tests, **131** as of 2026-08-18 — CI runs them on every push, so take the count from the suite rather than from this line).
 - **Always build/verify with a fresh `-derivedDataPath`** — incremental builds can report a false "clean". Project must stay warning-free under `SWIFT_STRICT_CONCURRENCY=complete` on **both** schemes. SourceKit "No such module 'UIKit'" on iOS-only files = per-target index noise; `xcodebuild` is authoritative.
 - `docs/superpowers/` is **gitignored** (specs, plans, reports — local only, and therefore NOT a safe place for handoff state: a worktree removal deletes it. Durable session state belongs in this file plus the auto-memory index).
 - Visual verify without a login: launch with `-UITEST -UITestSeedQueue` (bypasses login, seeds a now-playing queue). Theme switcher = account menu (person icon). Dashboard = `sidebar.right` toolbar button / ⌥⌘I.
@@ -30,7 +30,35 @@ Native **macOS + iOS SwiftUI** client for nugs.net. Public repo `tsvb/applenugs`
 - **`PlaybackStateStore` no longer writes under `-UITEST`** (both `save` and `clear`, each behind `#if DEBUG` because `AppModel.isUITestRun` is itself DEBUG-only and is now `nonisolated` so the nonisolated store can read it). This retires the long-standing seeded-launch hazard: a `-UITestSeedQueue` run that touched the transport used to persist stub tracks over the real resume queue, and "Clear" deleted it outright. Reads are deliberately still live.
 - Catalog dates are UTC-midnight instants — use `CrateSection.catalogCalendar`, not `Calendar.current` (see the `applenugs-catalog-dates-are-utc` memory).
 
-## Pick up here — state as of 2026-08-10
+## Pick up here — state as of 2026-08-18
+
+**v1.5 (build 6) is RELEASED** (bump `943f573`, appcast `305b64f`): the clickable now-playing
+metadata (`22aab49` artist/show line, `cfe9957` pill + Home hero) and the inspector Signal
+constant-shape fix (`9c5e8d3`). The Sparkle 1.4→1.5 loop was not re-validated in-session;
+the pipeline is the same validated Path B as v1.3/v1.4 below.
+
+**`DeepLinkMatch.normalize` now carries the SITE's venue rule** (`59efbd1`, pushed, CI green
+at 131 tests): apostrophes (ASCII + U+2019) deleted outright, every other non-alphanumeric
+run collapsed to one space — so "Slim's" matches a hint of "Slims" and "St-Denis" keeps
+matching "St Denis". The rule ALSO feeds `bestTrackIndex` (an improvement there: "Hót-Tea!"
+→ "hot tea"). Decision + evidence live in goosealmanac's
+`docs/superpowers/specs/2026-08-18-nugs-web-links-design.md`; don't "simplify" it back to
+delete-all-punctuation — that was the old, weaker rule.
+
+**Cross-repo, same day (matters to this app's deep-link story):** goosealmanac shipped
+exact nugs.net web links (nightly catalog import → `shows.nugs_container_id`;
+`play.nugs.net/release/<id>` fallbacks; an "Open on nugs.net" chip) and a `/listen-links`
+page documenting the whole button family including `applenugs://` — merged as PR #12
+(`ee4ec13`), live in production, first import verified (476 of 855 shows resolved,
+2026-08-18). The deep-link contract doc (`docs/integrations/applenugs-deeplink.md` there)
+was corrected: its web-fallback section, and the fictional "presents the matches" picker —
+**this app has no picker; `DeepLinkRouter` takes the first same-date match when no usable
+venue hint is given.** If a picker ever gets built, update that doc and the site's
+`/listen-links` copy. Residue owed by Tim: signed-in spot-check of
+`play.nugs.net/release/46887|46884|46883`, and one `/listen-links` try-it click from a
+machine WITHOUT AppleNugs installed.
+
+### Earlier state (2026-08-10 → 2026-08-17, still-true details below)
 
 **The iOS now-playing pill is SHIPPED — merged and pushed.** `main` == `origin/main` == `11dae49`, tree clean, no worktrees, no stale branches. The 10-task plan (`docs/superpowers/plans/2026-08-10-ios-nowplaying-pill.md`, spec `docs/superpowers/specs/2026-08-10-ios-nowplaying-pill-design.md`, both gitignored/local-only) replaced the iOS full-width bottom transport bar with a Liquid Glass pill hosted in `tabViewBottomAccessory`. Both defects the iOS parity review diagnosed are structurally gone: the pill lives on the `TabView`, so it rides above pushed detail screens for free, and the toast's hardcoded `.padding(.bottom, 78)` is replaced by a plain `8` anchored to the NavigationStack.
 
