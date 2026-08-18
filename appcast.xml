@@ -3,12 +3,12 @@
     <channel>
         <title>AppleNugs</title>
         <item>
-            <title>1.4</title>
-            <pubDate>Thu, 13 Aug 2026 21:57:05 -0400</pubDate>
-            <sparkle:version>5</sparkle:version>
-            <sparkle:shortVersionString>1.4</sparkle:shortVersionString>
+            <title>1.5</title>
+            <pubDate>Mon, 17 Aug 2026 22:51:08 -0400</pubDate>
+            <sparkle:version>6</sparkle:version>
+            <sparkle:shortVersionString>1.5</sparkle:shortVersionString>
             <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-            <enclosure url="https://github.com/tsvb/applenugs/releases/download/v1.4/AppleNugs-1.4.dmg" length="4043765" type="application/octet-stream" sparkle:edSignature="OjC/KX3WJk6XjpRDzbEZpYaKK8TMrv4lQtTZL/6zP34qw/24PLS5c8eh+xeSl75iI2rlb/M4VeUsOd6A1jWHDQ=="/>
+            <enclosure url="https://github.com/tsvb/applenugs/releases/download/v1.5/AppleNugs-1.5.dmg" length="4097532" type="application/octet-stream" sparkle:edSignature="2pTzvghg/jaVhql4LbRBiqRXPaahHp+sAKQBo17C8H6dyC4rqJmO6rjj+ZO6mKpQVAtdmvFv1r1Xl2MVKRfdCg=="/>
         </item>
     </channel>
 </rss>
