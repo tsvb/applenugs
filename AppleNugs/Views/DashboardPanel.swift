@@ -57,6 +57,13 @@ struct DashboardPanel: View {
             // text block above: it reaches this panel as a sheet from the
             // full-screen players, which already carry their own transport.
             DashboardMiniPlayer()
+            // Deliberately still conditional, unlike the Signal rows below.
+            // This is not transient churn — startCurrent() clears it and only a
+            // real failure sets it — so permanently reserving two lines of empty
+            // space for a state that is almost never present would cost more
+            // than the one jump it prevents (clicking a new track after an
+            // error). If it ever does bother us, the fix is to fold the error
+            // into the Signal section as an extra row, not to reserve a gap.
             if let error = player.playbackError {
                 Label(error, systemImage: "exclamationmark.triangle")
                     .font(.caption)
@@ -118,50 +125,37 @@ struct DashboardPanel: View {
 
     // --- quality ----------------------------------------------------------------
 
+    /// Gated on `player.current`, NOT on `player.nowPick`/`player.specs`.
+    ///
+    /// Those two are nilled by `startCurrent()` on every track change and only
+    /// come back after a stream resolve and an asset load respectively, so
+    /// keying the section (or any individual row) on them made it collapse from
+    /// six rows to two on every click in the Up Next list — jumping the whole
+    /// queue below it — and hid it entirely on a launch-restored queue. The row
+    /// SET is now constant for the life of a track and unknown values degrade to
+    /// `SignalReadout.unknown`; see `SignalReadout` for why that beats a
+    /// reserved height, and `SignalReadoutTests` for the invariant.
+    ///
+    /// The idle state is still correct: `stopPlayback()` is reachable only from
+    /// `clear()` and `remove(at:)`-to-empty, both of which also empty the queue,
+    /// so `current == nil` exactly when there is genuinely nothing playing.
     @ViewBuilder
     private var qualitySection: some View {
-        if let pick = player.nowPick {
+        if player.current != nil {
             VStack(alignment: .leading, spacing: 6) {
                 sectionHeader(theme.copy.dashHeaders.quality)
                 VStack(spacing: 5) {
-                    row("Format", pick.format.qualityLabel)
-                    // platformId 0 is the local-file sentinel, not a tier.
-                    if pick.platformId > 0 {
-                        row("Platform tier", String(pick.platformId))
-                    } else {
-                        row("Source", "Downloaded file")
-                    }
-                    if let specs = player.specs {
-                        if specs.sampleRate > 0 {
-                            row("Sample rate", String(format: "%.1f kHz", specs.sampleRate / 1000))
-                        }
-                        if let bitDepth = specs.bitDepth {
-                            row("Bit depth", "\(bitDepth)-bit")
-                        }
-                        row("Channels", specs.channels == 2 ? "Stereo" : String(specs.channels))
+                    ForEach(SignalReadout.rows(format: player.nowPick?.format,
+                                               platformId: player.nowPick?.platformId,
+                                               sampleRate: player.specs?.sampleRate,
+                                               bitDepth: player.specs?.bitDepth,
+                                               channels: player.specs?.channels)) { row in
+                        SignalRowView(label: row.label, value: row.value, isUnknown: row.isUnknown)
                     }
                     BufferedRow()   // leaf: isolates the ticking bufferedAhead read
                 }
             }
         }
-    }
-
-    /// A label/value row. The label keeps its width; the value truncates so the
-    /// row can never demand more width than the inspector column.
-    private func row(_ label: String, _ value: String) -> some View {
-        HStack(spacing: 8) {
-            Text(label)
-                .foregroundStyle(theme.palette.textSecondary)
-                .lineLimit(1)
-                .layoutPriority(1)
-            Spacer(minLength: 8)
-            Text(value)
-                .font(theme.type.numeric(11))
-                .lineLimit(1)
-                .truncationMode(.tail)
-                .multilineTextAlignment(.trailing)
-        }
-        .font(.caption)
     }
 
     // --- queue -------------------------------------------------------------------
@@ -244,44 +238,85 @@ struct DashboardPanel: View {
     }
 }
 
+// MARK: - rows
+
+/// A label/value row. The label keeps its width; the value truncates so the row
+/// can never demand more width than the inspector column.
+///
+/// Takes plain values and reads only `\.theme` — deliberately NO
+/// `@Environment(AppModel.self)`, so that `BufferedRow` can render one of these
+/// without the ticking `bufferedAhead` dependency escaping the leaf.
+///
+/// An unknown value is dimmed via `foregroundStyle` and NOTHING else: changing
+/// the font, size or weight would move the row height and reintroduce, one row
+/// at a time, the collapse this whole arrangement removes.
+private struct SignalRowView: View {
+    @Environment(\.theme) private var theme
+
+    let label: String
+    let value: String
+    var isUnknown: Bool = false
+
+    var body: some View {
+        HStack(spacing: 8) {
+            Text(label)
+                .foregroundStyle(theme.palette.textSecondary)
+                .lineLimit(1)
+                .layoutPriority(1)
+            Spacer(minLength: 8)
+            Text(value)
+                .font(theme.type.numeric(11))
+                .foregroundStyle(isUnknown ? theme.palette.textIdle : theme.palette.textPrimary)
+                .lineLimit(1)
+                .truncationMode(.tail)
+                .multilineTextAlignment(.trailing)
+        }
+        .font(.caption)
+    }
+}
+
 // MARK: - 4Hz leaf views
 
 /// The playback tick mutates currentTime ~4x/sec while playing. These leaves
 /// carry that @Observable dependency so the inspector's body — including the
 /// full queue ForEach — re-evaluates only on real state changes.
+///
+/// A leaf must also render CONSTANT-HEIGHT content. A leaf that collapses to
+/// nothing when its value is unknown changes size, and a size change in a child
+/// invalidates the parent's layout — which is both the visible jump users see
+/// and the perf cost the isolation exists to avoid. Rendering a placeholder row
+/// instead means the tick can no longer invalidate the enclosing VStack at all.
 #if os(iOS)
 private struct ElapsedTimeLine: View {
     @Environment(AppModel.self) private var app
     @Environment(\.theme) private var theme
 
     var body: some View {
-        if app.player.duration > 0 {
-            Text("\(TransportBar.format(seconds: app.player.currentTime)) / \(TransportBar.format(seconds: app.player.duration))")
-                .font(theme.type.numeric(11))
-                .foregroundStyle(theme.palette.textSecondary)
-                .lineLimit(1)
-        }
+        // Always rendered. `duration` is zeroed on every track change, so
+        // hiding the line while it's unknown made the block above the Signal
+        // section shrink and grow on each track — the same defect one section
+        // up. `--:--` is the clock placeholder used by MiniPlayerClock.
+        let known = app.player.duration > 0
+        Text(known
+             ? "\(TransportBar.format(seconds: app.player.currentTime)) / \(TransportBar.format(seconds: app.player.duration))"
+             : "--:-- / --:--")
+            .font(theme.type.numeric(11))
+            .foregroundStyle(known ? theme.palette.textSecondary : theme.palette.textIdle)
+            .lineLimit(1)
     }
 }
 #endif
 
 private struct BufferedRow: View {
     @Environment(AppModel.self) private var app
-    @Environment(\.theme) private var theme
 
     var body: some View {
-        if app.player.bufferedAhead > 0 {
-            HStack(spacing: 8) {
-                Text("Buffered")
-                    .foregroundStyle(theme.palette.textSecondary)
-                    .lineLimit(1)
-                    .layoutPriority(1)
-                Spacer(minLength: 8)
-                Text(String(format: "%.0f s ahead", app.player.bufferedAhead))
-                    .font(theme.type.numeric(11))
-                    .lineLimit(1)
-            }
-            .font(.caption)
-        }
+        // The bufferedAhead read stays inside this body, so the ~4Hz dependency
+        // registers on the leaf. SignalRowView takes plain values and observes
+        // nothing, so passing them across registers nothing on the parent.
+        let ahead = app.player.bufferedAhead
+        SignalRowView(label: SignalReadout.bufferedLabel,
+                      value: SignalReadout.buffered(secondsAhead: ahead),
+                      isUnknown: !(ahead > 0))
     }
 }

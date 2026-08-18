@@ -20,3 +20,4 @@ docs/superpowers/
 build-ios/
 build-device/
 local.yml
+.token-optimizer/

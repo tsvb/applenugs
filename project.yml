@@ -206,6 +206,10 @@ targets:
         # now-playing pill; compiled in rather than @testable-imported so the
         # test bundle stays host-free — and so macOS-hosted tests can cover
         # iOS-only layout logic.
+      - path: AppleNugs/Core/SignalReadout.swift
+        # Pure Foundation policy for the dashboard inspector's Signal rows. The
+        # tests pin the constant-shape invariant that keeps the section from
+        # collapsing while a track loads, so it has to be compiled in here.
     scheme:
       testTargets:
         - AppleNugsTests
