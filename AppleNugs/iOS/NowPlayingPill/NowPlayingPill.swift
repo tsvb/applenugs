@@ -70,16 +70,13 @@ struct NowPlayingPill: View {
                     .foregroundStyle(theme.palette.textPrimary)
                     .lineLimit(1)
                 if PillLayout.showsArtistLine(for: slot), subtitle != nil {
-                    // `tappableText: false` — the pill's whole body is already a
-                    // tap target (it opens the full-screen player, where these
-                    // same links ARE tappable), so the artist is reachable here
-                    // by long-press and by VoiceOver action instead of by a
-                    // 10.5pt rival hit area inside a 48pt capsule.
-                    // `showsLinks` follows `onExpand`, matching this file's
-                    // convention that a nil expand means the pill was mounted by
-                    // hand in a sheet with no navigation stack behind it.
+                    // The artist is a real tap target here, in front of the
+                    // pill's own body tap. `showsLinks` follows `onExpand`,
+                    // matching this file's convention that a nil expand means
+                    // the pill was mounted by hand in a sheet with no
+                    // navigation stack behind it to push onto.
                     NowPlayingMetaText(track: app.player.current, fields: [.artist],
-                                       showsLinks: onExpand != nil, tappableText: false)
+                                       showsLinks: onExpand != nil)
                         .font(theme.type.body(10.5))
                         .foregroundStyle(theme.palette.textSecondary)
                         .lineLimit(1)

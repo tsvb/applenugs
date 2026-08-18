@@ -88,7 +88,10 @@ final class AppModel {
     /// `ProcessInfo.arguments` never contains this in a normal or release
     /// launch, so every production code path is byte-identical; the whole hook
     /// is also compiled out of release builds by the surrounding `#if DEBUG`.
-    static let isUITestRun = ProcessInfo.processInfo.arguments.contains("-UITEST")
+    /// `nonisolated` so the nonisolated `PlaybackStateStore` can consult it
+    /// before writing. It is an immutable Bool derived from ProcessInfo, so it
+    /// carries no actor-isolated state.
+    nonisolated static let isUITestRun = ProcessInfo.processInfo.arguments.contains("-UITEST")
 
     /// Land directly in `.loggedIn` with a deterministic stub catalog and NO
     /// network or Keychain access, so the main layout (the sidebar) renders for
