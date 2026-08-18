@@ -74,9 +74,29 @@ final class DeepLinkParseTests: XCTestCase {
 
 final class DeepLinkMatchTests: XCTestCase {
 
-    func testNormalizeLowercasesStripsPunctuationAndDiacritics() {
-        XCTAssertEqual(DeepLinkMatch.normalize("  Hót-Tea! (Reprise)  "), "hottea reprise")
+    func testNormalizeLowercasesFoldsAndSpacesPunctuation() {
+        // Punctuation runs become ONE space (not deleted) — "Hót-Tea!" must
+        // normalize like the track title "Hot Tea", not collapse to "hottea".
+        XCTAssertEqual(DeepLinkMatch.normalize("  Hót-Tea! (Reprise)  "), "hot tea reprise")
         XCTAssertEqual(DeepLinkMatch.normalize("Madhuvan"), "madhuvan")
+    }
+
+    // The rule shared with goosealmanac's normalizeVenue (its 2026-08-18
+    // nugs-web-links spec): apostrophes deleted outright, every other
+    // punctuation run becomes one space. These cases mirror the site's tests.
+    func testNormalizeDeletesApostrophesOutright() {
+        XCTAssertEqual(DeepLinkMatch.normalize("Slim's"), "slims")
+        XCTAssertEqual(DeepLinkMatch.normalize("Slim\u{2019}s"), "slims")
+    }
+
+    func testNormalizeSpacesOtherPunctuationWithNoDoubles() {
+        XCTAssertEqual(DeepLinkMatch.normalize("Théâtre St-Denis"), "theatre st denis")
+        XCTAssertEqual(DeepLinkMatch.normalize("Music & Arts Fest"), "music arts fest")
+    }
+
+    func testVenueMatchesAcrossApostropheAndHyphenSpellings() {
+        XCTAssertTrue(DeepLinkMatch.venueMatches("Slims", "Slim's, San Francisco"))
+        XCTAssertTrue(DeepLinkMatch.venueMatches("St Denis", "Théâtre St-Denis"))
     }
 
     func testVenueMatchesIsBidirectionalContains() {

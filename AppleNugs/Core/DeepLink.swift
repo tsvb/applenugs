@@ -56,13 +56,24 @@ struct DeepLink: Equatable {
 /// into the host-free logic-test bundle and unit-tests cleanly.
 enum DeepLinkMatch {
 
-    /// Lowercased, diacritic-folded, punctuation-stripped, whitespace-trimmed.
-    /// Makes title/venue comparison robust across elgoose vs nugs spellings.
+    /// Lowercased, diacritic-folded, then: apostrophes deleted outright (ASCII
+    /// and U+2019 — "Slim's" must match a hint of "Slims"), every OTHER
+    /// non-alphanumeric run collapsed to one space, ends trimmed.
+    ///
+    /// This is goosealmanac's `normalizeVenue` rule (its 2026-08-18
+    /// nugs-web-links spec chose it over both older variants), so the site and
+    /// the app break venue ties identically. The previous rule here deleted all
+    /// punctuation with no substitute, which collapsed "St-Denis" to "stdenis"
+    /// — no longer matching a nugs venue of "St Denis" — and left " & " as a
+    /// double space. Splitting on non-alphanumeric runs does the collapsing
+    /// and the trimming in one move.
     static func normalize(_ s: String) -> String {
         s.lowercased()
             .folding(options: .diacriticInsensitive, locale: nil)
-            .filter { $0.isLetter || $0.isNumber || $0 == " " }
-            .trimmingCharacters(in: .whitespaces)
+            .replacingOccurrences(of: "'", with: "")
+            .replacingOccurrences(of: "\u{2019}", with: "")
+            .split(whereSeparator: { !($0.isLetter || $0.isNumber) })
+            .joined(separator: " ")
     }
 
     /// Bidirectional normalized containment. A venue hint like "Salt Shed" should
