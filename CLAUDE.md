@@ -54,9 +54,9 @@ page documenting the whole button family including `applenugs://` — merged as 
 was corrected: its web-fallback section, and the fictional "presents the matches" picker —
 **this app has no picker; `DeepLinkRouter` takes the first same-date match when no usable
 venue hint is given.** If a picker ever gets built, update that doc and the site's
-`/listen-links` copy. Residue owed by Tim: signed-in spot-check of
-`play.nugs.net/release/46887|46884|46883`, and one `/listen-links` try-it click from a
-machine WITHOUT AppleNugs installed.
+`/listen-links` copy. Residue: Tim verified the app-less
+fallback on 2026-08-18 — a machine without AppleNugs forwards to nugs.net after the ~1.2s
+race, as designed. Still owed: signed-in spot-check of `play.nugs.net/release/46887|46884|46883`.
 
 ### Earlier state (2026-08-10 → 2026-08-17, still-true details below)
 
