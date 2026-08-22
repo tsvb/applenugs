@@ -36,6 +36,9 @@ struct IOSRootView: View {
     @State private var probeShown =
         ProcessInfo.processInfo.arguments.contains("-UITestShowNetworkProbe")
     #endif
+    /// Guards the listening-stats reset. There is no event log behind those
+    /// tallies, so the wipe is unrecoverable — it does not happen on one tap.
+    @State private var confirmingStatsReset = false
 
     /// The accent the chrome should use right now: the live art color when the
     /// active theme is art-driven, else nil (so static themes are untouched).
@@ -277,6 +280,10 @@ struct IOSRootView: View {
             Button("Network Probe (Debug)") { probeShown = true }
             #endif
             Divider()
+            Button("Reset Listening Stats…", role: .destructive) {
+                confirmingStatsReset = true
+            }
+            Divider()
             Button("Log Out") { app.logout() }
             // iOS has no About panel, so the disclaimer the Mac carries in
             // Credits.rtf lives here: non-interactive rows, like the plan above.
@@ -286,6 +293,14 @@ struct IOSRootView: View {
             Text("Unofficial. Not affiliated with nugs.net or Apple.")
         } label: {
             Label("Account", systemImage: "person.circle")
+        }
+        .confirmationDialog("Reset listening stats?",
+                            isPresented: $confirmingStatsReset,
+                            titleVisibility: .visible) {
+            Button("Reset Stats", role: .destructive) { app.listening.reset() }
+            Button("Cancel", role: .cancel) { }
+        } message: {
+            Text("This erases your artist totals permanently. There's no history to restore them from.")
         }
     }
 

@@ -271,6 +271,19 @@ targets:
       - path: AppleNugs/Downloads/SealedAssetLoader.swift
         # AVFoundation + CryptoKit only (the Keychain key is injected), so the
         # integration tests can play a sealed FLAC/ALAC through it host-free.
+      - path: AppleNugs/Core/ListeningStats.swift
+        # The listening tally table (artist counters + the folded-name key).
+        # Pure Foundation; compiled in so the merge rule — two spellings of one
+        # artist folding to a single tally — is covered host-free.
+      - path: AppleNugs/Core/ListeningCredit.swift
+        # Pure Foundation policy holding the per-track listening accumulator:
+        # the [0,1]s tick clamp, the min(50%, 240s) play threshold, and the
+        # commit-boundary batching that keeps ticking seconds OUT of the
+        # store's @Observable state. Compiled in to stay host-free.
+      - path: AppleNugs/Core/LedgerSummary.swift
+        # Pure Foundation presentation logic for the Home listening ledger —
+        # totals, top-5 ranking, and the display copy. Compiled in so the
+        # rendered strings are pinned by test rather than by eyeball.
     scheme:
       testTargets:
         - AppleNugsTests

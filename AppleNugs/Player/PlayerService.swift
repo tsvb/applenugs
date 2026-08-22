@@ -95,6 +95,32 @@ final class PlayerService {
     /// Latched when the current track's download failed to play, so the
     /// stream fallback never hands playback back to the same broken file.
     private var localPickFailed = false
+
+    // --- listening stats ------------------------------------------------------
+
+    /// All-time listening tallies, injected by AppModel. Optional so the player
+    /// still works standalone (and under the UITest harness, where nothing is
+    /// injected and nothing is credited).
+    @ObservationIgnored var listening: ListeningStatsStore?
+
+    /// The per-track accumulator.
+    ///
+    /// `@ObservationIgnored` is LOAD-BEARING, not tidiness: this is mutated from
+    /// the ~4Hz tick, and `@Observable` notifies on every set without comparing
+    /// values, so leaving it tracked would wake observers four times a second
+    /// for state no view ever reads.
+    @ObservationIgnored private var credit = ListeningCredit()
+
+    /// The artist the accumulator's seconds belong to.
+    ///
+    /// Held separately because a track change flushes the FINISHED track's
+    /// earnings AFTER `index` has already moved on — `current?.artist` is the
+    /// wrong answer by then.
+    @ObservationIgnored private var creditedArtist: String?
+
+    /// Playhead position at the previous tick, so the policy gets a delta.
+    @ObservationIgnored private var lastCreditPosition: Double = 0
+
     private let player = AVQueuePlayer()
     /// The ~4Hz `tick()` observer. Installed only while the app is in the
     /// foreground — see `appDidEnterBackground()`.
@@ -209,7 +235,7 @@ final class PlayerService {
         terminationObserver = NotificationCenter.default.addObserver(
             forName: terminateNotification,
             object: nil, queue: .main) { [weak self] _ in
-            MainActor.assumeIsolated { self?.persistState() }
+            MainActor.assumeIsolated { self?.persistNow() }
         }
         #if os(iOS)
         // Phone call / Siri / another app taking the session: pause, and
@@ -321,6 +347,7 @@ final class PlayerService {
             forInterval: CMTime(seconds: 60, preferredTimescale: 1), queue: .main) { [weak self] _ in
             MainActor.assumeIsolated { self?.persistIfMoved() }
         }
+        commitListening()
         persistState()
     }
 
@@ -495,6 +522,7 @@ final class PlayerService {
         } else {
             player.pause()
             isPlaying = false
+            commitListening()
             persistState()  // as in pause()
         }
         pushNowPlayingInfo()
@@ -512,6 +540,7 @@ final class PlayerService {
     func pause() {
         player.pause()
         isPlaying = false
+        commitListening()
         pushNowPlayingInfo()
         // A paused position is the one to resume from — and while backgrounded
         // no tick is around to save it.
@@ -570,6 +599,7 @@ final class PlayerService {
     }
 
     private func startCurrent() {
+        rotateListening()
         loadGeneration += 1
         let generation = loadGeneration
         detachEngine()
@@ -810,6 +840,7 @@ final class PlayerService {
             startAt(index + 1)
         } else {
             ended = true  // queue finished — next enqueue/play-next restarts playback
+            commitListening()
             isPlaying = false
             // The player has dropped the item, so livePosition falls back to
             // currentTime — stale if this happened while backgrounded.
@@ -833,6 +864,7 @@ final class PlayerService {
         preload = nil
 
         index += 1
+        rotateListening()
         ended = false
         pendingSeekPosition = nil
         currentItem = p.item
@@ -950,6 +982,7 @@ final class PlayerService {
     }
 
     private func stopPlayback() {
+        rotateListening()
         loadGeneration += 1
         detachEngine()
         loadArtwork(for: nil)
@@ -1003,6 +1036,16 @@ final class PlayerService {
         // only needs to cover what it alone observes: duration discovery and
         // external play/pause flips (e.g. a headphone unplug).
         if pushWorthy { pushNowPlayingInfo() }
+
+        // Listening stats. The pure policy holds the accumulator; the store only
+        // hears about it at a commit boundary, never at 4Hz — see ListeningCredit
+        // and the design spec's risk #3. A seek, a stall, or a wake produces one
+        // huge delta and the policy clamps it; that is why the raw delta is
+        // handed over rather than pre-filtered here.
+        let creditDelta = newTime - lastCreditPosition
+        lastCreditPosition = newTime
+        credit.tick(delta: creditDelta, isPlaying: newIsPlaying, duration: newDuration)
+        if credit.isCommitDue { commitListening() }
     }
 
     /// Exact specs from the decoder once the asset is readable — replaces the
@@ -1046,6 +1089,14 @@ final class PlayerService {
         pushNowPlayingInfo()
     }
 
+    /// The app-termination hook, and a listening-stats commit boundary. (iOS
+    /// backgrounding — where willTerminate is not guaranteed to fire — goes
+    /// through `appDidEnterBackground()`, which is a commit boundary too.)
+    private func persistNow() {
+        commitListening()
+        persistState()
+    }
+
     #if DEBUG
     /// UITest-only: park a queue without resolving streams or starting
     /// playback, so transport UI renders under the `-UITestSeedQueue` flag.
@@ -1056,6 +1107,32 @@ final class PlayerService {
         ended = false
     }
     #endif
+
+    // --- listening stats commit boundaries ------------------------------------
+
+    /// Hand the accumulated batch to the store.
+    ///
+    /// Idempotent: a second call with nothing accumulated is a no-op, which is
+    /// what makes it safe to call from several boundaries that can overlap.
+    private func commitListening() {
+        let batch = credit.flush()
+        guard !batch.isEmpty else { return }
+        listening?.credit(artistName: creditedArtist,
+                          seconds: batch.seconds,
+                          completedPlay: batch.completedPlay)
+    }
+
+    /// Flush what the finished track earned, then re-arm the accumulator for
+    /// whatever `current` now is.
+    ///
+    /// Call this AFTER `index` has moved — `commitListening()` uses the
+    /// remembered `creditedArtist`, so the order is correct by construction.
+    private func rotateListening() {
+        commitListening()
+        credit.startTrack()
+        creditedArtist = current?.artist
+        lastCreditPosition = 0
+    }
 
     private func persistState() {
         guard !queue.isEmpty else {

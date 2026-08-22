@@ -14,6 +14,10 @@ struct RootView: View {
         ProcessInfo.processInfo.arguments.contains("-UITestShowNetworkProbe")
     #endif
 
+    /// Guards the listening-stats reset. There is no event log behind those
+    /// tallies, so the wipe is unrecoverable — it does not happen on one click.
+    @State private var confirmingStatsReset = false
+
     var body: some View {
         Group {
             switch app.sessionState {
@@ -217,9 +221,21 @@ struct RootView: View {
             Button("Network Probe (Debug)") { probeShown = true }
             #endif
             Divider()
+            Button("Reset Listening Stats…", role: .destructive) {
+                confirmingStatsReset = true
+            }
+            Divider()
             Button("Log Out") { app.logout() }
         } label: {
             Label("Account", systemImage: "person.circle")
+        }
+        .confirmationDialog("Reset listening stats?",
+                            isPresented: $confirmingStatsReset,
+                            titleVisibility: .visible) {
+            Button("Reset Stats", role: .destructive) { app.listening.reset() }
+            Button("Cancel", role: .cancel) { }
+        } message: {
+            Text("This erases your artist totals permanently. There's no history to restore them from.")
         }
     }
 

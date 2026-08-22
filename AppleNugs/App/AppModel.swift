@@ -17,6 +17,7 @@ final class AppModel {
     let client: NugsClient
     let player: PlayerService
     let favorites = FavoritesStore()
+    let listening = ListeningStatsStore()
     let videoProgress = VideoProgressStore()
     let video: VideoPlayerService
     let downloads: DownloadStore
@@ -60,6 +61,7 @@ final class AppModel {
         downloads = DownloadStore(client: client)
         // Local files take precedence over network stream resolution.
         player.downloads = downloads
+        player.listening = listening
     }
 
     /// Resolve the persisted session at launch (refreshing the token if it

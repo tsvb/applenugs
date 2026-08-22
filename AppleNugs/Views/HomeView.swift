@@ -47,7 +47,10 @@ struct HomeView: View {
                 #if os(macOS)
                 entryRow.reveal(appeared, 3)
                 #endif
-                crate.reveal(appeared, 4)
+                if app.listening.hasAnyPlay {
+                    ListeningLedger().reveal(appeared, 4)
+                }
+                crate.reveal(appeared, 5)
             }
             .padding(.horizontal, horizontalPadding)
             .padding(.top, 34)
