@@ -255,3 +255,5 @@ person's music player, and the paperwork would be set dressing. If something is 
 
 [MIT](LICENSE) for the AppleNugs source. It covers this code only and grants no rights in
 nugs.net's service, content, or marks — see [NOTICE.md](NOTICE.md).
+
+Made by [Tim VanBenschoten](https://timvanbenschoten.com).
