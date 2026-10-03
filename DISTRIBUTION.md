@@ -199,6 +199,18 @@ AppleNugs uses [Sparkle](https://sparkle-project.org) for in-app updates. The
    The feed must never point at a 404 — uploading the asset before pushing
    `appcast.xml` guarantees that.
 
+   End the GitHub Release notes with the project page line:
+
+   ```
+   Project page: https://timvanbenschoten.com/code/applenugs
+   ```
+
+   The script passes `--link` with the same URL, so each new appcast item
+   carries it too. To show notes in Sparkle's update window, put an
+   `AppleNugs-X.Y.html` file (an HTML fragment, no `<body>`) next to the DMG in
+   `build/sparkle-enclosure/` and end it with
+   `<p>Project page: <a href="https://timvanbenschoten.com/code/applenugs">timvanbenschoten.com/code/applenugs</a></p>`.
+
 5. **Wait for the feed to resolve.** `appcast.xml` is served from
    `raw.githubusercontent.com`, which only resolves once the repo is **public**.
    GitHub's CDN caches raw content for approximately 5 minutes after a push, so
