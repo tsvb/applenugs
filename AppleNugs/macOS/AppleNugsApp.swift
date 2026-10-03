@@ -128,6 +128,13 @@ struct AppleNugsApp: App {
             CommandGroup(before: .windowArrangement) {
                 NowPlayingWindowMenuItem()
             }
+            // The default Help item only says "Help isn't available"; point it
+            // at the project page instead.
+            CommandGroup(replacing: .help) {
+                Button("AppleNugs Website") {
+                    NSWorkspace.shared.open(URL(string: "https://timvanbenschoten.com/code/applenugs")!)
+                }
+            }
         }
 
         Window("Now Playing", id: NowPlayingWindow.id) {
