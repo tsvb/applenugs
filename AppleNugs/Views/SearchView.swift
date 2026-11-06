@@ -107,6 +107,7 @@ struct SearchView: View {
             }
         }
         .scrollContentBackground(.hidden)
+        .reportsScrollForPillDuck()
         .background(theme.palette.base)
     }
 

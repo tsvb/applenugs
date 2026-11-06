@@ -55,6 +55,7 @@ struct HomeView: View {
             .frame(maxWidth: 880, alignment: .leading)
             .frame(maxWidth: .infinity, alignment: .leading)
         }
+        .reportsScrollForPillDuck()
         .background(theme.palette.base)
         .navigationTitle("Home")
         .compactNavigationTitle()

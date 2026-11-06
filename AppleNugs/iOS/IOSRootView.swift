@@ -9,6 +9,9 @@ import UIKit
 /// because the accessory belongs to the TabView: it rides above pushed detail
 /// screens for free. The old inset decorated each stack's *root* view, so the
 /// bar vanished the moment anything was pushed.
+///
+/// The one exception is a vertical tab bar (iPhone Duo): there the pill is
+/// mounted as a TabView overlay that ducks on scroll — see `NowPlayingAccessory`.
 struct IOSRootView: View {
     @Environment(AppModel.self) private var app
     @Environment(UIState.self) private var ui
@@ -24,6 +27,9 @@ struct IOSRootView: View {
     @State private var offlineShown = false
     /// The pill's expanded panel. Owned here, not by the pill — see the sheet.
     @State private var panelShown = false
+    /// The pill's duck on iPhone Duo (see PillDuck.swift). Written by the
+    /// scroll roots, read only by `PillDuckOverlay` — never by this body.
+    @State private var pillDuck = PillDuck()
 
     /// The accent the chrome should use right now: the live art color when the
     /// active theme is art-driven, else nil (so static themes are untouched).
@@ -55,6 +61,7 @@ struct IOSRootView: View {
         }
         .themed(theme, art: activeArtColor)
         .environment(\.artColor, activeArtColor)
+        .environment(pillDuck)
         // One scene, so one install point; the cover, the panel and the
         // dashboard sheet nested inside them all inherit it.
         .nowPlayingMetaLinks(app: app, ui: ui)
@@ -285,30 +292,100 @@ struct IOSRootView: View {
                 // same overlay by construction, so the same safe area and
                 // padding apply there too, but that specific case wasn't
                 // exercised with a live tap (see the report for why).
-                .padding(.bottom, 8)
+                // Where the pill is hand-mounted over a vertical tab bar
+                // instead (iPhone Duo) nothing excludes it from the safe area,
+                // so `ToastPillClearance` adds the pill's rise above it.
+                .modifier(ToastPillClearance())
                 .transition(.opacity)
                 .allowsHitTesting(false)
         }
     }
 }
 
-/// Hosts `NowPlayingPill` in the `TabView`'s bottom accessory.
+/// Hosts `NowPlayingPill` on the `TabView`: in the system bottom accessory
+/// everywhere the tab bar is horizontal, and as our own ducking overlay where
+/// it is laid out vertically (iPhone Duo — see PillDuck.swift).
 ///
-/// `tabViewBottomAccessory(isEnabled:content:)` is the overload that hides the
-/// accessory entirely when nothing is playing; it is iOS 26.1+, which is why
-/// the deployment target is 26.1 rather than 26.0. The content-only overload
-/// (26.0) has no way to reclaim the slot, so an idle player would leave a 48pt
-/// gap above the tab bar.
+/// `\.toolbarVerticalEdge` is iOS 27.1+, so reading it needs a type of its own
+/// behind `#available`; below 27.1 there is no vertical tab bar to detect.
 private struct NowPlayingAccessory: ViewModifier {
     let app: AppModel
     let onTap: () -> Void
     let onExpand: () -> Void
 
     func body(content: Content) -> some View {
+        if #available(iOS 27.1, *) {
+            content.modifier(VerticalBarReader(app: app, onTap: onTap, onExpand: onExpand))
+        } else {
+            content.modifier(PillMount(verticalBar: false, app: app,
+                                       onTap: onTap, onExpand: onExpand))
+        }
+    }
+}
+
+/// Reads the tab bar's orientation at the TabView (verified to report there,
+/// in tab content, and in the pill): `.trailing` on iPhone Duo wherever the bar
+/// runs down the side, nil everywhere else — including the Duo's inner display
+/// whenever its bar is horizontal.
+@available(iOS 27.1, *)
+private struct VerticalBarReader: ViewModifier {
+    @Environment(\.toolbarVerticalEdge) private var verticalEdge
+    let app: AppModel
+    let onTap: () -> Void
+    let onExpand: () -> Void
+
+    func body(content: Content) -> some View {
+        content.modifier(PillMount(verticalBar: verticalEdge != nil, app: app,
+                                   onTap: onTap, onExpand: onExpand))
+    }
+}
+
+/// One modifier chain for both mounts, so the gate flipping (a fold, or
+/// playback starting) never changes the TabView's identity.
+///
+/// `tabViewBottomAccessory(isEnabled:content:)` is the overload that hides the
+/// accessory entirely when nothing is playing; it is iOS 26.1+, which is why
+/// the deployment target is 26.1 rather than 26.0. The content-only overload
+/// (26.0) has no way to reclaim the slot, so an idle player would leave a 48pt
+/// gap above the tab bar.
+///
+/// With a vertical bar the accessory is switched OFF and the pill is mounted
+/// in the overlay instead. Toggling the accessory can't duck it: it pops (or
+/// crossfades in place) and reflows the content's bottom safe area each time.
+private struct PillMount: ViewModifier {
+    let verticalBar: Bool
+    let app: AppModel
+    let onTap: () -> Void
+    let onExpand: () -> Void
+
+    func body(content: Content) -> some View {
+        let playing = app.player.current != nil
+        let overlay = verticalBar && playing
         content
-            .tabViewBottomAccessory(isEnabled: app.player.current != nil) {
+            .tabViewBottomAccessory(isEnabled: playing && !verticalBar) {
                 NowPlayingPill(onTap: onTap, onExpand: onExpand)
             }
             .tabBarMinimizeBehavior(.onScrollDown)
+            // Centered in the content column: the TabView's trailing safe area
+            // already excludes the vertical bar.
+            .overlay(alignment: .bottom) {
+                if overlay {
+                    PillDuckOverlay(onTap: onTap, onExpand: onExpand)
+                }
+            }
+            .environment(\.pillOverlayActive, overlay)
+    }
+}
+
+/// The toast's 8pt bottom gap, plus — while the pill is the hand-mounted
+/// overlay (iPhone Duo, vertical tab bar) — the pill's rise above the safe
+/// area, so the toast sits 8pt above the pill as it does above the accessory.
+/// Deliberately not duck-aware: a toast that hopped down whenever the pill
+/// ducked would move under the reader. Exactly 8 on every other device.
+private struct ToastPillClearance: ViewModifier {
+    @Environment(\.pillOverlayActive) private var overlayActive
+
+    func body(content: Content) -> some View {
+        content.padding(.bottom, 8 + (overlayActive ? PillDuckMetrics.contentClearance : 0))
     }
 }

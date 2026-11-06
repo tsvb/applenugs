@@ -23,6 +23,7 @@ struct FavoritesView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
         }
+        .reportsScrollForPillDuck()
         .background(theme.palette.base)
         .navigationTitle("Favorites")
     }

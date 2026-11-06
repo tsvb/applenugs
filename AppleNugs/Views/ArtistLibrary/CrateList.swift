@@ -161,6 +161,7 @@ struct CrateList: View {
             .listStyle(.inset)
             .scrollContentBackground(.hidden)
             .scrollDismissesKeyboard(.immediately)
+            .reportsScrollForPillDuck()
         }
     }
 
