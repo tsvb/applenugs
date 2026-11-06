@@ -171,7 +171,9 @@ struct IOSRootView: View {
             onExpand: { panelShown = true }))
         .dismissesOnNavigation($nowPlayingPresented, ui: ui)
         .fullScreenCover(isPresented: $nowPlayingPresented) {
-            NowPlayingScreen()
+            // On iPhone Duo's inner display the player sits beside its queue;
+            // everywhere else this is the bare NowPlayingScreen.
+            NowPlayingArrangement()
         }
         // Presented here rather than from inside the pill: a sheet attached
         // within `tabViewBottomAccessory` runs its content's body but never
