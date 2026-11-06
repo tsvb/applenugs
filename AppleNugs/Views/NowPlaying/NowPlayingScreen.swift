@@ -170,9 +170,22 @@ struct StandardNowPlayingScreen: View {
                     .resizable()
                     .aspectRatio(contentMode: .fit)
             } else {
-                MonogramTile(
-                    text: player.current?.artist ?? player.current?.title ?? "?",
-                    size: 280)
+                // The monogram scales with the box it is given, capped at its
+                // old fixed 280pt — the same flexibility the real-art Image
+                // above already has. A rigid 280×280 tile can't shrink, which
+                // overflowed the stack: on iPhone Duo's ~669pt-tall landscape
+                // inner display it pushed the header and bottom row off
+                // screen, and even on a portrait iPhone the stack overflowed
+                // its 18pt vertical padding by ~15pt at each end (truncating
+                // the meta line to one row). The ideal size keeps 280 for
+                // unconstrained (nil) proposals.
+                GeometryReader { geo in
+                    MonogramTile(
+                        text: player.current?.artist ?? player.current?.title ?? "?",
+                        size: min(geo.size.width, geo.size.height))
+                        .frame(width: geo.size.width, height: geo.size.height)
+                }
+                .frame(idealWidth: 280, maxWidth: 280, idealHeight: 280, maxHeight: 280)
             }
         }
         .frame(maxWidth: .infinity)
