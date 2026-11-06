@@ -5,8 +5,13 @@ import SwiftUI
 /// player sits beside its own queue — player primary, `DashboardPanel`
 /// secondary, with the panel's "Now" section dropped because the player IS
 /// the now-playing view. Where `.split.axes(.horizontal)` can't split — iPhone,
-/// the Duo's compact outer display, the inner display held upright — the SDK
-/// shows only the primary, and the player keeps its queue button and sheet.
+/// the Duo's compact outer display, Split View halves — the SDK shows only the
+/// primary, and the player keeps its queue button and sheet.
+///
+/// The inner display held UPRIGHT (taller than wide, regular width) is the
+/// one canvas the arrangement won't split but the queue still belongs beside
+/// the player, so it gets explicit columns instead: a ~300pt player and a
+/// narrower queue column (`NowPlayingColumns` holds the rule and the widths).
 ///
 /// Measured on the Duo simulator (iOS 27.1, unfolded flat): the split is an
 /// even 50/50 of the safe area (two 433.5×635pt columns), and each column
@@ -21,7 +26,7 @@ import SwiftUI
 /// reads no `player.currentTime`.
 ///
 /// `ArrangementView` is iOS 27.1+; the floor stays 26.1, so older systems take
-/// the bare player.
+/// the bare player on a compact canvas and the explicit columns on a regular one.
 ///
 /// Swipe down to close: a vertical drag on the PLAYER (never the queue column,
 /// whose ScrollView keeps its own vertical scrolling) moves the whole
@@ -39,6 +44,8 @@ import SwiftUI
 struct NowPlayingArrangement: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.theme) private var theme
+    /// The scene's size class — regular only on iPhone Duo's inner display.
+    @Environment(\.horizontalSizeClass) private var sizeClass
 
     /// Live secondary instances, counted rather than flagged: if the
     /// arrangement rebuilds the secondary on a fold or rotation, the new
@@ -72,7 +79,9 @@ struct NowPlayingArrangement: View {
         // reports the real insets in the same layout pass (a reader that
         // ignores them reports zero).
         GeometryReader { proxy in
-            arrangement
+            arrangement(NowPlayingColumns.layout(size: proxy.size,
+                                                 regular: sizeClass == .regular,
+                                                 supportsArrangement: Self.supportsArrangement))
                 .safeAreaPadding(proxy.safeAreaInsets)
                 .background { theme.palette.base.ignoresSafeArea() }
                 .offset(y: dragOffset)
@@ -94,23 +103,76 @@ struct NowPlayingArrangement: View {
         .accessibilityAction(.escape) { dismiss() }
     }
 
+    /// Whether this system has `ArrangementView` (iOS 27.1+).
+    private static var supportsArrangement: Bool {
+        if #available(iOS 27.1, *) { return true }
+        return false
+    }
+
+    /// View identity across a pose change: the explicit columns and the
+    /// `ArrangementView` are different containers, so moving between them — the
+    /// inner display rotating between upright and flat, or folding from upright
+    /// to the outer display — rebuilds the player and resets its `@State` (a
+    /// scrub in progress, an open sheet). That is the price of keeping the
+    /// SDK's fold-aware arrangement for the flat and folded poses, where it is
+    /// verified to keep the player's state across a fold. Everything else is a
+    /// VALUE change inside one structure: the queue column's width, and on
+    /// older systems the column appearing or going away (`columns` keeps the
+    /// player at the same position whether or not the queue is there).
     @ViewBuilder
-    private var arrangement: some View {
+    private func arrangement(_ layout: NowPlayingColumns.Layout) -> some View {
         if #available(iOS 27.1, *) {
-            ArrangementView {
-                NowPlayingScreen()
-                    .gesture(dismissDrag)
-            } secondary: {
-                DashboardPanel(showsNowPlaying: false)
-                    .onAppear { visibleSecondaries += 1 }
-                    .onDisappear { visibleSecondaries = max(visibleSecondaries - 1, 0) }
+            if case .columns(let queueWidth) = layout {
+                columns(queueWidth: queueWidth)
+            } else {
+                // `.single` lands here too, deliberately: on a canvas the
+                // arrangement can't split it shows the primary alone (every
+                // iPhone, the outer display, Split View halves) — today's
+                // behavior, and the structure the fold test verified.
+                ArrangementView {
+                    player
+                } secondary: {
+                    DashboardPanel(showsNowPlaying: false)
+                        .onAppear { visibleSecondaries += 1 }
+                        .onDisappear { visibleSecondaries = max(visibleSecondaries - 1, 0) }
+                }
+                .arrangementViewStyle(.split.axes(.horizontal))
+                .environment(\.nowPlayingQueueBeside, visibleSecondaries > 0)
             }
-            .arrangementViewStyle(.split.axes(.horizontal))
-            .environment(\.nowPlayingQueueBeside, visibleSecondaries > 0)
         } else {
-            NowPlayingScreen()
-                .gesture(dismissDrag)
+            switch layout {
+            case .columns(let queueWidth): columns(queueWidth: queueWidth)
+            case .single, .arrangement: columns(queueWidth: nil)
+            }
         }
+    }
+
+    /// The player beside its queue in explicit columns — for the canvases
+    /// `.split.axes(.horizontal)` won't split (iPhone Duo's inner display held
+    /// UPRIGHT, ~535pt wide) — or, with a nil width, the player alone. The
+    /// player takes everything the queue doesn't (>= `minPlayerWidth`).
+    ///
+    /// Both columns report a COMPACT horizontal size class, matching what the
+    /// arrangement's columns report, so the players' readable-width cap stays
+    /// off and they lay out exactly as they do in the flat split. Alone, the
+    /// player keeps the scene's own size class.
+    private func columns(queueWidth: CGFloat?) -> some View {
+        HStack(spacing: 0) {
+            player
+                .environment(\.horizontalSizeClass, queueWidth != nil ? .compact : sizeClass)
+                .environment(\.nowPlayingQueueBeside, queueWidth != nil)
+            if let queueWidth {
+                DashboardPanel(showsNowPlaying: false)
+                    .frame(width: queueWidth)
+                    .environment(\.horizontalSizeClass, .compact)
+            }
+        }
+    }
+
+    /// The swipe-down gesture sits on the PLAYER only, never the queue column.
+    private var player: some View {
+        NowPlayingScreen()
+            .gesture(dismissDrag)
     }
 
     private static let springBack = Animation.spring(response: 0.3, dampingFraction: 0.85)

@@ -224,6 +224,10 @@ targets:
         # player (track / follow / dismiss thresholds and the per-drag latch).
         # Compiled in rather than @testable-imported so the test bundle stays
         # host-free — and so macOS-hosted tests can cover iOS-only gesture logic.
+      - path: AppleNugs/iOS/NowPlayingColumns.swift
+        # Pure Foundation layout policy for the iOS full-screen player (alone /
+        # arrangement / explicit columns, and the queue column's width).
+        # Compiled in for the same host-free reason as the drag policy above.
     scheme:
       testTargets:
         - AppleNugsTests

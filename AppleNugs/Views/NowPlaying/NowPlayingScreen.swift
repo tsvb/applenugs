@@ -97,7 +97,14 @@ struct StandardNowPlayingScreen: View {
             seekBlock
                 .padding(.horizontal, 24)
 
+            // Rigid (five fixed glyphs, a 68pt play button): in a column
+            // narrower than the row plus the seek block's 24pt insets — the
+            // ~300pt player column on iPhone Duo's upright inner display — it
+            // shrinks as a unit. Its natural width measured ~308pt on the Duo
+            // simulator, so the scale is 1 on every iPhone (390 − 48 ≥ 308)
+            // and the Mac window at its default 400pt; ~0.82 at a 300pt column.
             transportRow
+                .nowPlayingFitWidth(margin: 24)
 
             volumeRow
                 .padding(.horizontal, 32)

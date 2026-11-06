@@ -244,7 +244,13 @@ struct ClickWheelScreen: View {
         .frame(width: Self.padSize.width * padScale, height: Self.padSize.height * padScale)
         // Measured on the full-width container, whose width doesn't depend on
         // the scale — so there's no measure → scale → re-measure loop.
-        .frame(maxWidth: .infinity)
+        // `minWidth: 0` is load-bearing: a flexible frame with only a max
+        // reports max(child, proposal), so in a column narrower than 330pt the
+        // unscaled first pass reported 330, the scale stayed 1, and the pad
+        // widened its column (seen beside the queue on the Duo, where it
+        // pushed the queue column half off the screen). With a 0 minimum the
+        // container reports the proposal whatever the pad does.
+        .frame(minWidth: 0, maxWidth: .infinity)
         .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { padWidth = $0 }
     }
 

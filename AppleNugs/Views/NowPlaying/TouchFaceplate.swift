@@ -30,7 +30,13 @@ struct TouchFaceplate: View {
             seekBlock
                 .padding(.horizontal, 24)
 
+            // 54+46+76+46+54 plus 4×22 spacing = 364pt of rigid knurled
+            // buttons: wider than the ~300pt player column on iPhone Duo's
+            // upright inner display, so it shrinks as a unit there. The 12pt
+            // margin (the header's inset) keeps the scale at 1 on every iPhone,
+            // the 390pt ones included (390 − 24 ≥ 364).
             controls
+                .nowPlayingFitWidth(margin: 12)
 
             volumeLadder
 
