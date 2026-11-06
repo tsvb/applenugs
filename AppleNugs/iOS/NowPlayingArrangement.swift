@@ -101,6 +101,10 @@ struct NowPlayingArrangement: View {
             }
         }
         .accessibilityAction(.escape) { dismiss() }
+        // The cover's clear presentation background (so the app shows through
+        // while it slides away) keeps the presenting TabView live behind it;
+        // without this, VoiceOver could wander onto Home behind the player.
+        .accessibilityAddTraits(.isModal)
     }
 
     /// Whether this system has `ArrangementView` (iOS 27.1+).
@@ -140,11 +144,16 @@ struct NowPlayingArrangement: View {
                 .environment(\.nowPlayingQueueBeside, visibleSecondaries > 0)
             }
         } else {
-            switch layout {
-            case .columns(let queueWidth): columns(queueWidth: queueWidth)
-            case .single, .arrangement: columns(queueWidth: nil)
-            }
+            // ONE call, not a `switch`: each case of a switch in a view builder
+            // is its own branch, so going between "alone" and "with the queue"
+            // would rebuild the player even though both cases call `columns`.
+            columns(queueWidth: Self.queueWidth(in: layout))
         }
+    }
+
+    private static func queueWidth(in layout: NowPlayingColumns.Layout) -> CGFloat? {
+        if case .columns(let width) = layout { return width }
+        return nil
     }
 
     /// The player beside its queue in explicit columns — for the canvases
@@ -206,12 +215,23 @@ struct NowPlayingArrangement: View {
     private func close() {
         closing = true
         let target = max(offscreenDistance > 0 ? offscreenDistance : 2000, dragOffset)
+        guard dragOffset < target else {
+            // Already off-screen: nothing would animate, and an animation that
+            // changes nothing isn't guaranteed to run its completion — which
+            // would leave a clear, touch-blocking cover with `closing` latched.
+            dismissWithoutAnimation()
+            return
+        }
         withAnimation(.easeOut(duration: 0.22), completionCriteria: .logicallyComplete) {
             dragOffset = target
         } completion: {
-            var transaction = Transaction()
-            transaction.disablesAnimations = true
-            withTransaction(transaction) { dismiss() }
+            dismissWithoutAnimation()
         }
+    }
+
+    private func dismissWithoutAnimation() {
+        var transaction = Transaction()
+        transaction.disablesAnimations = true
+        withTransaction(transaction) { dismiss() }
     }
 }

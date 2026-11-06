@@ -111,6 +111,28 @@ final class NowPlayingDismissDragTests: XCTestCase {
                                           predictedEnd: CGSize(width: 0, height: -500)))
     }
 
+    /// Both thresholds are inclusive: exactly 120pt (with a predicted end that
+    /// isn't flung back) closes, 119pt doesn't; a flick landing exactly at
+    /// 300pt closes, 299pt doesn't.
+    func testThresholdsAreInclusive() {
+        XCTAssertTrue(Drag.shouldDismiss(translation: CGSize(width: 0, height: 120),
+                                         predictedEnd: CGSize(width: 0, height: 120), phase: .tracking))
+        XCTAssertFalse(Drag.shouldDismiss(translation: CGSize(width: 0, height: 119),
+                                          predictedEnd: CGSize(width: 0, height: 119), phase: .tracking))
+        XCTAssertTrue(Drag.shouldDismiss(translation: CGSize(width: 0, height: 40),
+                                         predictedEnd: CGSize(width: 0, height: 300), phase: .tracking))
+        XCTAssertFalse(Drag.shouldDismiss(translation: CGSize(width: 0, height: 40),
+                                          predictedEnd: CGSize(width: 0, height: 299), phase: .tracking))
+    }
+
+    /// Only a drag latched as `.tracking` can close the player.
+    func testUndecidedAndIgnoredPhasesNeverDismiss() {
+        for phase in [Drag.Phase.undecided, .ignored] {
+            XCTAssertFalse(Drag.shouldDismiss(translation: CGSize(width: 0, height: 400),
+                                              predictedEnd: CGSize(width: 0, height: 900), phase: phase))
+        }
+    }
+
     func testDismissIsNaNAndZeroSafe() {
         XCTAssertFalse(Drag.shouldDismiss(translation: .zero, predictedEnd: .zero))
         XCTAssertFalse(Drag.shouldDismiss(translation: CGSize(width: 0, height: 200),
