@@ -219,6 +219,11 @@ targets:
         # Pure Foundation scale-to-fit for the full-screen players' fixed-
         # proportion parts (Click Wheel's pad); compiled in so the "an
         # unmeasured pass never shrinks" rule stays covered host-free.
+      - path: AppleNugs/iOS/NowPlayingDismissDrag.swift
+        # Pure Foundation swipe-down-to-close policy for the iOS full-screen
+        # player (track / follow / dismiss thresholds and the per-drag latch).
+        # Compiled in rather than @testable-imported so the test bundle stays
+        # host-free — and so macOS-hosted tests can cover iOS-only gesture logic.
     scheme:
       testTargets:
         - AppleNugsTests

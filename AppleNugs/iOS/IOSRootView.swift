@@ -173,7 +173,10 @@ struct IOSRootView: View {
         .fullScreenCover(isPresented: $nowPlayingPresented) {
             // On iPhone Duo's inner display the player sits beside its queue;
             // everywhere else this is the bare NowPlayingScreen.
+            // Clear so the app shows through while the player is swiped down;
+            // at rest the arrangement paints its own opaque backgrounds.
             NowPlayingArrangement()
+                .presentationBackground(.clear)
         }
         // Presented here rather than from inside the pill: a sheet attached
         // within `tabViewBottomAccessory` runs its content's body but never
