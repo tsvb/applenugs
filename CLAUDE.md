@@ -47,10 +47,26 @@ Native **macOS + iOS SwiftUI** client for nugs.net. Public repo `tsvb/applenugs`
 
 ## Pick up here — state as of 2026-08-18
 
-### iPhone Duo layout — BUILT, awaiting fold + device verification (2026-11-05, branch `worktree-iphone-duo`)
+### iPhone Duo layout — MERGED to `main` (`805d766`, PR #5, 2026-11-06); CI green on `xcode-27`
+
+**Landed:** pushed as `iphone-duo`, PR #5's CI passed (first run on the `xcode-27` runner, 2m24s — the
+label resolves and Xcode 27.1 builds both schemes + tests), and `origin/main` was FAST-FORWARDED to
+`805d766` (`git push origin worktree-iphone-duo:main`; GitHub then marked the PR merged) — no merge or
+rebase commit, so every hash below is on `main`. `listening-stats` is still unmerged and based on the OLD
+`main`; it now needs a rebase onto `805d766`, resolving this CLAUDE.md section against its own.
+
+**NEXT (queued, specced locally):** (1) the pill ducks out of the way on scroll on the Duo — branch
+`pill-duck` in the same worktree; spec `docs/superpowers/specs/2026-11-05-pill-duck-on-scroll-design.md`;
+probe verdict: the system accessory can't be animated (toggling `isEnabled` pops/crossfades AND reflows the
+content 38–56pt), so where `\.toolbarVerticalEdge != nil` (iOS 27.1+) the pill becomes our own glass overlay
+with a constant bottom content margin. (2) nightstand/tent — spec
+`docs/superpowers/specs/2026-11-05-duo-nightstand-tent-design.md`: propped-open player (art + title +
+clock above the fold, dims at night), tent-pose landscape player (auto-opens; app otherwise stays portrait),
+and an interactive StandBy Now Playing widget (first widget extension + App Group). No posture enum exists —
+`onHingeChange` gives only status (closed/partiallyOpen/fullyOpen) + angle.
 
 Worktree `.claude/worktrees/iphone-duo`, based on `origin/main` `c0de287` — deliberately NOT on the
-unmerged `listening-stats` branch; whichever merges second rebases and resolves this section.
+unmerged `listening-stats` branch.
 Spec/plan/probe evidence are local-only under `docs/superpowers/` (`specs/2026-11-05-iphone-duo-layout-design.md`,
 `plans/2026-11-05-iphone-duo-layout.md`, `duo-artifacts/`). The decisions they hold, so they survive the worktree:
 
@@ -67,7 +83,7 @@ Spec/plan/probe evidence are local-only under `docs/superpowers/` (`specs/2026-1
   pill fine; **the full-screen player overflows vertically in Soundboard/Tape Room/Shoebox/Click Wheel**
   (header + bottom row off-screen — no queue, no dismiss button). Only The Receiver fits. Caveat: all
   probe shots show the MONOGRAM (rigid `MonogramTile(size: 280)`); real artwork is unprobed.
-- **BUILT (2026-11-05), unpushed, unmerged** — gate green at `4f88075`: both schemes warning-free,
+- **BUILT (2026-11-05)** — gate green at `4f88075` (later `805d766`, 175 tests): both schemes warning-free,
   `AppleNugsTests` **149**. Commits: CI → `xcode-27` runner pinned to `Xcode_27.1.app` with a version
   assertion (`016a991`, **never run — first push verifies the label**); pill sheds controls by measured
   width (`25086ad`); placeholder monogram scales so the Standard player fits (`8ea1533` — this ALSO fixed a
