@@ -32,6 +32,31 @@ Native **macOS + iOS SwiftUI** client for nugs.net. Public repo `tsvb/applenugs`
 
 ## Pick up here — state as of 2026-08-18
 
+### iPhone Duo layout — IN PROGRESS (2026-11-05, branch `worktree-iphone-duo`)
+
+Worktree `.claude/worktrees/iphone-duo`, based on `origin/main` `c0de287` — deliberately NOT on the
+unmerged `listening-stats` branch; whichever merges second rebases and resolves this section.
+Spec/plan/probe evidence are local-only under `docs/superpowers/` (`specs/2026-11-05-iphone-duo-layout-design.md`,
+`plans/2026-11-05-iphone-duo-layout.md`, `duo-artifacts/`). The decisions they hold, so they survive the worktree:
+
+- **Scope (Tim):** compatibility fixes + a two-column inner-display now-playing (player primary, `DashboardPanel`
+  queue secondary via iOS 27.1 `ArrangementView`, `.split.axes(.horizontal)`). NOT sidebar-instead-of-tabs,
+  two-column browse, multi-window, outer-display landscape, `ReservedRegion`, hinge effects, or any macOS change.
+- **iOS floor stays 26.1**; every 27.1 API behind `if #available(iOS 27.1, *)`. **CI moves to Xcode ≥ 27.1**
+  with a loud `xcodebuild -version` assertion (26.6 can't compile 27.1 symbols even behind `#available`).
+- **Upright inner display = player alone** (side by side only when wider than tall).
+- **Phase 0 probe of the UNCHANGED app (Duo simulator, 27.2 SDK), verdicts:** outer display — tab bar goes
+  VERTICAL on the trailing edge; the pill survives at the bottom but ~290pt wide while still `.expanded`, so
+  all five controls leave the title at "Aw…" (`PillLayout` sheds controls by placement only — defect).
+  Inner display — **landscape when unfolded flat (2853×2007 px ≈ 951×669pt)**, NOT the quoted 626×890;
+  pill fine; **the full-screen player overflows vertically in Soundboard/Tape Room/Shoebox/Click Wheel**
+  (header + bottom row off-screen — no queue, no dismiss button). Only The Receiver fits. Caveat: all
+  probe shots show the MONOGRAM (rigid `MonogramTile(size: 280)`); real artwork is unprobed.
+- **Simulator facts:** the Duo needs its OWN runtime, iOS 27.1 `24A94425` (Duo-only; the general 27.2
+  runtime can't create a Duo). Xcode 27 has no Simulator.app — Device Hub; folding/rotating are on-screen
+  controls only (no `simctl` posture command), so pose changes need Tim. `simctl io … screenshot` needs
+  `--display=1` (outer) or `--display=3` (inner). The iOS 26.2 runtime was deleted 2026-11-05 to free disk.
+
 **v1.5 (build 6) is RELEASED** (bump `943f573`, appcast `305b64f`): the clickable now-playing
 metadata (`22aab49` artist/show line, `cfe9957` pill + Home hero) and the inspector Signal
 constant-shape fix (`9c5e8d3`). The Sparkle 1.4→1.5 loop was not re-validated in-session;
@@ -84,7 +109,7 @@ race, as designed. Still owed: signed-in spot-check of `play.nugs.net/release/46
 
 **`11dae49` fixed a cross-cutting scrub bug:** `sliderMax = max(duration, 1)` meant a stream reporting no duration pinned the thumb hard right, reading as "finished". Fixed on four iOS surfaces (`NowPlayingScreen`, `ClickWheelScreen`, `TouchFaceplate`, `ExpandedPlayerPanel`), and **the two macOS surfaces are now fixed too** — `FaceplateTransport` and `TransportBar.seekBlock` (`be51ccf`, merged to main). **All six scrub surfaces now carry the same guard**; grep `player.duration > 0 ? min(player.currentTime, sliderMax) : 0` to confirm the count is still six if you add a seventh slider.
 
-**TOOLCHAIN — check it, don't assume it.** As of 2026-08-17 `xcode-select` points at the **stable** `/Applications/Xcode.app/Contents/Developer` (Xcode 26.6, build 17F113), which is also what CI now uses, so local and CI agree. The durable fact behind the old warning still holds: **CoreDevice's developer disk image comes from the *selected* Xcode, not from `DEVELOPER_DIR`**, so installing to Tim's iPhone while it runs a newer iOS than the stable SDK supports means selecting the beta first — and switching back before any release work, since the notarized DMG and Sparkle build from the same `project.yml`:
+**TOOLCHAIN — check it, don't assume it.** **As of 2026-11-05 `xcode-select` points at Xcode 27.2** (`/Applications/Xcode.app`, iOS SDK 27.2, Swift 6.4.2); unchanged `origin/main` builds both schemes warning-free on it. The 26.6 note that follows is history. As of 2026-08-17 `xcode-select` points at the **stable** `/Applications/Xcode.app/Contents/Developer` (Xcode 26.6, build 17F113), which is also what CI now uses, so local and CI agree. The durable fact behind the old warning still holds: **CoreDevice's developer disk image comes from the *selected* Xcode, not from `DEVELOPER_DIR`**, so installing to Tim's iPhone while it runs a newer iOS than the stable SDK supports means selecting the beta first — and switching back before any release work, since the notarized DMG and Sparkle build from the same `project.yml`:
 
 ```sh
 xcode-select -p                                                    # check first
