@@ -29,10 +29,29 @@ struct NowPlayingPill: View {
     /// worse than no chevron.
     let onExpand: (() -> Void)?
 
+    /// The pill's OUTER width (padding included — `PillLayout.textBudget`
+    /// subtracts the padding itself). 0 until the first measurement lands,
+    /// which `PillLayout` treats as "unmeasured" and answers with the slot's
+    /// full control set; on a narrow display the first frame therefore shows
+    /// five controls and the next shows three.
+    @State private var pillWidth: CGFloat = 0
+
+    /// The chevron's lane, only when the chevron renders.
+    private var chevronReserve: CGFloat {
+        onExpand != nil ? PillLayout.controlWidth + PillLayout.controlSpacing : 0
+    }
+
     /// Trailing padding: the chevron's lane, only when the chevron renders.
     private var trailingPadding: CGFloat {
-        PillLayout.horizontalPadding
-            + (onExpand != nil ? PillLayout.controlWidth + PillLayout.controlSpacing : 0)
+        PillLayout.horizontalPadding + chevronReserve
+    }
+
+    /// Controls for this slot at the measured width. Placement alone is not
+    /// enough: iPhone Duo's outer display reports `.expanded` for a ~290pt
+    /// accessory, where five controls would leave the title 34pt.
+    private var transportControls: [PillLayout.Control] {
+        PillLayout.controls(slot: slot, width: pillWidth,
+                            hasLeadingSlot: true, trailingReserve: chevronReserve)
     }
 
     private var slot: PillLayout.Slot {
@@ -84,7 +103,10 @@ struct NowPlayingPill: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
 
-            PillTransportControls(slot: slot)
+            PillTransportControls(controls: transportControls)
+                // A width change swaps the set outright; never animate a
+                // control sliding in or out of the cluster.
+                .transaction { $0.animation = nil }
         }
         .padding(.leading, PillLayout.horizontalPadding)
         // Trailing side reserves a lane for the panel-open chevron below —
@@ -98,6 +120,9 @@ struct NowPlayingPill: View {
         // title/artist column gets the space back instead of truncating
         // against dead space.
         .padding(.trailing, trailingPadding)
+        // Measured AFTER both paddings, so this is the full outer width the
+        // accessory hands the pill — the figure `PillLayout` budgets against.
+        .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { pillWidth = $0 }
         .overlay(alignment: .trailing) {
             // Fallback for a drag-up gesture that fought the tab bar's own
             // scroll-to-minimize handling (didn't recognize reliably against

@@ -40,7 +40,7 @@ struct ExpandedPlayerPanel: View {
 
             PanelScrubRow()
 
-            PillTransportControls(slot: .expanded)
+            PillTransportControls(controls: PillLayout.controls(for: .expanded))
                 .font(.title2)
 
             Divider().overlay(theme.palette.hairline)

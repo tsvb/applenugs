@@ -1,21 +1,22 @@
 import SwiftUI
 
 /// The pill's trailing control cluster. Which buttons exist is `PillLayout`'s
-/// decision, not this view's — at `.inline` the system hands us 76pt less and
-/// the skip intervals are what give way.
+/// decision, not this view's — the caller passes the set it computed from the
+/// slot and the measured width, so a narrow accessory (`.inline`, or iPhone
+/// Duo's outer display) sheds the skip intervals rather than the title.
 ///
 /// Reads no `currentTime`: every control depends on discrete player state only.
 struct PillTransportControls: View {
     @Environment(AppModel.self) private var app
     @Environment(\.theme) private var theme
 
-    let slot: PillLayout.Slot
+    let controls: [PillLayout.Control]
 
     private var player: PlayerService { app.player }
 
     var body: some View {
         HStack(spacing: PillLayout.controlSpacing) {
-            ForEach(PillLayout.controls(for: slot), id: \.self) { control in
+            ForEach(controls, id: \.self) { control in
                 button(for: control)
             }
         }

@@ -61,10 +61,50 @@ enum PillLayout {
         slot == .expanded
     }
 
+    /// The narrowest title/artist column the pill will accept before it starts
+    /// shedding transport controls. Below this the title reads "Aw…".
+    static let minTextWidth: CGFloat = 90
+
+    /// The control set for a slot at a measured width.
+    ///
+    /// `controls(for:)` alone is not enough: on iPhone Duo's outer display the
+    /// tab bar is laid out vertically, so the accessory is ~290pt wide while
+    /// its placement still reads `.expanded`, and five controls would leave
+    /// the text 34pt. This sheds controls until the text column reaches
+    /// `minTextWidth` — the skip intervals first (together, so the cluster
+    /// stays symmetric), then previous. Play/pause and next are the floor and
+    /// are never shed.
+    ///
+    /// `trailingReserve` is any extra trailing lane the caller keeps clear
+    /// (the chevron's 32pt), on top of the padding `textBudget` already counts.
+    ///
+    /// A width that is zero, negative or non-finite means the pill has not
+    /// been measured yet; that returns the slot's full set rather than
+    /// mistaking "unmeasured" for "no room".
+    static func controls(slot: Slot, width: CGFloat, hasLeadingSlot: Bool,
+                         trailingReserve: CGFloat) -> [Control] {
+        let full = controls(for: slot)
+        guard width.isFinite, width > 0 else { return full }
+
+        let withoutSkips = full.filter { $0 != .back15 && $0 != .forward30 }
+        let floor = withoutSkips.filter { $0 != .previous }
+
+        for candidate in [full, withoutSkips] {
+            let budget = textBudget(width: width, controls: candidate,
+                                    hasLeadingSlot: hasLeadingSlot) - trailingReserve
+            if budget >= minTextWidth { return candidate }
+        }
+        return floor
+    }
+
     /// Points left for the title/artist column after padding, the control
     /// cluster, and the optional leading slot have taken their share.
     static func textBudget(width: CGFloat, slot: Slot, hasLeadingSlot: Bool) -> CGFloat {
-        let set = controls(for: slot)
+        textBudget(width: width, controls: controls(for: slot), hasLeadingSlot: hasLeadingSlot)
+    }
+
+    /// Same arithmetic as above, for an explicit control set.
+    static func textBudget(width: CGFloat, controls set: [Control], hasLeadingSlot: Bool) -> CGFloat {
         let controlsWidth = CGFloat(set.count) * controlWidth
             + CGFloat(max(set.count - 1, 0)) * controlSpacing
         let leading = hasLeadingSlot ? leadingSlotSize + slotTextGap : 0
