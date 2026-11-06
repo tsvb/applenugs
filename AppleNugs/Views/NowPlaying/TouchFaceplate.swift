@@ -9,6 +9,7 @@ struct TouchFaceplate: View {
     @Environment(\.theme) private var theme
     @Environment(\.dismiss) private var dismiss
     @Environment(UIState.self) private var ui
+    @Environment(\.nowPlayingQueueBeside) private var queueBeside
 
     @State private var scrubbing = false
     @State private var scrubValue: Double = 0
@@ -39,6 +40,7 @@ struct TouchFaceplate: View {
                 .padding(.horizontal, 28)
         }
         .padding(.vertical, 18)
+        .nowPlayingReadableWidth()
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background {
             LinearGradient(
@@ -271,16 +273,24 @@ struct TouchFaceplate: View {
 
             Spacer()
 
-            Button {
-                dashboardShown = true
-            } label: {
-                Image(systemName: "list.bullet")
-                    .font(.system(size: 17))
-                    .foregroundStyle(theme.palette.textSecondary)
+            // The queue already sits beside the player on iPhone Duo's inner
+            // display; keep its 44pt slot so the row doesn't shift.
+            if queueBeside {
+                Color.clear
                     .frame(width: 44, height: 44)
+                    .accessibilityHidden(true)
+            } else {
+                Button {
+                    dashboardShown = true
+                } label: {
+                    Image(systemName: "list.bullet")
+                        .font(.system(size: 17))
+                        .foregroundStyle(theme.palette.textSecondary)
+                        .frame(width: 44, height: 44)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Queue and stream details")
             }
-            .buttonStyle(.plain)
-            .accessibilityLabel("Queue and stream details")
         }
     }
 

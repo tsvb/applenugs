@@ -9,6 +9,7 @@ struct ClickWheelScreen: View {
     @Environment(\.theme) private var theme
     @Environment(\.dismiss) private var dismiss
     @Environment(UIState.self) private var ui
+    @Environment(\.nowPlayingQueueBeside) private var queueBeside
 
     @State private var scrubbing = false
     @State private var scrubValue: Double = 0
@@ -41,6 +42,7 @@ struct ClickWheelScreen: View {
                 .padding(.bottom, 8)
         }
         .padding(.vertical, 16)
+        .nowPlayingReadableWidth()
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background { theme.palette.base.ignoresSafeArea() }
         .dismissesOnNavigation($dashboardShown, ui: ui)
@@ -206,7 +208,17 @@ struct ClickWheelScreen: View {
             // Satellites sit on the diagonals outside the wheel.
             VStack {
                 HStack {
-                    satellite("ellipsis", label: "Queue and stream details") { dashboardShown = true }
+                    // The queue already sits beside the player on iPhone
+                    // Duo's inner display. An empty 52pt slot, not a raised
+                    // disc (that would read as a dead button), and never
+                    // removed — the satellites are fixed geometry.
+                    if queueBeside {
+                        Color.clear
+                            .frame(width: 52, height: 52)
+                            .accessibilityHidden(true)
+                    } else {
+                        satellite("ellipsis", label: "Queue and stream details") { dashboardShown = true }
+                    }
                     Spacer()
                     RoutePicker(tint: theme.palette.textPrimary)
                         .frame(width: 52, height: 52)

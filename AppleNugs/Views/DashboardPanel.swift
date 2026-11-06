@@ -18,12 +18,20 @@ struct DashboardPanel: View {
     @Environment(\.theme) private var theme
     @Environment(\.artColor) private var artColor
 
+    /// False when the panel sits BESIDE the full-screen player (iPhone Duo's
+    /// `NowPlayingArrangement`), where the "Now" section would only repeat the
+    /// player next to it. Fixed per instance — never toggled per tick — so the
+    /// Signal section's constant-row-set rule is untouched.
+    var showsNowPlaying: Bool = true
+
     private var player: PlayerService { app.player }
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 22) {
-                nowPlayingSection
+                if showsNowPlaying {
+                    nowPlayingSection
+                }
                 qualitySection
                 queueSection
             }
