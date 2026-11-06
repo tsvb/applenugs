@@ -28,11 +28,21 @@ Native **macOS + iOS SwiftUI** client for nugs.net. Public repo `tsvb/applenugs`
 - **Navigating from a modal surface uses `UIState.navigate(to:)`, not `open(_:)`.** It bumps a tick that every presentation owner observes via `dismissesOnNavigation(_:ui:)`. Needed because on iOS the dashboard is a sheet inside a sheet AND a sheet inside a fullScreenCover, so a tap there unwinds two layers and `@Environment(\.dismiss)` reaches only the innermost. `navigate(to:)` deliberately does NOT touch `sidebarSelection` — its `didSet` resets `navPath` and would wipe the push. Deep links route through it too.
 - **`NowPlayingMetaText` carries a `tappableText` flag** (and `showsLinks` for the offline Downloads sheet, which has no stack to push onto). All 16 sites are real tap links today, the pill and Home hero included — Tim asked for that explicitly after they initially shipped as long-press/VoiceOver-only. If a mis-tap problem ever shows up on those two (both have their whole body as a competing tap target), `tappableText: false` is the dial, not a rewrite.
 - **`PlaybackStateStore` no longer writes under `-UITEST`** (both `save` and `clear`, each behind `#if DEBUG` because `AppModel.isUITestRun` is itself DEBUG-only and is now `nonisolated` so the nonisolated store can read it). This retires the long-standing seeded-launch hazard: a `-UITestSeedQueue` run that touched the transport used to persist stub tracks over the real resume queue, and "Clear" deleted it outright. Reads are deliberately still live.
+- **iPhone Duo layout rules.** (1) **Now-playing art must yield height** — never a rigid tile: the no-art
+  `MonogramTile` scales with its box (capped at its old 280/260pt), exactly like real artwork; a fixed
+  tile overflows short canvases (the Duo's landscape inner display, and portrait iPhones by ~15pt).
+  (2) **The pill sheds controls by measured WIDTH** (`PillLayout.controls(slot:width:hasLeadingSlot:trailingReserve:)`,
+  90pt text floor), because on the Duo's outer display a vertical tab bar leaves a ~290pt accessory that
+  still reports `.expanded`. (3) The iOS full-screen cover hosts `NowPlayingArrangement` (iOS 27.1
+  `ArrangementView`, player + `DashboardPanel(showsNowPlaying: false)`); players read
+  `\.nowPlayingQueueBeside` and swap their queue button for a same-size hidden placeholder. Scaling a
+  fixed-geometry cluster uses `NowPlayingFit.scale` + `scaleEffect` + a matching `.frame` —
+  `scaleEffect` alone keeps the old footprint.
 - Catalog dates are UTC-midnight instants — use `CrateSection.catalogCalendar`, not `Calendar.current` (see the `applenugs-catalog-dates-are-utc` memory).
 
 ## Pick up here — state as of 2026-08-18
 
-### iPhone Duo layout — IN PROGRESS (2026-11-05, branch `worktree-iphone-duo`)
+### iPhone Duo layout — BUILT, awaiting fold + device verification (2026-11-05, branch `worktree-iphone-duo`)
 
 Worktree `.claude/worktrees/iphone-duo`, based on `origin/main` `c0de287` — deliberately NOT on the
 unmerged `listening-stats` branch; whichever merges second rebases and resolves this section.
@@ -52,6 +62,20 @@ Spec/plan/probe evidence are local-only under `docs/superpowers/` (`specs/2026-1
   pill fine; **the full-screen player overflows vertically in Soundboard/Tape Room/Shoebox/Click Wheel**
   (header + bottom row off-screen — no queue, no dismiss button). Only The Receiver fits. Caveat: all
   probe shots show the MONOGRAM (rigid `MonogramTile(size: 280)`); real artwork is unprobed.
+- **BUILT (2026-11-05), unpushed, unmerged** — gate green at `4f88075`: both schemes warning-free,
+  `AppleNugsTests` **149**. Commits: CI → `xcode-27` runner pinned to `Xcode_27.1.app` with a version
+  assertion (`016a991`, **never run — first push verifies the label**); pill sheds controls by measured
+  width (`25086ad`); placeholder monogram scales so the Standard player fits (`8ea1533` — this ALSO fixed a
+  pre-existing ~15pt overflow on portrait iPhones whenever a track had no art); Click Wheel fits
+  (`e577df3`, pure `NowPlayingFit`); groundwork (`3e7ee68`); `NowPlayingArrangement` (`722a46c`); review
+  fixes (`4f88075`: playback error kept in the queue column, secondary counted not flagged).
+- **Measured in the split (Duo sim, unfolded flat):** an even 50/50 of the safe area, two 433.5×635pt
+  columns, each COMPACT — so the 520pt readable-width cap only fires when the player is alone on regular
+  width (upright inner display). Art in the split ≈84–112pt (smallest: Click Wheel, Tape Room).
+- **Still unverified:** the pill fix on the outer display (needs a fold); whether the secondary is REMOVED
+  vs kept at zero size when the inner display can't split (the queue-beside flag depends on it); fold ↔
+  unfold with the cover open; the upright pose; book (half-folded) pose; Split View multitasking; the
+  pill's expanded-panel sheet and the queue sheet on the inner display; real artwork on a real Duo; CI.
 - **Simulator facts:** the Duo needs its OWN runtime, iOS 27.1 `24A94425` (Duo-only; the general 27.2
   runtime can't create a Duo). Xcode 27 has no Simulator.app — Device Hub; folding/rotating are on-screen
   controls only (no `simctl` posture command), so pose changes need Tim. `simctl io … screenshot` needs
