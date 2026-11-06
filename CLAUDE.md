@@ -72,10 +72,14 @@ Spec/plan/probe evidence are local-only under `docs/superpowers/` (`specs/2026-1
 - **Measured in the split (Duo sim, unfolded flat):** an even 50/50 of the safe area, two 433.5×635pt
   columns, each COMPACT — so the 520pt readable-width cap only fires when the player is alone on regular
   width (upright inner display). Art in the split ≈84–112pt (smallest: Click Wheel, Tape Room).
-- **Still unverified:** the pill fix on the outer display (needs a fold); whether the secondary is REMOVED
-  vs kept at zero size when the inner display can't split (the queue-beside flag depends on it); fold ↔
-  unfold with the cover open; the upright pose; book (half-folded) pose; Split View multitasking; the
-  pill's expanded-panel sheet and the queue sheet on the inner display; real artwork on a real Duo; CI.
+- **VERIFIED on the Duo simulator at `4f88075` (Tim folding in Device Hub, no relaunch between shots):**
+  fold with the cover open → player alone on the outer display with its queue button BACK, state kept —
+  **the arrangement REMOVES the secondary when it can't split** (the assumption behind
+  `nowPlayingQueueBeside`; keep the counter); unfold → split and hidden button restored; folded tab root
+  → pill reads "Away From th…" with prev/play/next + chevron (was "Aw…").
+- **Still unverified:** the upright pose (and so the 520pt cap); book (half-folded) pose; Split View
+  multitasking; the pill's expanded-panel sheet and the queue sheet on the inner display; swipe-down
+  dismiss; real artwork on a REAL Duo (simulator real-art run passed); CI's first run.
 - **Simulator facts:** the Duo needs its OWN runtime, iOS 27.1 `24A94425` (Duo-only; the general 27.2
   runtime can't create a Duo). Xcode 27 has no Simulator.app — Device Hub; folding/rotating are on-screen
   controls only (no `simctl` posture command), so pose changes need Tim. `simctl io … screenshot` needs
