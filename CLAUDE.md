@@ -77,6 +77,15 @@ Spec/plan/probe evidence are local-only under `docs/superpowers/` (`specs/2026-1
   **the arrangement REMOVES the secondary when it can't split** (the assumption behind
   `nowPlayingQueueBeside`; keep the counter); unfold → split and hidden button restored; folded tab root
   → pill reads "Away From th…" with prev/play/next + chevron (was "Aw…").
+- **Installed on Tim's REAL Duo 2026-11-05** (`iPhone19,4`, iOS 27.2, UDID `00008160-000642D90CA8000A`).
+  Device-install recipe that worked, in order: Developer Mode ON (Settings → Privacy & Security; the
+  phone restarts, and CoreDevice shows it `unavailable` for a minute after — wait, don't re-pair);
+  build against the SPECIFIC device — `-destination 'platform=iOS,id=<udid>' -allowProvisioningUpdates
+  -allowProvisioningDeviceRegistration` — because a `generic/platform=iOS` build never registers a new
+  phone and the install then fails with `0xe8008012 … profile cannot be installed on this device`; and a
+  pending Program License Agreement blocks device registration outright ("PLA Update available") until
+  Tim accepts it at developer.apple.com/account. `xctrace` kept listing the phone "offline" while
+  `devicectl list devices` correctly showed it `available (paired)` — trust `devicectl` for this.
 - **Still unverified:** the upright pose (and so the 520pt cap); book (half-folded) pose; Split View
   multitasking; the pill's expanded-panel sheet and the queue sheet on the inner display; swipe-down
   dismiss; real artwork on a REAL Duo (simulator real-art run passed); CI's first run.
