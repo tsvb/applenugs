@@ -55,7 +55,8 @@ label resolves and Xcode 27.1 builds both schemes + tests), and `origin/main` wa
 rebase commit, so every hash below is on `main`. `listening-stats` is still unmerged and based on the OLD
 `main`; it now needs a rebase onto `805d766`, resolving this CLAUDE.md section against its own.
 
-**NEXT (queued, specced locally):** (1) the pill ducks out of the way on scroll on the Duo — branch
+**NEXT (queued, specced locally):** (1) the pill ducks out of the way on scroll on the Duo — **BUILT
+`ed6770d` and VERIFIED by Tim on the real Duo 2026-11-06 ("nailed it"), 197 tests; not yet pushed** — branch
 `pill-duck` in the same worktree; spec `docs/superpowers/specs/2026-11-05-pill-duck-on-scroll-design.md`;
 probe verdict: the system accessory can't be animated (toggling `isEnabled` pops/crossfades AND reflows the
 content 38–56pt), so where `\.toolbarVerticalEdge != nil` (iOS 27.1+) the pill becomes our own glass overlay
