@@ -215,6 +215,10 @@ targets:
         # Pure Foundation policy for the dashboard inspector's Signal rows. The
         # tests pin the constant-shape invariant that keeps the section from
         # collapsing while a track loads, so it has to be compiled in here.
+      - path: AppleNugs/Views/NowPlaying/NowPlayingFit.swift
+        # Pure Foundation scale-to-fit for the full-screen players' fixed-
+        # proportion parts (Click Wheel's pad); compiled in so the "an
+        # unmeasured pass never shrinks" rule stays covered host-free.
     scheme:
       testTargets:
         - AppleNugsTests

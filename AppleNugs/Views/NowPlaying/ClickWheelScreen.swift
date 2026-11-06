@@ -15,6 +15,8 @@ struct ClickWheelScreen: View {
     @State private var dashboardShown = false
     /// Volume to restore when the mute button toggles back on.
     @State private var unmutedVolume: Float = 1
+    /// Width offered to the control pad; 0 until the first measurement.
+    @State private var padWidth: CGFloat = 0
 
     private var player: PlayerService { app.player }
 
@@ -86,9 +88,20 @@ struct ClickWheelScreen: View {
                     .resizable()
                     .aspectRatio(contentMode: .fit)
             } else {
-                MonogramTile(
-                    text: player.current?.artist ?? player.current?.title ?? "?",
-                    size: 260)
+                // The monogram scales with the box it is given, capped at its
+                // old fixed 260pt — the same flexibility the real-art Image
+                // above already has (and the fix StandardNowPlayingScreen got).
+                // A rigid 260×260 tile can't shrink: on iPhone Duo's ~669pt-
+                // tall landscape inner display it pushed the header off the
+                // top and the wheel's ±15/30 satellites off the bottom. The
+                // ideal size keeps 260 for unconstrained (nil) proposals.
+                GeometryReader { geo in
+                    MonogramTile(
+                        text: player.current?.artist ?? player.current?.title ?? "?",
+                        size: min(geo.size.width, geo.size.height))
+                        .frame(width: geo.size.width, height: geo.size.height)
+                }
+                .frame(idealWidth: 260, maxWidth: 260, idealHeight: 260, maxHeight: 260)
             }
         }
         .frame(maxWidth: .infinity)
@@ -206,11 +219,30 @@ struct ClickWheelScreen: View {
                     satellite("goforward.30", label: "Forward 30 seconds") { player.seek(by: 30) }
                 }
             }
-            .frame(width: 330, height: 260)
+            .frame(width: Self.padSize.width, height: Self.padSize.height)
 
             wheel
         }
+        .frame(width: Self.padSize.width, height: Self.padSize.height)
+        // The pad's proportions are the theme, so it never reflows: in a
+        // column narrower than 330pt (an iPhone Duo split column, Split View)
+        // it shrinks as a whole. scaleEffect only changes the drawing, so the
+        // frame after it is what actually gives the layout back.
+        .scaleEffect(padScale)
+        .frame(width: Self.padSize.width * padScale, height: Self.padSize.height * padScale)
+        // Measured on the full-width container, whose width doesn't depend on
+        // the scale — so there's no measure → scale → re-measure loop.
         .frame(maxWidth: .infinity)
+        .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { padWidth = $0 }
+    }
+
+    /// The satellite cluster's natural footprint around the 240pt wheel.
+    private static let padSize = CGSize(width: 330, height: 260)
+
+    /// 1 until measured (`padWidth == 0` is unconstrained), and never above 1.
+    private var padScale: CGFloat {
+        NowPlayingFit.scale(available: CGSize(width: padWidth, height: .infinity),
+                            natural: Self.padSize)
     }
 
     /// A pad outside the ring. Seek and queue live here, one wheel-width from
