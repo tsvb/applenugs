@@ -33,8 +33,13 @@ Native **macOS + iOS SwiftUI** client for nugs.net. Public repo `tsvb/applenugs`
   tile overflows short canvases (the Duo's landscape inner display, and portrait iPhones by ~15pt).
   (2) **The pill sheds controls by measured WIDTH** (`PillLayout.controls(slot:width:hasLeadingSlot:trailingReserve:)`,
   90pt text floor), because on the Duo's outer display a vertical tab bar leaves a ~290pt accessory that
-  still reports `.expanded`. (3) The iOS full-screen cover hosts `NowPlayingArrangement` (iOS 27.1
-  `ArrangementView`, player + `DashboardPanel(showsNowPlaying: false)`); players read
+  still reports `.expanded`. (3) The iOS full-screen cover hosts `NowPlayingArrangement`; the pure
+  `NowPlayingColumns` policy picks compact → player alone, regular + wider-than-tall → iOS 27.1
+  `ArrangementView` (player + `DashboardPanel(showsNowPlaying: false)`), regular + upright → an explicit
+  HStack with a 220–260pt queue column (ArrangementView's horizontal split refuses tall canvases). It
+  also owns **swipe-down to close** (pure `NowPlayingDismissDrag`; a plain `.gesture` on the PLAYER only,
+  so sliders/buttons/The Receiver's ladder win; the moving layer must carry its own `safeAreaPadding`
+  because offset content stops painting its safe-area backgrounds). Players read
   `\.nowPlayingQueueBeside` and swap their queue button for a same-size hidden placeholder. Scaling a
   fixed-geometry cluster uses `NowPlayingFit.scale` + `scaleEffect` + a matching `.frame` —
   `scaleEffect` alone keeps the old footprint.
@@ -54,7 +59,7 @@ Spec/plan/probe evidence are local-only under `docs/superpowers/` (`specs/2026-1
   two-column browse, multi-window, outer-display landscape, `ReservedRegion`, hinge effects, or any macOS change.
 - **iOS floor stays 26.1**; every 27.1 API behind `if #available(iOS 27.1, *)`. **CI moves to Xcode ≥ 27.1**
   with a loud `xcodebuild -version` assertion (26.6 can't compile 27.1 symbols even behind `#available`).
-- **Upright inner display = player alone** (side by side only when wider than tall).
+- **Upright inner display:** first "player alone"; Tim REVERSED it after the real-Duo pass — the queue column sits beside the player upright too.
 - **Phase 0 probe of the UNCHANGED app (Duo simulator, 27.2 SDK), verdicts:** outer display — tab bar goes
   VERTICAL on the trailing edge; the pill survives at the bottom but ~290pt wide while still `.expanded`, so
   all five controls leave the title at "Aw…" (`PillLayout` sheds controls by placement only — defect).
@@ -86,9 +91,15 @@ Spec/plan/probe evidence are local-only under `docs/superpowers/` (`specs/2026-1
   pending Program License Agreement blocks device registration outright ("PLA Update available") until
   Tim accepts it at developer.apple.com/account. `xctrace` kept listing the phone "offline" while
   `devicectl list devices` correctly showed it `available (paired)` — trust `devicectl` for this.
-- **Still unverified:** the upright pose (and so the 520pt cap); book (half-folded) pose; Split View
-  multitasking; the pill's expanded-panel sheet and the queue sheet on the inner display; swipe-down
-  dismiss; real artwork on a REAL Duo (simulator real-art run passed); CI's first run.
+- **Real-Duo pass (Tim, 2026-11-05):** ✓ split with real art + ALAC; ✓ upright (then player-alone);
+  ✓ pill panel; ✓ Split View beside another app (player alone at half width); ✗ swipe-down never worked
+  on any iPhone → **added** (`e51c771`). Tim then asked for the **queue column upright too** → `fd2aa01`
+  (sim upright 669×951pt → 409 + 260pt columns; every player verified at a forced 300pt column; also fixed
+  Click Wheel's pad never shrinking below 330pt — a max-only frame reports max(child, proposal)). 173 tests.
+- **Still unverified:** swipe-down on hardware (esp. drags that START on a slider thumb or a button);
+  upright columns on the real Duo (its status strip is on the trailing edge, so ~535pt → 300 + 235);
+  rotating upright↔flat with the cover open (rebuilds the player — documented trade-off); book pose;
+  the queue sheet on the inner display; CI's first run.
 - **Simulator facts:** the Duo needs its OWN runtime, iOS 27.1 `24A94425` (Duo-only; the general 27.2
   runtime can't create a Duo). Xcode 27 has no Simulator.app — Device Hub; folding/rotating are on-screen
   controls only (no `simctl` posture command), so pose changes need Tim. `simctl io … screenshot` needs
