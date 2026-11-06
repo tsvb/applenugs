@@ -31,6 +31,18 @@ struct DashboardPanel: View {
             VStack(alignment: .leading, spacing: 22) {
                 if showsNowPlaying {
                     nowPlayingSection
+                } else if let error = player.playbackError {
+                    // Beside the player, the "Now" section is dropped — but on
+                    // iOS it is the only place a playback error renders, and
+                    // the player's own queue button (the old route to it) is
+                    // hidden while this column shows. Keep the error alone.
+                    // Conditional for the same reason as the Mac branch below:
+                    // a real failure is rare, not per-tick churn.
+                    Label(error, systemImage: "exclamationmark.triangle")
+                        .font(.caption)
+                        .foregroundStyle(.red)
+                        .lineLimit(2)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
                 qualitySection
                 queueSection

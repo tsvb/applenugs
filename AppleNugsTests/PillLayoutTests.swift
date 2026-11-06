@@ -124,6 +124,35 @@ final class PillLayoutTests: XCTestCase {
                        PillLayout.controls(for: .expanded))
     }
 
+    /// The floor is inclusive. With the chevron, 346pt leaves exactly
+    /// 346 - 20 - 156 - 48 - 32 = 90pt of text: all five stay. One point
+    /// narrower sheds the skips.
+    func testFloorIsInclusiveWithChevron() {
+        XCTAssertEqual(PillLayout.controls(slot: .expanded, width: 346,
+                                           hasLeadingSlot: true, trailingReserve: chevronReserve),
+                       PillLayout.controls(for: .expanded))
+        XCTAssertEqual(PillLayout.controls(slot: .expanded, width: 345,
+                                           hasLeadingSlot: true, trailingReserve: chevronReserve),
+                       [.previous, .playPause, .next])
+    }
+
+    /// Same edge without the chevron lane: 314pt keeps five, 313pt sheds.
+    func testFloorIsInclusiveWithoutChevron() {
+        XCTAssertEqual(PillLayout.controls(slot: .expanded, width: 314,
+                                           hasLeadingSlot: true, trailingReserve: 0),
+                       PillLayout.controls(for: .expanded))
+        XCTAssertEqual(PillLayout.controls(slot: .expanded, width: 313,
+                                           hasLeadingSlot: true, trailingReserve: 0),
+                       [.previous, .playPause, .next])
+    }
+
+    /// No leading slot frees 40pt: 306pt with the chevron is exactly the floor.
+    func testNoLeadingSlotFreesItsWidth() {
+        XCTAssertEqual(PillLayout.controls(slot: .expanded, width: 306,
+                                           hasLeadingSlot: false, trailingReserve: chevronReserve),
+                       PillLayout.controls(for: .expanded))
+    }
+
     func testNaNWidthKeepsTheSlotsFullSet() {
         XCTAssertEqual(PillLayout.controls(slot: .expanded, width: .nan,
                                            hasLeadingSlot: true, trailingReserve: chevronReserve),

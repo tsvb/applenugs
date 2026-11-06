@@ -13,7 +13,7 @@ import SwiftUI
 /// reports a COMPACT horizontal size class — so the players' regular-width
 /// readable-width cap does not apply inside the split.
 ///
-/// `queueBeside` is derived from the secondary's own appearance because the
+/// "Queue beside" is derived from the secondary's own appearance because the
 /// SDK exposes no "is the secondary visible" signal for `.split` (only the
 /// `.overlay` style has `overlayArrangementZIndex`). That assumes the
 /// arrangement REMOVES the secondary when it can't split rather than keeping
@@ -23,7 +23,11 @@ import SwiftUI
 /// `ArrangementView` is iOS 27.1+; the floor stays 26.1, so older systems take
 /// the bare player.
 struct NowPlayingArrangement: View {
-    @State private var queueBeside = false
+    /// Live secondary instances, counted rather than flagged: if the
+    /// arrangement rebuilds the secondary on a fold or rotation, the new
+    /// instance's `onAppear` can land before the old one's `onDisappear`,
+    /// which would leave a single Bool false while the column is on screen.
+    @State private var visibleSecondaries = 0
 
     var body: some View {
         if #available(iOS 27.1, *) {
@@ -31,11 +35,11 @@ struct NowPlayingArrangement: View {
                 NowPlayingScreen()
             } secondary: {
                 DashboardPanel(showsNowPlaying: false)
-                    .onAppear { queueBeside = true }
-                    .onDisappear { queueBeside = false }
+                    .onAppear { visibleSecondaries += 1 }
+                    .onDisappear { visibleSecondaries = max(visibleSecondaries - 1, 0) }
             }
             .arrangementViewStyle(.split.axes(.horizontal))
-            .environment(\.nowPlayingQueueBeside, queueBeside)
+            .environment(\.nowPlayingQueueBeside, visibleSecondaries > 0)
         } else {
             NowPlayingScreen()
         }
