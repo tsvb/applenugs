@@ -53,8 +53,9 @@ Native **macOS + iOS SwiftUI** player for nugs.net, shipped to users as **Yeti �
   CI green on `xcode-27`, fast-forward — every hash in this file is on `main`). 307 tests.
 - **`yeti-design`** (checked out, no upstream, starts at `e6ab835`) — the branch for the single-design
   refactor (step 3 below).
-- The main checkout's local `main` ref is behind — `git -C /Users/tim/applenugs fetch origin main:main`
-  (run by Tim; the worktree guard blocks `git -C` outside the worktree). Remote branches `iphone-duo` and
+- Local `main` ref is synced to `e6ab835` (fast-forwarded from inside the worktree with
+  `git branch -f main origin/main` — the worktree shares the repo's refs, and `main` isn't checked out
+  anywhere; `git -C …` / network fetches from Tim's remote-control `!` shell fail). Remote branches `iphone-duo` and
   `yeti` are merged and can be deleted on GitHub (Tim's call).
 - `listening-stats` (in the main checkout; built, unmerged, based on the OLD main — needs a rebase onto
   `e6ab835`, with a CLAUDE.md conflict to resolve). Its Home "nice list" ledger is part of the Yeti design.
