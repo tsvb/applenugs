@@ -80,7 +80,12 @@ disclaimers · `2db580f` encrypted downloads. **302 tests.** Rules that fail sil
   (`scripts/generate-banner.swift`), re-shoot `docs/images`, decide the `.app` rename, update goosealmanac's
   deep-link doc.
 - **Verified on Tim's Duo:** honest identity (signed in, plays), Yeti name, encrypted download → seek + gapless
-  ("even better than streaming"). Unverified: lock-screen download playback, logout wipe, the Mac migration.
+  ("even better than streaming"); **performance** (`8c3c0d7`): locked-screen playback of a downloaded show
+  peaked at **60.9 MB for the whole app** (3.24 GB jetsam headroom), **0 background ticks**. The key is
+  `isEntireLengthAvailableOnDemand = true` in `SealedAssetLoader` — without it AVFoundation buffers the whole
+  file (134 MB per FLAC track); a test fails if it's removed. The 0.25 s player tick is removed in the
+  background (once-a-minute resume save only) — don't reintroduce periodic background work.
+  Unverified: logout wipe, the Mac migration.
 
 **NEXT (queued, specced locally):** (1) the pill ducks out of the way on scroll on the Duo — **BUILT
 `ed6770d` and VERIFIED by Tim on the real Duo 2026-11-06 ("nailed it"), 197 tests; not yet pushed** — branch
