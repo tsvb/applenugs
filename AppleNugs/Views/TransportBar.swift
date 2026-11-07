@@ -17,6 +17,7 @@ struct TransportBar: View {
     @State private var scrubValue: Double = 0
 
     private var player: PlayerService { app.player }
+    private var plainVoice: Bool { theme.caps.contains(.plainVoice) }
 
     var body: some View {
         #if os(macOS)
@@ -43,7 +44,8 @@ struct TransportBar: View {
 
             volumeBlock
 
-            RoutePicker(tint: theme.palette.accent)
+            // AirPlay isn't time moving: slush, not foil, under `.plainVoice`.
+            RoutePicker(tint: plainVoice ? theme.palette.textSecondary : theme.palette.accent)
                 .frame(width: 26, height: 26)
                 .help("AirPlay")
 
@@ -59,7 +61,13 @@ struct TransportBar: View {
             .help("Open the Now Playing window")
             .accessibilityLabel("Open the Now Playing window")
 
-            if let pick = player.nowPick {
+            if theme.caps.contains(.stickers) {
+                // The price sticker replaces the badge. Presence follows
+                // `player.current` (inside the sticker's own init), never
+                // `nowPick`, and it holds its 36pt frame when hidden, so the
+                // bar never reflows at a track boundary.
+                PriceSticker(player: player, size: .s36)
+            } else if let pick = player.nowPick {
                 Text(pick.format.badge)
                     .font(theme.type.numeric(10).weight(.semibold))
                     .foregroundStyle(badgeColor(for: pick.format))
@@ -101,7 +109,11 @@ struct TransportBar: View {
         } label: {
             Image(systemName: saved ? "star.fill" : "star")
                 .font(.system(size: 13))
-                .foregroundStyle(saved ? theme.palette.accent : theme.palette.textSecondary)
+                // A saved show isn't time moving: under `.plainVoice` the
+                // filled star is snow, not an accent fill.
+                .foregroundStyle(saved
+                                 ? (plainVoice ? theme.palette.textPrimary : theme.palette.accent)
+                                 : theme.palette.textSecondary)
         }
         .buttonStyle(.plain)
         .disabled(player.current?.showId == nil)
@@ -147,23 +159,7 @@ struct TransportBar: View {
             .help("Back 15s (←)")
             .accessibilityLabel("Back 15 seconds")
 
-            Button {
-                player.togglePlayPause()
-            } label: {
-                if player.isBuffering {
-                    ProgressView()
-                        .controlSize(.small)
-                        .frame(width: 24)
-                } else {
-                    Image(systemName: player.isPlaying ? "pause.fill" : "play.fill")
-                        .font(.title3)
-                        .frame(width: 24)
-                }
-            }
-            .disabled(player.current == nil)
-            .help("Play / pause (space)")
-            .accessibilityLabel(player.isPlaying ? "Pause" : "Play")
-            .accessibilityValue(player.isBuffering ? "Buffering" : "")
+            playPauseButton
 
             Button {
                 player.seek(by: 30)
@@ -184,6 +180,45 @@ struct TransportBar: View {
             .accessibilityLabel("Next track")
         }
         .buttonStyle(.borderless)
+    }
+
+    /// Yeti's 34pt play sticker under `.stickers` (its own disc, glyph and
+    /// spinner, one size in every state); the plain glyph otherwise.
+    @ViewBuilder
+    private var playPauseButton: some View {
+        if theme.caps.contains(.stickers) {
+            Button {
+                player.togglePlayPause()
+            } label: {
+                PlaySticker(isPlaying: player.isPlaying,
+                            isBuffering: player.isBuffering,
+                            size: .s34)
+            }
+            // `.borderless` (the cluster's style) would decorate the sticker.
+            .buttonStyle(.plain)
+            .disabled(player.current == nil)
+            .help("Play / pause (space)")
+            .accessibilityLabel(player.isPlaying ? "Pause" : "Play")
+            .accessibilityValue(player.isBuffering ? "Buffering" : "")
+        } else {
+            Button {
+                player.togglePlayPause()
+            } label: {
+                if player.isBuffering {
+                    ProgressView()
+                        .controlSize(.small)
+                        .frame(width: 24)
+                } else {
+                    Image(systemName: player.isPlaying ? "pause.fill" : "play.fill")
+                        .font(.title3)
+                        .frame(width: 24)
+                }
+            }
+            .disabled(player.current == nil)
+            .help("Play / pause (space)")
+            .accessibilityLabel(player.isPlaying ? "Pause" : "Play")
+            .accessibilityValue(player.isBuffering ? "Buffering" : "")
+        }
     }
 
     private var seekBlock: some View {
@@ -210,6 +245,9 @@ struct TransportBar: View {
             }
             .disabled(player.duration <= 0)
             .controlSize(.small)
+            // The root tint is snow under `.plainVoice`; time moving is foil,
+            // so say it here. Other themes keep inheriting the root's accent.
+            .tintIfSet(plainVoice ? theme.effectiveAccent(art: artColor) : nil)
             .accessibilityLabel("Playback position")
             .accessibilityValue(Self.format(seconds: scrubbing ? scrubValue : player.currentTime))
 
@@ -241,6 +279,8 @@ struct TransportBar: View {
             Slider(value: $player.volume, in: 0...1)
                 .controlSize(.mini)
                 .frame(width: 90)
+                // Volume isn't time, so under `.plainVoice` it's slush, not foil.
+                .tintIfSet(plainVoice ? theme.palette.textSecondary : nil)
                 .accessibilityLabel("Volume")
         }
     }
@@ -249,6 +289,16 @@ struct TransportBar: View {
         guard seconds.isFinite, seconds >= 0 else { return "0:00" }
         let total = Int(seconds)
         return String(format: "%d:%02d", total / 60, total % 60)
+    }
+}
+
+private extension View {
+    /// `.tint(color)` only when there is one, so a `nil` leaves the inherited
+    /// root tint in place rather than resetting it (the five themes' sliders
+    /// must keep exactly the tint they inherit today).
+    @ViewBuilder
+    func tintIfSet(_ color: Color?) -> some View {
+        if let color { tint(color) } else { self }
     }
 }
 

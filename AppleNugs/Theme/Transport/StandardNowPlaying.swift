@@ -1,7 +1,8 @@
 import SwiftUI
 
 /// The original now-playing block, token-styled. Used by Soundboard and as the
-/// fallback for The Receiver until its faceplate ships.
+/// fallback for The Receiver until its faceplate ships; Yeti (`.plainVoice`)
+/// draws its own variant with an art chip.
 struct StandardNowPlaying: View {
     @Environment(AppModel.self) private var app
     @Environment(\.theme) private var theme
@@ -9,7 +10,9 @@ struct StandardNowPlaying: View {
     private var player: PlayerService { app.player }
 
     var body: some View {
-        if let track = player.current {
+        if let track = player.current, theme.caps.contains(.plainVoice) {
+            plainBlock(track)
+        } else if let track = player.current {
             VStack(alignment: .leading, spacing: 2) {
                 HStack(spacing: 6) {
                     Text("\(player.index + 1)/\(player.queue.count)")
@@ -28,6 +31,32 @@ struct StandardNowPlaying: View {
             Text(theme.copy.nowPlaying)
                 .font(.callout)
                 .foregroundStyle(theme.palette.textIdle)
+        }
+    }
+
+    /// Yeti's block (`.plainVoice`), as drawn in the surfaces page's Mac
+    /// transport bar: a flat 42pt art chip (no bubble — that is the
+    /// miniplayer's), the title, the meta line, and the queue position said
+    /// plainly ("3 of 24") in lamp-off gray under them.
+    private func plainBlock(_ track: QueueTrack) -> some View {
+        HStack(spacing: 10) {
+            ArtChip(image: player.nowPlayingImage,
+                    fallbackText: track.artist ?? track.title ?? "?",
+                    size: 42)
+                .accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: 1) {
+                Text(track.title ?? "Unknown track")
+                    .font(theme.type.title(15))
+                    .lineLimit(1)
+                NowPlayingMetaText(track: track)
+                    .font(theme.type.body(12))
+                    .foregroundStyle(theme.palette.textSecondary)
+                    .lineLimit(1)
+                Text("\(player.index + 1) of \(player.queue.count)")
+                    .font(theme.type.numeric(11))
+                    .foregroundStyle(theme.palette.textIdle)
+                    .lineLimit(1)
+            }
         }
     }
 }

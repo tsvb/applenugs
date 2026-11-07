@@ -148,6 +148,7 @@ struct MiniPlayerTransportTriad: View {
         case filled     // Soundboard: solid accent disc
         case outline    // Shoebox: rust keyline
         case bare       // Tape Room's ridged band: glyph only
+        case sticker    // Yeti: the 46pt play sticker (an accent disc would be a pink fill)
     }
 
     @Environment(AppModel.self) private var app
@@ -198,22 +199,29 @@ struct MiniPlayerTransportTriad: View {
         HapticButton(.transportToggle) {
             player.togglePlayPause()
         } label: {
-            ZStack {
-                switch style {
-                case .filled:  Circle().fill(theme.effectiveAccent(art: artColor))
-                case .outline: Circle().strokeBorder(theme.palette.playState, lineWidth: 1.5)
-                case .bare:    Color.clear
+            if style == .sticker {
+                // Its own disc, glyph and spinner; one size whatever the state.
+                PlaySticker(isPlaying: player.isPlaying,
+                            isBuffering: player.isBuffering,
+                            size: .s46)
+            } else {
+                ZStack {
+                    switch style {
+                    case .filled:  Circle().fill(theme.effectiveAccent(art: artColor))
+                    case .outline: Circle().strokeBorder(theme.palette.playState, lineWidth: 1.5)
+                    case .bare, .sticker: Color.clear
+                    }
+                    if player.isBuffering {
+                        ProgressView().controlSize(.small).tint(playGlyphColor)
+                    } else {
+                        Image(systemName: player.isPlaying ? "pause.fill" : "play.fill")
+                            .font(.system(size: style == .bare ? glyphSize + 2 : glyphSize))
+                            .foregroundStyle(playGlyphColor)
+                    }
                 }
-                if player.isBuffering {
-                    ProgressView().controlSize(.small).tint(playGlyphColor)
-                } else {
-                    Image(systemName: player.isPlaying ? "pause.fill" : "play.fill")
-                        .font(.system(size: style == .bare ? glyphSize + 2 : glyphSize))
-                        .foregroundStyle(playGlyphColor)
-                }
+                .frame(width: playDiameter, height: playDiameter)
+                .contentShape(Rectangle())
             }
-            .frame(width: playDiameter, height: playDiameter)
-            .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .disabled(player.current == nil)
@@ -227,6 +235,7 @@ struct MiniPlayerTransportTriad: View {
         case .filled:  return theme.palette.base
         case .outline: return theme.palette.playState
         case .bare:    return theme.palette.accent
+        case .sticker: return theme.stickerInk   // unused: the sticker draws its own glyph
         }
     }
 }

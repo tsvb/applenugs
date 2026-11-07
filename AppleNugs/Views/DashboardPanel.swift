@@ -25,6 +25,7 @@ struct DashboardPanel: View {
     var showsNowPlaying: Bool = true
 
     private var player: PlayerService { app.player }
+    private var plainVoice: Bool { theme.caps.contains(.plainVoice) }
 
     var body: some View {
         ScrollView {
@@ -38,11 +39,7 @@ struct DashboardPanel: View {
                     // hidden while this column shows. Keep the error alone.
                     // Conditional for the same reason as the Mac branch below:
                     // a real failure is rare, not per-tick churn.
-                    Label(error, systemImage: "exclamationmark.triangle")
-                        .font(.caption)
-                        .foregroundStyle(.red)
-                        .lineLimit(2)
-                        .fixedSize(horizontal: false, vertical: true)
+                    PlaybackErrorLine(message: error)
                 }
                 qualitySection
                 queueSection
@@ -55,13 +52,16 @@ struct DashboardPanel: View {
     }
 
     /// Section headers in the theme's display face; condensed themes track them
-    /// out as letterpress small caps.
+    /// out as letterpress small caps. Under `.plainVoice` they are the design's
+    /// barker headers: a real section header in snow ("Here it comes"), not a
+    /// small gray label.
     private func sectionHeader(_ text: String) -> some View {
         let condensed = theme.caps.contains(.condensedHeaders)
+        let plain = theme.caps.contains(.plainVoice)
         return Text(condensed ? text.uppercased() : text)
-            .font(theme.type.section(12))
+            .font(theme.type.section(plain ? 17 : 12))
             .tracking(condensed ? 1.6 : 0)
-            .foregroundStyle(theme.palette.textSecondary)
+            .foregroundStyle(plain ? theme.palette.textPrimary : theme.palette.textSecondary)
     }
 
     // --- now playing ---------------------------------------------------------
@@ -85,11 +85,7 @@ struct DashboardPanel: View {
             // error). If it ever does bother us, the fix is to fold the error
             // into the Signal section as an extra row, not to reserve a gap.
             if let error = player.playbackError {
-                Label(error, systemImage: "exclamationmark.triangle")
-                    .font(.caption)
-                    .foregroundStyle(.red)
-                    .lineLimit(2)
-                    .fixedSize(horizontal: false, vertical: true)
+                PlaybackErrorLine(message: error)
             }
             #endif
         }
@@ -102,7 +98,7 @@ struct DashboardPanel: View {
         if let track = player.current {
             VStack(alignment: .leading, spacing: 3) {
                 Text(track.title ?? "Unknown track")
-                    .font(theme.type.title(15))
+                    .font(theme.type.title(theme.caps.contains(.plainVoice) ? 20 : 15))
                     .lineLimit(1)
                     .truncationMode(.tail)
                 NowPlayingMetaText(track: track, fields: [.artist])
@@ -123,11 +119,7 @@ struct DashboardPanel: View {
             .padding(8)
             .background(Color.clear.artWash(theme.washStyle, color: artColor))
             if let error = player.playbackError {
-                Label(error, systemImage: "exclamationmark.triangle")
-                    .font(.caption)
-                    .foregroundStyle(.red)
-                    .lineLimit(2)
-                    .fixedSize(horizontal: false, vertical: true)
+                PlaybackErrorLine(message: error)
             }
         } else {
             Text(theme.copy.dashboardIdle)
@@ -159,7 +151,19 @@ struct DashboardPanel: View {
     private var qualitySection: some View {
         if player.current != nil {
             VStack(alignment: .leading, spacing: 6) {
-                sectionHeader(theme.copy.dashHeaders.quality)
+                if theme.caps.contains(.stickers) {
+                    // The price sticker rides the quality header. This whole
+                    // section is already gated on `player.current`, and the
+                    // sticker holds its frame when a known lossy pick hides
+                    // it, so the header never changes height.
+                    HStack {
+                        sectionHeader(theme.copy.dashHeaders.quality)
+                        Spacer(minLength: 8)
+                        PriceSticker(player: player, size: Self.headerStickerSize)
+                    }
+                } else {
+                    sectionHeader(theme.copy.dashHeaders.quality)
+                }
                 VStack(spacing: 5) {
                     ForEach(SignalReadout.rows(format: player.nowPick?.format,
                                                platformId: player.nowPick?.platformId,
@@ -173,6 +177,14 @@ struct DashboardPanel: View {
             }
         }
     }
+
+    /// The design draws the Mac inspector's sticker at 44pt and the iOS
+    /// sheet's at 38pt (the nearest size the sticker comes in is 40).
+    #if os(macOS)
+    private static let headerStickerSize: PriceSticker.Size = .s44
+    #else
+    private static let headerStickerSize: PriceSticker.Size = .s40
+    #endif
 
     // --- queue -------------------------------------------------------------------
 
@@ -203,6 +215,25 @@ struct DashboardPanel: View {
         }
     }
 
+    /// The row's title. Yeti (`.plainVoice`) prints the playing row heavy in
+    /// sale yellow (`activeEmphasis` = `playState` on a static theme); every
+    /// other theme keeps the inherited text color, untouched.
+    @ViewBuilder
+    private func queueTitle(_ track: QueueTrack, isCurrent: Bool) -> some View {
+        let title = Text(track.title ?? "Unknown track")
+            .font(.caption)
+            .lineLimit(1)
+            .truncationMode(.tail)
+        if plainVoice && isCurrent {
+            title
+                .fontWeight(.heavy)
+                .foregroundStyle(theme.activeEmphasis(art: artColor))
+        } else {
+            title
+                .fontWeight(isCurrent ? .semibold : .regular)
+        }
+    }
+
     private func queueRow(_ i: Int, _ track: QueueTrack) -> some View {
         HStack(spacing: 6) {
             Button {
@@ -210,7 +241,13 @@ struct DashboardPanel: View {
             } label: {
                 HStack(spacing: 6) {
                     if i == player.index {
-                        if theme.caps.contains(.equalizerRows) {
+                        // `.stickers` first: Yeti carries `.equalizerRows` too,
+                        // and its queue slot takes the static row sticker
+                        // instead of the bounce (spec's EqualizerBars table).
+                        if theme.caps.contains(.stickers) {
+                            RowSticker(isPlaying: player.isPlaying, size: .s16)
+                                .frame(width: 16)
+                        } else if theme.caps.contains(.equalizerRows) {
                             EqualizerBars(isPlaying: player.isPlaying)
                                 .frame(width: 16)
                         } else {
@@ -225,11 +262,7 @@ struct DashboardPanel: View {
                             .foregroundStyle(theme.palette.textSecondary)
                             .frame(width: 16)
                     }
-                    Text(track.title ?? "Unknown track")
-                        .font(.caption)
-                        .lineLimit(1)
-                        .truncationMode(.tail)
-                        .fontWeight(i == player.index ? .semibold : .regular)
+                    queueTitle(track, isCurrent: i == player.index)
                     Spacer(minLength: 0)
                 }
                 .contentShape(Rectangle())
@@ -255,6 +288,46 @@ struct DashboardPanel: View {
 }
 
 // MARK: - rows
+
+/// A playback error, as the dashboard shows it. Red with a warning triangle in
+/// every theme but Yeti, which says it in snow with a slush mark on a shelf
+/// block (`.plainVoice`: errors are said, not alarmed). Reads no player state.
+private struct PlaybackErrorLine: View {
+    @Environment(\.theme) private var theme
+
+    let message: String
+
+    var body: some View {
+        if theme.caps.contains(.plainVoice) {
+            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                Image(systemName: "exclamationmark.triangle")
+                    .foregroundStyle(theme.palette.textSecondary)
+                    .accessibilityHidden(true)
+                Text(message)
+                    .fontWeight(.semibold)
+                    .foregroundStyle(theme.palette.textPrimary)
+                    .lineLimit(2)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .font(.caption)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 8)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(theme.palette.raised, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+            .overlay {
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .strokeBorder(theme.palette.hairline, lineWidth: 1)
+            }
+            .accessibilityElement(children: .combine)
+        } else {
+            Label(message, systemImage: "exclamationmark.triangle")
+                .font(.caption)
+                .foregroundStyle(.red)
+                .lineLimit(2)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+}
 
 /// A label/value row. The label keeps its width; the value truncates so the row
 /// can never demand more width than the inspector column.
