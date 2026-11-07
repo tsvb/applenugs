@@ -116,6 +116,37 @@ Pushing is Tim's call.
    (+ `.png`, and the three concepts it beat). It carries a token sheet that maps 1:1 onto `Theme` fields and a
    "Wiring it in" list (ThemeID `.yeti`, EqualizerBars branch, play-sticker sites, FoilSweep, BlisterBubble).
    Never quote the song's lyrics in the app or docs (copyrighted) — paraphrase only.
+   **Decisions taken at kickoff (Tim, 2026-11-07, session on `yeti-design`):** (b) the design pass comes FIRST,
+   before any Swift (Tim chose it over building theme #6 for the mocked surfaces straight away); the FULL
+   play sticker ships (Home hero, iPhone now playing, Mac mini triad — not the price-sticker fallback); the
+   copy "It's on its way" / "Here it comes" / "Says so on the box" / "Coming up next" / "The nice list" is
+   cleared as paraphrase, not lyrics; the macOS custom foil focus outline is DEFERRED to stage (d), when
+   Yeti is the only theme. The superpowers skills were not installed in that session, so the
+   brainstorm → spec → plan steps are being done by hand. Design-pass output:
+   `docs/design/yeti-theme/yeti-surfaces.html` + `.png`, beside `yeti-theme.html` (UNCOMMITTED until Tim
+   says so). **Tim's rulings (2026-11-07, via `yeti-decisions.html`), all final:** (1) iPhone Home gets a
+   hero = the Mac's resume card ported (what's playing; absent when nothing is loaded) — NOT a "newest from
+   artists you follow" card, which the first sheet's label implied and which doesn't exist; (2) the Artists
+   list stays names only, no per-artist show counts (the catalog list is name + id only; a fan-out would
+   break polite networking); (3) the now-playing counter stays "Track 3 of 24" (sentence case); set-aware
+   "Set 2, track 3 of 6" is a later follow-up; (4) the Mac Home resume card is a FLAT cover on card stock —
+   the Mac's bubble belongs to the dashboard miniplayer (and the Now Playing window, drawn as a second bubble
+   on purpose). Proposals all accepted: "Sign out" app-wide (Title Case "Sign Out" in menus; replaces "Log
+   Out"); all three clear-queue paths confirm with "Playback stops and the whole queue empties."
+   (`PlayerService.clear()` empties the whole queue AND stops playback); the app's real tabs and sidebar
+   stay; Signal keeps its six constant rows (restyle only); system traffic lights stay. Every new copy line
+   on `yeti-surfaces.html` is cleared as not-lyrics. `yeti-decisions.html` is the walkthrough Tim answered
+   (needs a real browser — the Claude browser pane renders local files with scripts disabled).
+   **Stage (c) spec:** `docs/superpowers/specs/2026-11-07-yeti-theme-six-design.md` (local-only; awaiting
+   Tim's review as of 2026-11-07). Its load-bearing decisions: gating by four caps (`.blisterPack`,
+   `.stickers`, `.foilSweep`, `.plainVoice`), never `theme.id`; under `.plainVoice` the ROOT TINT is snow
+   (`Theme.rootTint(art:)`), and foil is applied explicitly only where time moves (scrubs, ring, sweep,
+   caret, download/resume progress) — otherwise every prominent control turns into a pink fill; the price
+   sticker's PRESENCE keys on `player.current`, its text on the pick (unknown pick → "Lossless", known
+   non-lossless → hidden) so it never blinks at a track change; `EqualizerBars` sites are decided one by
+   one (queue → 16pt row sticker, setlist → new 20pt site, title + crate header → nothing); "Listen
+   offline" keeps today's downloads-exist gate. The page is assembled from `yeti-theme.html`'s CSS + drawings by a
+   splice script; to edit it, edit the HTML directly.
 4. **Nightstand / tent** (Tim chose all three: propped-open player with clock + night dimming, tent-pose
    landscape player that auto-opens, StandBy Now Playing widget). Start with a DEBUG pose probe (hinge
    status/angle, division regions, display) Tim screenshots in each pose. See the NEXT block below.
