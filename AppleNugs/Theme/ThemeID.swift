@@ -7,6 +7,7 @@ enum ThemeID: String, CaseIterable, Identifiable, Codable {
     case shoebox
     case tapeDeck
     case clickWheel
+    case yeti
 
     var id: String { rawValue }
 
@@ -17,6 +18,7 @@ enum ThemeID: String, CaseIterable, Identifiable, Codable {
         case .shoebox:    return "Shoebox"
         case .tapeDeck:   return "The Receiver"
         case .clickWheel: return "Click Wheel"
+        case .yeti:       return "Yeti"
         }
     }
 

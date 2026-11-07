@@ -33,7 +33,7 @@ private struct ThemedRoot: ViewModifier {
 
     func body(content: Content) -> some View {
         content
-            .tint(theme.effectiveAccent(art: artColor))
+            .tint(theme.rootTint(art: artColor))
             .foregroundStyle(theme.palette.textPrimary)
             .background(theme.palette.base)
             .environment(\.font, theme.type.body(13))

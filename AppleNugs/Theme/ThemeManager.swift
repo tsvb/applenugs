@@ -3,6 +3,11 @@ import SwiftUI
 
 /// Owns the selected theme and persists it to UserDefaults — the same idiom
 /// PlayerService uses for volume. The derived `theme` value is what views read.
+///
+/// Under `-UITEST` (DEBUG only) the choice is never written, so a seeded launch
+/// that opens in another theme (`-UITestTheme`, or a pick in the picker during
+/// the run) can't clobber the user's persisted preference — the same rule as
+/// `PlaybackStateStore` and `ListeningStatsStore`.
 @MainActor
 @Observable
 final class ThemeManager {
@@ -10,8 +15,12 @@ final class ThemeManager {
 
     var selected: ThemeID {
         didSet {
-            UserDefaults.standard.set(selected.rawValue, forKey: Self.key)
             theme = Theme.make(selected)
+            #if DEBUG
+            // `AppModel.isUITestRun` only exists in DEBUG, hence the `#if`.
+            guard !AppModel.isUITestRun else { return }
+            #endif
+            UserDefaults.standard.set(selected.rawValue, forKey: Self.key)
         }
     }
 

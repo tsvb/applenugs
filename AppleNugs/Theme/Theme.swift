@@ -33,6 +33,21 @@ struct Capabilities: OptionSet, Sendable {
     static let vuMeter          = Capabilities(rawValue: 1 << 2)
     static let condensedHeaders = Capabilities(rawValue: 1 << 3)
     static let indexLetterTab   = Capabilities(rawValue: 1 << 4)
+    /// Yeti: the blister pack (card stock + bubble) around the now-playing
+    /// card's art, both Home heroes, the Mac miniplayer and the Mac Now Playing
+    /// window; the EMPTY pack on sign-in, connection-failed and empty states;
+    /// the iPhone Home hero.
+    static let blisterPack      = Capabilities(rawValue: 1 << 5)
+    /// Yeti: the play sticker, the price sticker (replaces the format badge),
+    /// the static row sticker (replaces `EqualizerBars`' bounce, decided per
+    /// call site), label stickers (Live/Free) and plain tags (4K/Audio/PPV).
+    static let stickers         = Capabilities(rawValue: 1 << 6)
+    /// Yeti: the one-shot foil sweep across the now-playing title on a new track.
+    static let foilSweep        = Capabilities(rawValue: 1 << 7)
+    /// Yeti: sentence-case headers, no eyebrows, errors said in snow rather than
+    /// red, snow-with-night-ink primary buttons, and the barker copy. Also turns
+    /// the app-wide root tint to `textPrimary` (see `Theme.rootTint(art:)`).
+    static let plainVoice       = Capabilities(rawValue: 1 << 8)
 }
 
 // MARK: - Token groups
@@ -45,8 +60,8 @@ struct Palette: Sendable {
     let losslessBadge: Color?    // distinct lossless tint (Tape Room teal), else nil
     let playState: Color         // active/playing emphasis
     let vuPeak: Color?           // VU peak tick (The Receiver only)
-    let labelPaper: Color?       // write-on label stock (Tape Room only)
-    let labelInk: Color?         // pen on that stock (Tape Room only)
+    let labelPaper: Color?       // label/card stock: Tape Room's write-on label, Yeti's backing card
+    let labelInk: Color?         // ink on that stock: Tape Room's pen, Yeti's sticker ink
 }
 
 /// Fonts as size-taking closures so a point size is a call, not six stored fonts.
@@ -56,10 +71,31 @@ struct Typography: Sendable {
 }
 
 /// Per-theme copy so idle/empty states and section headers carry personality.
+///
+/// The `var` fields carry defaults (today's strings, verbatim from the views
+/// that hardcode them) so the memberwise init keeps every existing theme
+/// literal compiling unchanged; only Yeti overrides them.
 struct IdleCopy: Sendable {
     let nowPlaying: String
     let dashboardIdle: String
     let dashHeaders: (now: String, quality: String, upNext: String)
+    /// Downloads' empty-state title (`DownloadsView`).
+    var downloadsEmptyTitle: String = "Nothing downloaded"
+    /// Search's no-results line for a query; nil = the system
+    /// `ContentUnavailableView.search(text:)` (`SearchView`, `ArtistListView`).
+    var searchNoResults: @Sendable (String) -> String? = { _ in nil }
+    /// Videos' three section titles (`VideosView`).
+    var videosResume: String = "Continue Watching"
+    var videosLive: String = "Live & Upcoming"
+    var videosExclusives: String = "Recent Exclusives"
+    /// The video detail's live-edge button label while it is disabled
+    /// (`VideoDetailView`); enabled, it reads "Go Live" in every theme.
+    var liveEdgeDisabled: String = "Go Live"
+    /// Home's line under the greeting (`HomeView`).
+    var homeLede: String = "Pick up where you left off — or dig through the crate."
+    /// The listening ledger's title (`ListeningLedger`): an eyebrow by default,
+    /// a section header under `.plainVoice`.
+    var ledgerTitle: String = "LISTENING"
 }
 
 // MARK: - Theme
@@ -99,6 +135,17 @@ struct Theme: Equatable, Sendable {
         return palette.playState
     }
 
+    /// The tint `ThemedRoot` applies to the whole app. Under `.plainVoice` it is
+    /// snow (`textPrimary`), so system-tinted controls (prominent buttons, the
+    /// selected tab, toggles, links, untinted sliders) never paint an accent
+    /// fill; such a theme applies its accent explicitly, only where time moves
+    /// (scrub sliders, the pill ring, progress). Every other theme keeps
+    /// `effectiveAccent(art:)`, exactly as before.
+    func rootTint(art: Color?) -> Color {
+        if caps.contains(.plainVoice) { return palette.textPrimary }
+        return effectiveAccent(art: art)
+    }
+
     var consumesArtColor: Bool {
         if case .artDriven = accentMode { return true }
         return washStyle != .none
@@ -111,11 +158,12 @@ struct Theme: Equatable, Sendable {
         case .shoebox:    return shoebox
         case .tapeDeck:   return tapeDeck
         case .clickWheel: return clickWheel
+        case .yeti:       return yeti
         }
     }
 }
 
-// MARK: - The four themes (the only place literal hex lives)
+// MARK: - The themes (the only place literal hex lives)
 
 extension Theme {
     static let tapeRoom = Theme(
@@ -245,6 +293,50 @@ extension Theme {
             dashHeaders: ("Now Playing", "Quality", "Up Next")),
         caps: [],
         transport: .clickWheel,
+        accentMode: .staticAccent,
+        washStyle: .none,
+        darkOnly: true)
+}
+
+extension Theme {
+    /// Yeti, an unofficial player's own look: night-blue shelves, snow type,
+    /// sale-yellow stickers and one foil accent kept for things that move with
+    /// time. Heavy rounded type, no texture, no art wash, dark only. Its
+    /// bespoke visuals are gated on the caps below, never on `id`.
+    static let yeti = Theme(
+        id: .yeti,
+        palette: Palette(
+            base: Color(hex: 0x0F1424), raised: Color(hex: 0x18203A),
+            hairline: Color(hex: 0x2E3A5C),
+            textPrimary: Color(hex: 0xE9EEF7),
+            textSecondary: Color(hex: 0x9FABCE),
+            textIdle: Color(hex: 0x8590B0),
+            accent: Color(hex: 0xFF8FC4),
+            losslessBadge: Color(hex: 0xF2E27A),
+            playState: Color(hex: 0xF2E27A), vuPeak: nil,
+            labelPaper: Color(hex: 0x1B2443),  // backing card
+            labelInk: Color(hex: 0x0F1424)),   // sticker ink
+        type: Typography(
+            hero:    { .system(size: $0, weight: .heavy, design: .rounded) },
+            title:   { .system(size: $0, weight: .heavy, design: .rounded) },
+            section: { .system(size: $0, weight: .heavy, design: .rounded) },
+            body:    { .system(size: $0, design: .rounded) },
+            numeric: { .system(size: $0, design: .rounded).monospacedDigit() }),
+        textureOpacity: 0,
+        copy: IdleCopy(
+            nowPlaying: "It's on its way",
+            dashboardIdle: "It's on its way",
+            dashHeaders: ("Here it comes", "Says so on the box", "Coming up next"),
+            downloadsEmptyTitle: "Nothing boxed up yet",
+            searchNoResults: { "Nothing on the shelf for \u{201C}\($0)\u{201D}" },
+            videosResume: "Pick up where you left off",
+            videosLive: "Live and coming up",
+            videosExclusives: "Just streamed",
+            liveEdgeDisabled: "At the live edge",
+            homeLede: "Pick up where you left off, or dig through the crate.",
+            ledgerTitle: "The nice list"),
+        caps: [.equalizerRows, .blisterPack, .stickers, .foilSweep, .plainVoice],
+        transport: .standard,
         accentMode: .staticAccent,
         washStyle: .none,
         darkOnly: true)
