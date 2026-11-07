@@ -48,19 +48,23 @@ Native **macOS + iOS SwiftUI** player for nugs.net, shipped to users as **Yeti �
 ## START HERE — state as of 2026-11-07 (handoff for a new session)
 
 **Where the code is.** Worktree `.claude/worktrees/iphone-duo` (stay in it; don't cd to the main checkout).
-Branches, all local, NOT pushed:
-- `main` == `origin/main` == `805d766` (the iPhone Duo work, PR #5, merged 2026-11-06). The main checkout's
-  local `main` ref may still be behind — `git -C /Users/tim/applenugs fetch origin main:main` (Tim's call).
-- `pill-duck` (2 commits on `805d766`: the pill ducks on scroll on the Duo, verified on device).
-- **`yeti` (checked out; stacked on `pill-duck`)** — the compliance pass + Yeti rename + encrypted downloads +
-  perf pass + the Yeti theme DESIGN (docs only). Gate green: both schemes warning-free, **307 tests**.
+- **`main` == `origin/main` == `e6ab835`** — everything above is LANDED: the iPhone Duo work (PR #5) and the
+  pill duck + Yeti compliance/rename/encrypted downloads/perf + the theme design (PR #6, merged 2026-11-07,
+  CI green on `xcode-27`, fast-forward — every hash in this file is on `main`). 307 tests.
+- **`yeti-design`** (checked out, no upstream, starts at `e6ab835`) — the branch for the single-design
+  refactor (step 3 below).
+- The main checkout's local `main` ref is behind — `git -C /Users/tim/applenugs fetch origin main:main`
+  (run by Tim; the worktree guard blocks `git -C` outside the worktree). Remote branches `iphone-duo` and
+  `yeti` are merged and can be deleted on GitHub (Tim's call).
 - `listening-stats` (in the main checkout; built, unmerged, based on the OLD main — needs a rebase onto
-  `805d766`+, with a CLAUDE.md conflict to resolve).
+  `e6ab835`, with a CLAUDE.md conflict to resolve). Its Home "nice list" ledger is part of the Yeti design.
+
+**Landing recipe (used for PR #5 and #6):** push the branch, open a PR (CI runs on the `xcode-27` runner),
+then `git push origin <branch>:main` — fast-forward only, never a merge/rebase, so hashes here stay valid.
+Pushing is Tim's call.
 
 **Next steps, in Tim's order of interest:**
-1. **Land `pill-duck` + `yeti`** — same path as PR #5: push, open a PR (CI runs on the `xcode-27` runner),
-   fast-forward `main` (`git push origin <branch>:main`, never a merge/rebase so commit hashes in this file stay
-   valid). Pushing is Tim's call — ask ("land it").
+1. (done 2026-11-07 — both branches landed via PR #6.)
 2. **Finish verifying Yeti on hardware:** logout wipes downloads; the **Mac** build (old plaintext downloads
    there must migrate to sealed `.yeti`; Reveal in Finder is gone). Mac local installs must be Developer
    ID-signed (see the local-install-signing memory).
