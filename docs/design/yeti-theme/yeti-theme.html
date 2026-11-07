@@ -1,0 +1,842 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Yeti, the sixth theme for AppleNugs</title>
+<style>
+/* Apple system rounded first; Nunito only as a fallback for browsers that can't reach SF Rounded. */
+@import url("https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;800;900&display=swap");
+
+:root {
+  /* palette: these are the Theme.swift values, one to one */
+  --night: #0F1424;      /* base */
+  --shelf: #18203A;      /* raised */
+  --frost: #2E3A5C;      /* hairline */
+  --snow: #E9EEF7;       /* textPrimary, and the light */
+  --slush: #9FABCE;      /* textSecondary */
+  --idle: #8590B0;       /* textIdle (AA on every surface, including the card) */
+  --foil: #FF8FC4;       /* accent: ring, scrub, sweep, focus. Never a fill. */
+  --sale: #F2E27A;       /* losslessBadge + playState: every sticker */
+  --card: #1B2443;       /* labelPaper: backing-card stock */
+  --ink: #0F1424;        /* labelInk: print on sticker stock */
+  --well: #121830;       /* sidebar + inspector (system material over base) */
+
+  --round: ui-rounded, "SF Pro Rounded", "Nunito", system-ui, -apple-system, sans-serif;
+  --pz: .82;   /* phone zoom */
+  --mz: .76;   /* mac zoom */
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  background: #0A0E1A;
+  color: var(--snow);
+  font-family: var(--round);
+  font-size: 15px;
+  line-height: 1.4;
+  font-variant-numeric: tabular-nums;
+  -webkit-font-smoothing: antialiased;
+}
+button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; }
+a { color: inherit; text-decoration: none; }
+/* keyboard focus wears the foil, so no system blue lands on the surface */
+:focus-visible { outline: 2px solid var(--foil); outline-offset: 3px; border-radius: 8px; }
+svg { display: block; }
+
+/* ---------- page ---------- */
+.page { max-width: 1580px; margin: 0 auto; padding: 40px 28px 72px; }
+.page-head { display: grid; grid-template-columns: minmax(0, 640px) minmax(0, 560px); gap: 18px 56px; margin: 0 0 34px; align-items: start; }
+.page-head h1 { grid-column: 1 / -1; font-weight: 900; font-size: 56px; line-height: 1; margin: 0; letter-spacing: -.015em; }
+.page-head p { margin: 0; color: var(--slush); font-size: 16px; }
+.page-head p b { color: var(--snow); font-weight: 800; }
+
+.row { display: flex; flex-wrap: wrap; gap: 34px 30px; align-items: flex-start; margin-bottom: 48px; }
+.fig { margin: 0; }
+.fig figcaption { color: var(--slush); font-size: 14px; margin-top: 14px; max-width: 330px; }
+.fig figcaption b { color: var(--snow); font-weight: 800; }
+
+/* ---------- phone frame ---------- */
+.phone-wrap { zoom: var(--pz); padding: 12px; }
+.phone {
+  position: relative; width: 390px; height: 844px; overflow: hidden;
+  border-radius: 54px; background: var(--night);
+  box-shadow: 0 0 0 11px #04060C, 0 0 0 12px #2A3352, 0 40px 60px -30px rgba(0,0,0,.8);
+}
+/* snow is the light: a cool glow bleeding from the top edge, never a pictured flake */
+.phone::before, .mac-main::before {
+  content: ""; position: absolute; inset: 0 0 auto 0; height: 360px; pointer-events: none;
+  background: radial-gradient(120% 70% at 50% -10%, rgba(233,238,247,.09), rgba(233,238,247,0) 70%);
+}
+.status { position: relative; height: 54px; display: flex; justify-content: space-between; align-items: center; padding: 6px 34px 0 42px; font-weight: 800; font-size: 16px; }
+.status .icons { display: flex; gap: 6px; align-items: center; }
+.island { position: absolute; top: 11px; left: 50%; transform: translateX(-50%); width: 124px; height: 36px; border-radius: 20px; background: #000; }
+.scroll { position: relative; padding: 0 20px; }
+.large-title { font-weight: 900; font-size: 34px; line-height: 1.15; margin: 4px 0 12px; letter-spacing: -.01em; }
+
+/* ---------- the one material: blister pack ---------- */
+.card {
+  position: relative; background: var(--card); border-radius: 22px;
+  box-shadow: inset 0 0 0 1px var(--frost), 0 18px 30px -22px rgba(0,0,0,.8);
+  padding: 36px 20px 20px;
+}
+/* punched hang slot: shows the night behind */
+.card::before {
+  content: ""; position: absolute; top: 13px; left: 50%; transform: translateX(-50%);
+  width: 46px; height: 12px; border-radius: 6px; background: var(--night);
+  box-shadow: inset 0 2px 3px rgba(0,0,0,.6), 0 1px 0 rgba(233,238,247,.08);
+}
+.bubble {
+  position: relative; border-radius: 30px; padding: 14px;
+  background: linear-gradient(155deg, rgba(225,233,250,.17), rgba(225,233,250,.04) 42%, rgba(225,233,250,.09));
+  box-shadow:
+    inset 0 0 0 1.5px rgba(233,238,247,.34),
+    inset 0 2px 0 rgba(255,255,255,.32),
+    inset -12px -16px 26px rgba(4,7,16,.5),
+    inset 10px 12px 20px rgba(233,238,247,.10),
+    0 0 0 7px rgba(233,238,247,.035),
+    0 0 0 8px rgba(233,238,247,.15),
+    0 22px 28px -16px rgba(0,0,0,.75);
+}
+.bubble .art { border-radius: 18px; overflow: hidden; filter: saturate(.82) brightness(.94); position: relative; }
+.bubble .art::after { content: ""; position: absolute; inset: 0; background: linear-gradient(160deg, rgba(190,210,255,.10), rgba(15,20,36,.18)); }
+.bubble::before {
+  content: ""; position: absolute; z-index: 2; top: 7%; left: 7%; width: 46%; height: 20%;
+  border-radius: 50%; transform: rotate(-20deg);
+  background: radial-gradient(closest-side, rgba(255,255,255,.42), rgba(255,255,255,0));
+  pointer-events: none;
+}
+.bubble::after {
+  content: ""; position: absolute; z-index: 2; inset: 0; border-radius: inherit; pointer-events: none;
+  background: linear-gradient(118deg, transparent 58%, rgba(255,255,255,.16) 61%, transparent 64%, transparent 70%, rgba(255,255,255,.07) 72%, transparent 75%);
+}
+.bubble.sm { border-radius: 18px; padding: 7px; box-shadow:
+    inset 0 0 0 1px rgba(233,238,247,.34), inset 0 1.5px 0 rgba(255,255,255,.3),
+    inset -6px -8px 14px rgba(4,7,16,.5), inset 5px 6px 10px rgba(233,238,247,.1),
+    0 0 0 4px rgba(233,238,247,.035), 0 0 0 5px rgba(233,238,247,.15), 0 12px 16px -10px rgba(0,0,0,.75); }
+.bubble.sm .art { border-radius: 11px; }
+
+/* ---------- stickers: all three kinds are sale stock with night ink ---------- */
+.stock { background: radial-gradient(circle at 34% 30%, #FBF1A6, var(--sale) 55%, #E3D267); color: var(--ink); }
+/* 1. price sticker: lossless badge */
+.sticker {
+  position: absolute; z-index: 3; width: 62px; height: 62px; border-radius: 50%;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center;
+  transform: rotate(-11deg); line-height: 1;
+  box-shadow: 0 2px 0 rgba(0,0,0,.28), 0 6px 10px -4px rgba(0,0,0,.5), inset 0 0 0 2px rgba(15,20,36,.07);
+}
+.sticker small { display: block; font-size: 10px; font-weight: 800; margin-bottom: 2px; }
+.sticker strong { display: block; font-size: 15px; font-weight: 900; }
+.sticker.tiny { position: static; width: 44px; height: 44px; transform: rotate(-9deg); flex: none; }
+.sticker.tiny small { font-size: 7.5px; margin-bottom: 1px; }
+.sticker.tiny strong { font-size: 11px; }
+/* 2. play sticker: the play/pause control */
+.play-sticker {
+  width: 64px; height: 64px; border-radius: 50%; display: grid; place-items: center;
+  box-shadow: 0 2px 0 rgba(0,0,0,.28), 0 8px 14px -6px rgba(0,0,0,.6);
+}
+/* 3. row sticker: the play state, holding the descending figure */
+.rs { --d: 20px; width: var(--d); height: var(--d); border-radius: 50%; display: inline-grid; place-items: center; flex: none; transform: rotate(-9deg); vertical-align: middle; }
+.rs .stair { display: flex; align-items: flex-end; gap: calc(var(--d) * .07); height: calc(var(--d) * .46); }
+.rs .stair i { width: calc(var(--d) * .1); border-radius: 1px; background: var(--ink); }
+.rs .stair i:nth-child(1) { height: 100%; } .rs .stair i:nth-child(2) { height: 75%; }
+.rs .stair i:nth-child(3) { height: 50%; }  .rs .stair i:nth-child(4) { height: 25%; }
+/* paused: same disc, same size; the stair lies flat and the stock goes idle gray */
+.rs.paused { background: var(--idle); }
+.rs.paused .stair i { height: 25%; }
+.rs.sm { --d: 16px; }
+.rs.lg { --d: 44px; }
+
+/* name panel printed on the card */
+.name { margin-top: 22px; }
+.name h2 { display: inline-block; margin: 0; font-weight: 900; font-size: 30px; line-height: 1.05; letter-spacing: -.01em; }
+/* tempered nameplate: now-playing card only. 34 to 44pt, scales down before it wraps a third line. */
+.name h2.plate { font-size: 44px; line-height: 1; letter-spacing: -.02em; }
+.name .meta { margin: 6px 0 0; color: var(--slush); font-size: 15px; }
+.name .meta a { color: var(--snow); font-weight: 600; }
+
+/* ---------- the one flourish: FoilSweep ---------- */
+/* an overlay on the title's own glyphs: the band never changes the title's size */
+.sweep {
+  background: linear-gradient(100deg, var(--snow) 0 42%, var(--foil) 48%, var(--foil) 52%, var(--snow) 58% 100%);
+  background-size: 220% 100%; background-position: 100% 0;
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+.sweep.rest { background: none; color: var(--snow); }
+@media (prefers-reduced-motion: no-preference) {
+  .sweep.go { animation: foil 1.02s cubic-bezier(.4,0,.2,1) 1 forwards; }
+}
+@keyframes foil { from { background-position: 100% 0; } to { background-position: 0% 0; } }
+/* review stills, from the easing curve: 100ms, 300ms, ~380ms, 600ms */
+.sweep.f100 { background-position: 97.5% 0; }
+.sweep.f300 { background-position: 64.9% 0; }
+.sweep.f380 { background-position: 50% 0; }
+.sweep.f600 { background-position: 13.4% 0; }
+@media (prefers-reduced-motion: reduce) {
+  .sweep, .sweep.go { animation: none; background: none; color: var(--snow); }
+}
+
+/* section headers: barker voice, sentence case, no eyebrows */
+.sec { display: flex; align-items: baseline; justify-content: space-between; margin: 28px 0 6px; }
+.sec h3 { margin: 0; font-weight: 900; font-size: 22px; letter-spacing: -.005em; }
+
+/* ---------- the nice list: a checked ledger ---------- */
+.totals { display: flex; gap: 22px; color: var(--slush); font-size: 14px; margin: 0 0 6px; }
+.totals b { color: var(--snow); font-weight: 800; font-size: 17px; margin-right: 4px; }
+.nice { list-style: none; margin: 0; padding: 0; }
+.nice li { display: grid; grid-template-columns: 22px minmax(0,1fr) 62px 40px; gap: 12px; align-items: center; padding: 11px 0; border-top: 1px solid var(--frost); }
+.nice li:last-child { border-bottom: 1px solid var(--frost); }
+.box { width: 22px; height: 22px; border-radius: 7px; box-shadow: inset 0 0 0 1.5px var(--slush); display: grid; place-items: center; }
+.nice .who { font-weight: 800; font-size: 16px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.nice .c { color: var(--slush); font-size: 14px; text-align: right; white-space: nowrap; }
+.nice .c b { color: var(--snow); font-weight: 600; }
+
+/* tab bar */
+.tabbar {
+  position: absolute; left: 16px; right: 16px; bottom: 26px; height: 62px; border-radius: 31px;
+  background: rgba(30,40,70,.72); backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px);
+  box-shadow: inset 0 0 0 1px rgba(233,238,247,.13), 0 14px 24px -12px rgba(0,0,0,.7);
+  display: flex; justify-content: space-around; align-items: center; padding: 0 8px;
+}
+.tab { display: grid; justify-items: center; gap: 2px; font-size: 10.5px; font-weight: 700; color: var(--slush); padding: 6px 10px; border-radius: 22px; }
+.tab.on { color: var(--snow); background: rgba(233,238,247,.10); }
+
+/* pill */
+.pill {
+  position: absolute; left: 15px; right: 15px; bottom: 100px; height: 48px; border-radius: 24px;
+  background: rgba(30,40,70,.72); backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px);
+  box-shadow: inset 0 0 0 1px rgba(233,238,247,.13), 0 14px 24px -12px rgba(0,0,0,.7);
+  display: flex; align-items: center; gap: 8px; padding: 0 10px 0 8px;
+}
+.ringslot { position: relative; width: 32px; height: 32px; flex: none; }
+.ringslot .chip { position: absolute; inset: 3px; border-radius: 50%; overflow: hidden; }
+.pill .t { min-width: 0; flex: 1; line-height: 1.15; }
+.pill .t b { display: block; font-weight: 800; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pill .t span { display: block; color: var(--slush); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pill .ctl { display: flex; align-items: center; gap: 2px; }
+.pill .ctl button { width: 28px; height: 32px; display: grid; place-items: center; }
+
+/* artist list */
+.search { height: 38px; border-radius: 12px; background: var(--shelf); color: var(--idle); display: flex; align-items: center; gap: 8px; padding: 0 12px; font-size: 16px; margin-bottom: 8px; }
+.letter { font-weight: 900; font-size: 17px; color: var(--slush); padding: 14px 0 4px; }
+.alist { list-style: none; margin: 0; padding: 0; }
+.alist li { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; padding: 12px 16px 12px 0; border-top: 1px solid var(--frost); }
+.alist li b { font-weight: 800; font-size: 17px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.alist li span { color: var(--slush); font-size: 14px; white-space: nowrap; }
+.index { position: absolute; right: 4px; top: 190px; display: grid; gap: 1px; font-size: 10.5px; font-weight: 800; color: var(--slush); text-align: center; }
+
+/* now playing screen */
+.np-top { display: flex; justify-content: space-between; align-items: center; height: 44px; padding: 0 22px; position: relative; }
+.np-top span { color: var(--slush); font-size: 14px; }
+.np .card { margin: 4px 20px 0; padding: 34px 26px 20px; }
+.np .bubble .art svg { width: 100%; height: auto; }
+.np .sticker { right: 16px; top: 268px; }
+.np .name { margin-top: 18px; }
+.scrub { margin: 22px 26px 0; }
+.track { position: relative; height: 5px; border-radius: 3px; background: var(--frost); }
+.track .fill { position: absolute; inset: 0 auto 0 0; border-radius: 3px; background: var(--foil); }
+.track .knob { position: absolute; top: 50%; width: 14px; height: 14px; border-radius: 50%; background: var(--snow); transform: translate(-50%, -50%); box-shadow: 0 2px 4px rgba(0,0,0,.5); }
+.times { display: flex; justify-content: space-between; color: var(--slush); font-size: 13px; margin-top: 8px; }
+.transport { display: flex; justify-content: center; align-items: center; gap: 28px; margin-top: 12px; }
+.transport button { display: grid; place-items: center; width: 44px; height: 44px; border-radius: 50%; }
+.transport button.play-sticker { width: 64px; height: 64px; }
+.np-bottom { display: flex; justify-content: space-between; align-items: center; margin: 14px 40px 0; color: var(--slush); }
+
+/* ---------- mac ---------- */
+.mac-wrap { zoom: var(--mz); }
+.mac {
+  width: 1200px; height: 770px; border-radius: 14px; overflow: hidden; display: grid;
+  grid-template-columns: 220px 1fr 340px; grid-template-rows: 52px 1fr;
+  background: var(--night);
+  box-shadow: 0 0 0 1px #2A3352, 0 40px 70px -30px rgba(0,0,0,.85);
+}
+.titlebar { grid-column: 1 / -1; display: flex; align-items: center; gap: 8px; padding: 0 16px; border-bottom: 1px solid var(--frost); background: var(--well); }
+/* traffic lights drawn frost gray: no holiday red or green on the surface */
+.titlebar .dot { width: 12px; height: 12px; border-radius: 50%; background: #3A4566; box-shadow: inset 0 0 0 .5px rgba(233,238,247,.12); }
+.titlebar .spacer { flex: 1; }
+.titlebar .tb { width: 32px; height: 28px; border-radius: 8px; display: grid; place-items: center; color: var(--slush); }
+.titlebar .tb.on { background: rgba(233,238,247,.08); color: var(--snow); }
+.side { background: var(--well); border-right: 1px solid var(--frost); padding: 14px 10px; }
+.side a { display: flex; align-items: center; gap: 10px; padding: 7px 10px; border-radius: 8px; font-size: 14px; font-weight: 600; color: var(--slush); }
+.side a.on { background: rgba(233,238,247,.08); color: var(--snow); }
+.side .group { color: var(--idle); font-size: 12px; font-weight: 800; padding: 16px 10px 4px; }
+.mac-main { position: relative; overflow: hidden; padding: 26px 34px; }
+.show-head { position: relative; display: grid; grid-template-columns: 150px 1fr; gap: 26px; align-items: end; margin-bottom: 22px; }
+.show-head .art { border-radius: 12px; overflow: hidden; box-shadow: inset 0 0 0 1px var(--frost); }
+.show-head h2 { font-weight: 900; font-size: 30px; line-height: 1.08; margin: 0 0 6px; letter-spacing: -.01em; }
+.show-head p { margin: 0; color: var(--slush); font-size: 15px; }
+.show-head p a { color: var(--snow); font-weight: 700; }
+.actions { display: flex; gap: 12px; margin-top: 14px; align-items: center; }
+.btn { height: 34px; padding: 0 16px; border-radius: 17px; display: inline-flex; align-items: center; gap: 8px; font-weight: 800; font-size: 14px; }
+.btn.primary { background: var(--snow); color: var(--night); }   /* primaries are snow with night ink, never pink */
+.btn.quiet { box-shadow: inset 0 0 0 1px var(--frost); color: var(--snow); }
+.setname { font-weight: 900; font-size: 15px; color: var(--slush); margin: 16px 0 2px; }
+.setlist { list-style: none; margin: 0; padding: 0; position: relative; }
+.setlist li { display: grid; grid-template-columns: 28px 1fr auto; gap: 10px; align-items: center; height: 36px; border-top: 1px solid var(--frost); font-size: 14.5px; }
+.setlist li .n { color: var(--idle); text-align: right; display: flex; justify-content: flex-end; }
+.setlist li .d { color: var(--slush); }
+.setlist li.playing .t { color: var(--sale); font-weight: 800; }   /* activeEmphasis = playState */
+
+.insp { border-left: 1px solid var(--frost); background: var(--well); padding: 18px 16px; overflow: hidden; }
+.insp .sec { margin: 0 0 12px; align-items: center; min-height: 24px; }
+.insp .sec h3 { font-size: 17px; }
+.insp .sec:not(:first-child) { margin-top: 20px; }
+.mini { display: grid; grid-template-columns: 100px 1fr; gap: 16px; align-items: center; }
+.mini h4 { margin: 0; font-weight: 900; font-size: 24px; line-height: 1.05; }
+.mini .by { margin: 4px 0 0; font-size: 14px; }
+.mini .by a { font-weight: 700; }
+.venue { margin: 12px 0 0; color: var(--slush); font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.insp .track { margin-top: 14px; }
+.insp .transport { gap: 18px; margin-top: 8px; }
+.insp .transport button.play-sticker { width: 46px; height: 46px; }
+.signal { margin: 0; display: grid; grid-template-columns: 1fr auto; font-size: 13.5px; }
+.signal dt, .signal dd { margin: 0; padding: 7px 0; border-top: 1px solid var(--frost); }
+.signal dt { color: var(--slush); }
+.signal dd { text-align: right; font-weight: 700; }
+.queue { list-style: none; margin: 0; padding: 0; }
+.queue li { display: grid; grid-template-columns: 18px 1fr auto; gap: 10px; align-items: center; padding: 8px 0; border-top: 1px solid var(--frost); font-size: 14px; }
+.queue li .n { color: var(--idle); font-size: 12px; text-align: center; }
+.queue li .d { color: var(--slush); }
+.queue li.now .t { color: var(--sale); font-weight: 800; }
+
+/* ---------- spec panels ---------- */
+.panel { background: #0C1120; border-radius: 16px; box-shadow: inset 0 0 0 1px var(--frost); padding: 24px 26px; }
+.panel h2 { margin: 0 0 6px; font-size: 24px; font-weight: 900; letter-spacing: -.005em; }
+.panel h3 { margin: 22px 0 10px; font-size: 17px; font-weight: 900; }
+.panel > p, .panel .lede { margin: 0 0 14px; color: var(--slush); font-size: 14px; max-width: 62ch; }
+.panel ul.rules { margin: 10px 0 0; padding-left: 18px; color: var(--slush); font-size: 14px; }
+.panel ul.rules li { margin: 5px 0; }
+.panel ul.rules b { color: var(--snow); font-weight: 800; }
+
+/* sticker sheet */
+.stickers { width: 520px; max-width: 100%; }
+.st-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0; border-top: 1px solid var(--frost); }
+.st-cell { display: grid; grid-template-columns: 76px 1fr; gap: 14px; align-items: center; padding: 16px 0; border-bottom: 1px solid var(--frost); }
+.st-cell:nth-child(odd) { padding-right: 14px; }
+.st-cell .spec { font-size: 13.5px; color: var(--slush); }
+.st-cell .spec b { display: block; color: var(--snow); font-weight: 800; font-size: 14.5px; margin-bottom: 2px; }
+.st-cell .holder { display: grid; place-items: center; height: 70px; }
+
+/* motion panel */
+.motion { width: 640px; max-width: 100%; }
+.chart { margin: 8px 0 4px; }
+.lane { display: grid; grid-template-columns: 110px 1fr; align-items: center; gap: 12px; font-size: 13px; color: var(--slush); }
+.lane .bar { position: relative; height: 26px; border-radius: 6px; background: var(--shelf); box-shadow: inset 0 0 0 1px var(--frost); overflow: hidden; }
+.lane .bar svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+.ticks { display: grid; grid-template-columns: 110px 1fr; gap: 12px; font-size: 12px; color: var(--idle); margin-top: 6px; }
+.ticks div { display: flex; justify-content: space-between; }
+.frames { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin: 18px 0 6px; }
+.frame { background: var(--card); border-radius: 10px; padding: 14px 14px 10px; box-shadow: inset 0 0 0 1px var(--frost); }
+.frame .ft { display: inline-block; font-weight: 900; font-size: 36px; line-height: 1; letter-spacing: -.02em; }
+.frame .lab { font-size: 12.5px; color: var(--slush); margin-top: 10px; }
+
+/* token sheet */
+.sheet { flex: 1 1 760px; }
+.code { flex: 0 1 640px; min-width: 0; }
+.wiring { flex: 1 1 520px; }
+.wiring ul.rules { font-size: 14.5px; }
+.wiring ul.rules li { margin: 9px 0; }
+th { white-space: nowrap; }
+.sheet-cols { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); gap: 0 34px; }
+.swatches { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 8px; }
+.sw { font-size: 13px; }
+.sw .chip { height: 40px; border-radius: 10px; box-shadow: inset 0 0 0 1px rgba(233,238,247,.14); margin-bottom: 6px; }
+.sw b { display: block; font-weight: 800; color: var(--snow); }
+.sw span { color: var(--slush); }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th, td { text-align: left; padding: 6px 8px 6px 0; border-top: 1px solid var(--frost); vertical-align: top; }
+th { color: var(--slush); font-weight: 600; }
+td { color: var(--snow); }
+td.num, th.num { text-align: right; padding-right: 0; padding-left: 8px; }
+td .muted { color: var(--slush); }
+.scale div { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; padding: 6px 0; border-top: 1px solid var(--frost); }
+.scale div span:last-child { color: var(--slush); font-size: 12.5px; white-space: nowrap; text-align: right; }
+pre { margin: 0; background: #080B15; border-radius: 10px; padding: 14px 16px; font: 12px/1.55 ui-monospace, "SF Mono", Menlo, monospace; color: var(--slush); overflow-x: auto; box-shadow: inset 0 0 0 1px var(--frost); }
+pre b { color: var(--snow); font-weight: 600; }
+
+@media (max-width: 1100px) { :root { --pz: .7; --mz: .6; } .page-head, .sheet-cols { grid-template-columns: 1fr; } }
+@media (max-width: 700px)  { :root { --pz: .78; --mz: .3; } .page { padding: 24px 14px; } .page-head h1 { font-size: 42px; } .st-grid, .frames { grid-template-columns: 1fr 1fr; } }
+</style>
+</head>
+<body>
+
+<!-- shared drawings -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <linearGradient id="dusk" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#20456A"/><stop offset=".55" stop-color="#3E6E8C"/><stop offset="1" stop-color="#C98A52"/>
+    </linearGradient>
+    <symbol id="art-westville" viewBox="0 0 300 300">
+      <rect width="300" height="300" fill="url(#dusk)"/>
+      <circle cx="150" cy="196" r="64" fill="#E7B66A"/>
+      <path d="M0 230 Q75 200 150 222 T300 214 V300 H0Z" fill="#1B2E44"/>
+      <g stroke="#E9DCC0" stroke-width="3" opacity=".55"><path d="M0 252 H300"/><path d="M0 266 H300"/><path d="M0 280 H300"/></g>
+      <text x="22" y="56" font-family="Georgia, serif" font-size="38" font-style="italic" fill="#F3E8D2">Goose</text>
+      <text x="24" y="82" font-family="Georgia, serif" font-size="14" fill="#F3E8D2" opacity=".85">New Haven 6.15.24</text>
+    </symbol>
+    <symbol id="i-play" viewBox="0 0 24 24"><path d="M8 5.5v13a1 1 0 0 0 1.5.86l10.4-6.5a1 1 0 0 0 0-1.72L9.5 4.64A1 1 0 0 0 8 5.5Z" fill="currentColor"/></symbol>
+    <symbol id="i-pause" viewBox="0 0 24 24"><rect x="6.5" y="5" width="4" height="14" rx="1.6" fill="currentColor"/><rect x="13.5" y="5" width="4" height="14" rx="1.6" fill="currentColor"/></symbol>
+    <symbol id="i-next" viewBox="0 0 24 24"><path d="M4 6.2v11.6a.9.9 0 0 0 1.4.75L13 13.1V17.8a.9.9 0 0 0 1.4.75l8-5.8a.9.9 0 0 0 0-1.5l-8-5.8A.9.9 0 0 0 13 6.2v4.7L5.4 5.45A.9.9 0 0 0 4 6.2Z" fill="currentColor"/></symbol>
+    <symbol id="i-prev" viewBox="0 0 24 24"><g transform="translate(24 0) scale(-1 1)"><path d="M4 6.2v11.6a.9.9 0 0 0 1.4.75L13 13.1V17.8a.9.9 0 0 0 1.4.75l8-5.8a.9.9 0 0 0 0-1.5l-8-5.8A.9.9 0 0 0 13 6.2v4.7L5.4 5.45A.9.9 0 0 0 4 6.2Z" fill="currentColor"/></g></symbol>
+    <symbol id="i-back15" viewBox="0 0 24 24"><path d="M12 5a7 7 0 1 1-6.6 4.7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M12 2.5 8.5 5 12 7.5Z" fill="currentColor"/></symbol>
+    <symbol id="i-fwd15" viewBox="0 0 24 24"><g transform="translate(24 0) scale(-1 1)"><path d="M12 5a7 7 0 1 1-6.6 4.7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M12 2.5 8.5 5 12 7.5Z" fill="currentColor"/></g></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><path d="M6 12.5 10.2 16.5 18 8" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-chev-up" viewBox="0 0 24 24"><path d="M6 14.5 12 8.5l6 6" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-chev-down" viewBox="0 0 24 24"><path d="M6 9.5 12 15.5l6-6" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-home" viewBox="0 0 24 24"><path d="M4 11 12 4l8 7v8a1 1 0 0 1-1 1h-4v-6H9v6H5a1 1 0 0 1-1-1Z" fill="currentColor"/></symbol>
+    <symbol id="i-mic" viewBox="0 0 24 24"><rect x="8.5" y="3" width="7" height="12" rx="3.5" fill="currentColor"/><path d="M5.5 11.5a6.5 6.5 0 0 0 13 0M12 18v3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+    <symbol id="i-star" viewBox="0 0 24 24"><path d="m12 3.5 2.6 5.3 5.9.86-4.25 4.14 1 5.85L12 16.9l-5.25 2.75 1-5.85L3.5 9.66l5.9-.86Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></symbol>
+    <symbol id="i-down" viewBox="0 0 24 24"><path d="M12 4v11m-5-5 5 5 5-5M5 20h14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-search" viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6" fill="none" stroke="currentColor" stroke-width="2"/><path d="m15 15 5 5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+    <symbol id="i-list" viewBox="0 0 24 24"><path d="M9 6h11M9 12h11M9 18h11" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="4.5" cy="6" r="1.4" fill="currentColor"/><circle cx="4.5" cy="12" r="1.4" fill="currentColor"/><circle cx="4.5" cy="18" r="1.4" fill="currentColor"/></symbol>
+    <symbol id="i-air" viewBox="0 0 24 24"><path d="M6 16H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-1" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/><path d="m12 13 5 7H7Z" fill="currentColor"/></symbol>
+    <symbol id="i-sidebar" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="3" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M15 5v14" stroke="currentColor" stroke-width="1.8"/></symbol>
+    <symbol id="i-person" viewBox="0 0 24 24"><circle cx="12" cy="8.5" r="3.6" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M5 20c.8-3.6 3.6-5.5 7-5.5s6.2 1.9 7 5.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></symbol>
+  </defs>
+</svg>
+
+<main class="page">
+  <header class="page-head">
+    <h1>Yeti</h1>
+    <p>The sixth theme, and the first one about a song's world rather than a piece of playback gear. Goose's "Yeti" is sung by a deadpan street barker selling the arrival of a creature that will sort everybody into naughty and nice, out on a cold street full of cheap gadgets. The theme takes the shop window from that scene: <b>your cover art sealed in a clear plastic bubble on a backing card</b>, hung on a peg like a vintage action figure.</p>
+    <p>Everything else stays night-quiet, because a show runs three hours. Snow is the light, never a picture. Yellow sale stickers mark the lossless badge, the play button and the playing row. One pink, borrowed from foil-printed posters, is kept for the progress ring, the scrub bar and a single sweep across the title when a new track comes out of its box. Home's listening ledger becomes the nice list.</p>
+  </header>
+
+  <!-- ===================== row 1: phones ===================== -->
+  <div class="row">
+
+    <!-- 1. iPhone Home -->
+    <figure class="fig">
+      <div class="phone-wrap">
+        <div class="phone" aria-label="iPhone Home">
+          <div class="island"></div>
+          <div class="status"><span>9:41</span><span class="icons" aria-hidden="true">
+            <svg width="18" height="12" viewBox="0 0 18 12"><rect x="0" y="8" width="3" height="4" rx="1" fill="#E9EEF7"/><rect x="5" y="5" width="3" height="7" rx="1" fill="#E9EEF7"/><rect x="10" y="2.5" width="3" height="9.5" rx="1" fill="#E9EEF7"/><rect x="15" y="0" width="3" height="12" rx="1" fill="#E9EEF7"/></svg>
+            <svg width="26" height="12" viewBox="0 0 26 12"><rect x=".5" y=".5" width="22" height="11" rx="3.5" fill="none" stroke="#E9EEF7" opacity=".5"/><rect x="2" y="2" width="16" height="8" rx="2" fill="#E9EEF7"/><rect x="23.5" y="4" width="1.8" height="4" rx=".9" fill="#E9EEF7" opacity=".5"/></svg>
+          </span></div>
+          <div class="scroll">
+            <h2 class="large-title">Good evening</h2>
+
+            <article class="card" aria-label="Newest show from artists you follow">
+              <div class="bubble" style="width:214px;margin:0 auto">
+                <div class="art"><svg viewBox="0 0 300 300" aria-hidden="true"><use href="#art-westville"/></svg></div>
+              </div>
+              <div class="sticker stock" style="right:34px;top:194px" aria-label="Lossless, 24-bit 96 kilohertz"><small>Lossless</small><strong>24/96</strong></div>
+              <div class="name" style="display:grid;grid-template-columns:1fr auto;gap:12px;align-items:end">
+                <div>
+                  <h2>Westville Music Bowl</h2>
+                  <p class="meta"><a href="#">Goose</a>, June 15, 2024</p>
+                </div>
+                <button class="play-sticker stock" aria-label="Play show" style="width:54px;height:54px"><svg width="24" height="24" aria-hidden="true"><use href="#i-play"/></svg></button>
+              </div>
+            </article>
+
+            <div class="sec"><h3>The nice list</h3></div>
+            <p class="totals"><span><b>112</b>hours listened</span><span><b>9</b>artists</span></p>
+            <ol class="nice" aria-label="The nice list">
+              <li><span class="box"><svg width="16" height="16" aria-hidden="true"><use href="#i-check"/></svg></span><a class="who" href="#">Goose</a><span class="c"><b>41</b> plays</span><span class="c"><b>62</b> h</span></li>
+              <li><span class="box"><svg width="16" height="16" aria-hidden="true"><use href="#i-check"/></svg></span><a class="who" href="#">Billy Strings</a><span class="c"><b>17</b> plays</span><span class="c"><b>21</b> h</span></li>
+              <li><span class="box"><svg width="16" height="16" aria-hidden="true"><use href="#i-check"/></svg></span><a class="who" href="#">Phish</a><span class="c"><b>9</b> plays</span><span class="c"><b>14</b> h</span></li>
+              <li><span class="box"><svg width="16" height="16" aria-hidden="true"><use href="#i-check"/></svg></span><a class="who" href="#">Pigeons Playing Ping Pong</a><span class="c"><b>6</b> plays</span><span class="c"><b>7</b> h</span></li>
+            </ol>
+          </div>
+          <nav class="tabbar" aria-label="Tabs">
+            <a class="tab on" href="#"><svg width="22" height="22" aria-hidden="true"><use href="#i-home"/></svg>Home</a>
+            <a class="tab" href="#"><svg width="22" height="22" aria-hidden="true"><use href="#i-mic"/></svg>Artists</a>
+            <a class="tab" href="#"><svg width="22" height="22" aria-hidden="true"><use href="#i-star"/></svg>Favorites</a>
+            <a class="tab" href="#"><svg width="22" height="22" aria-hidden="true"><use href="#i-down"/></svg>Downloads</a>
+            <a class="tab" href="#"><svg width="22" height="22" aria-hidden="true"><use href="#i-search"/></svg>Search</a>
+          </nav>
+        </div>
+      </div>
+      <figcaption><b>Home.</b> The hero is the toy on its peg. The nice list is a checked ledger: plays and hours in two right-aligned columns, and a long name truncates before the numbers do.</figcaption>
+    </figure>
+
+    <!-- 2. iPhone Now Playing -->
+    <figure class="fig">
+      <div class="phone-wrap">
+        <div class="phone np" aria-label="iPhone now playing">
+          <div class="island"></div>
+          <div class="status"><span>9:41</span><span class="icons" aria-hidden="true">
+            <svg width="26" height="12" viewBox="0 0 26 12"><rect x=".5" y=".5" width="22" height="11" rx="3.5" fill="none" stroke="#E9EEF7" opacity=".5"/><rect x="2" y="2" width="16" height="8" rx="2" fill="#E9EEF7"/></svg>
+          </span></div>
+          <div class="np-top">
+            <button aria-label="Close player"><svg width="26" height="26" aria-hidden="true"><use href="#i-chev-down"/></svg></button>
+            <span>Set 2, track 3 of 6</span>
+            <button aria-label="Show details"><svg width="24" height="24" aria-hidden="true"><use href="#i-sidebar"/></svg></button>
+          </div>
+          <article class="card">
+            <div class="bubble">
+              <div class="art"><svg viewBox="0 0 300 300" aria-hidden="true"><use href="#art-westville"/></svg></div>
+            </div>
+            <div class="sticker stock" aria-label="Lossless, 24-bit 96 kilohertz"><small>Lossless</small><strong>24/96</strong></div>
+            <div class="name">
+              <h2 class="plate sweep f380" data-sweep>Yeti</h2>
+              <p class="meta"><a href="#">Goose</a><br><a href="#" style="color:var(--slush);font-weight:400">Westville Music Bowl, New Haven, Connecticut</a></p>
+            </div>
+          </article>
+          <div class="scrub">
+            <div class="track" role="slider" tabindex="0" aria-label="Playback position" aria-valuemin="0" aria-valuemax="1361" aria-valuenow="552" aria-valuetext="9 minutes 12 seconds of 22 minutes 41 seconds">
+              <div class="fill" style="width:40.5%"></div><div class="knob" style="left:40.5%"></div>
+            </div>
+            <div class="times"><span>9:12</span><span>-13:29</span></div>
+          </div>
+          <div class="transport">
+            <button aria-label="Back 15 seconds"><svg width="26" height="26" aria-hidden="true"><use href="#i-back15"/></svg></button>
+            <button aria-label="Previous track" data-skip><svg width="30" height="30" aria-hidden="true"><use href="#i-prev"/></svg></button>
+            <button class="play-sticker stock" data-toggle aria-label="Pause"><svg width="28" height="28" aria-hidden="true"><use href="#i-pause"/></svg></button>
+            <button aria-label="Next track" data-skip><svg width="30" height="30" aria-hidden="true"><use href="#i-next"/></svg></button>
+            <button aria-label="Forward 15 seconds"><svg width="26" height="26" aria-hidden="true"><use href="#i-fwd15"/></svg></button>
+          </div>
+          <div class="np-bottom">
+            <button aria-label="AirPlay"><svg width="24" height="24" aria-hidden="true"><use href="#i-air"/></svg></button>
+            <button aria-label="Save show"><svg width="24" height="24" aria-hidden="true"><use href="#i-star"/></svg></button>
+            <button aria-label="Queue"><svg width="24" height="24" aria-hidden="true"><use href="#i-list"/></svg></button>
+          </div>
+        </div>
+      </div>
+      <figcaption><b>Now playing.</b> The same bubble, bigger, with the title printed on the card at nameplate size. The title is held mid-sweep for review. Press Next to watch the pass; pausing and resuming does not replay it.</figcaption>
+    </figure>
+
+    <!-- 3. Pill over an artist list -->
+    <figure class="fig">
+      <div class="phone-wrap">
+        <div class="phone" aria-label="iPhone artists list with now-playing pill">
+          <div class="island"></div>
+          <div class="status"><span>9:41</span><span class="icons" aria-hidden="true">
+            <svg width="26" height="12" viewBox="0 0 26 12"><rect x=".5" y=".5" width="22" height="11" rx="3.5" fill="none" stroke="#E9EEF7" opacity=".5"/><rect x="2" y="2" width="16" height="8" rx="2" fill="#E9EEF7"/></svg>
+          </span></div>
+          <div class="scroll">
+            <h2 class="large-title">Artists</h2>
+            <div class="search"><svg width="18" height="18" aria-hidden="true"><use href="#i-search"/></svg>Find an artist</div>
+            <div class="letter">D</div>
+            <ul class="alist">
+              <li><b>Dead &amp; Company</b><span>212 shows</span></li>
+              <li><b>Disco Biscuits</b><span>96 shows</span></li>
+              <li><b>Dogs in a Pile</b><span>14 shows</span></li>
+            </ul>
+            <div class="letter">G</div>
+            <ul class="alist">
+              <li><b>Goose</b><span>418 shows</span></li>
+              <li><b>Grateful Dead</b><span>88 shows</span></li>
+              <li><b>Greensky Bluegrass</b><span>151 shows</span></li>
+              <li><b>Gov't Mule</b><span>301 shows</span></li>
+            </ul>
+            <div class="letter">K</div>
+            <ul class="alist">
+              <li><b>King Gizzard &amp; the Lizard Wizard</b><span>63 shows</span></li>
+            </ul>
+          </div>
+          <div class="index" aria-hidden="true"><span>A</span><span>B</span><span>C</span><span>D</span><span>E</span><span>F</span><span>G</span><span>H</span><span>J</span><span>K</span><span>L</span><span>M</span><span>N</span><span>O</span><span>P</span><span>R</span><span>S</span><span>T</span><span>U</span><span>W</span></div>
+
+          <div class="pill" role="group" aria-label="Now playing">
+            <div class="ringslot" aria-hidden="true">
+              <svg width="32" height="32" viewBox="0 0 32 32" style="position:absolute;inset:0">
+                <circle cx="16" cy="16" r="15" fill="none" stroke="#2E3A5C" stroke-width="2"/>
+                <circle cx="16" cy="16" r="15" fill="none" stroke="#FF8FC4" stroke-width="2" stroke-linecap="round" stroke-dasharray="38.2 94.25" transform="rotate(-90 16 16)"/>
+              </svg>
+              <div class="chip"><svg viewBox="0 0 300 300" width="26" height="26"><use href="#art-westville"/></svg></div>
+            </div>
+            <div class="t"><b>Yeti</b><span>Goose</span></div>
+            <div class="ctl">
+              <button aria-label="Back 15 seconds"><svg width="18" height="18" aria-hidden="true"><use href="#i-back15"/></svg></button>
+              <button aria-label="Previous track"><svg width="18" height="18" aria-hidden="true"><use href="#i-prev"/></svg></button>
+              <button aria-label="Pause"><svg width="22" height="22" aria-hidden="true"><use href="#i-pause"/></svg></button>
+              <button aria-label="Next track"><svg width="18" height="18" aria-hidden="true"><use href="#i-next"/></svg></button>
+              <button aria-label="Forward 15 seconds"><svg width="18" height="18" aria-hidden="true"><use href="#i-fwd15"/></svg></button>
+              <button aria-label="Expand player" style="width:24px"><svg width="18" height="18" aria-hidden="true"><use href="#i-chev-up"/></svg></button>
+            </div>
+          </div>
+          <nav class="tabbar" aria-label="Tabs">
+            <a class="tab" href="#"><svg width="22" height="22" aria-hidden="true"><use href="#i-home"/></svg>Home</a>
+            <a class="tab on" href="#"><svg width="22" height="22" aria-hidden="true"><use href="#i-mic"/></svg>Artists</a>
+            <a class="tab" href="#"><svg width="22" height="22" aria-hidden="true"><use href="#i-star"/></svg>Favorites</a>
+            <a class="tab" href="#"><svg width="22" height="22" aria-hidden="true"><use href="#i-down"/></svg>Downloads</a>
+            <a class="tab" href="#"><svg width="22" height="22" aria-hidden="true"><use href="#i-search"/></svg>Search</a>
+          </nav>
+        </div>
+      </div>
+      <figcaption><b>The pill.</b> Unchanged except the ring, which is foil pink. No bubble and no sticker here: at 26pt the plastic would only read as noise.</figcaption>
+    </figure>
+  </div>
+
+  <!-- ===================== row 2: mac + sticker sheet ===================== -->
+  <div class="row">
+    <figure class="fig">
+      <div class="mac-wrap">
+        <div class="mac" aria-label="Mac main window with dashboard">
+          <div class="titlebar">
+            <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+            <span class="spacer"></span>
+            <span class="tb"><svg width="18" height="18" aria-hidden="true"><use href="#i-person"/></svg></span>
+            <span class="tb on"><svg width="18" height="18" aria-hidden="true"><use href="#i-sidebar"/></svg></span>
+          </div>
+          <nav class="side" aria-label="Sidebar">
+            <a href="#"><svg width="17" height="17" aria-hidden="true"><use href="#i-home"/></svg>Home</a>
+            <a href="#" class="on"><svg width="17" height="17" aria-hidden="true"><use href="#i-mic"/></svg>Artists</a>
+            <a href="#"><svg width="17" height="17" aria-hidden="true"><use href="#i-star"/></svg>Favorites</a>
+            <a href="#"><svg width="17" height="17" aria-hidden="true"><use href="#i-search"/></svg>Search</a>
+            <div class="group">Following</div>
+            <a href="#">Goose</a>
+            <a href="#">Billy Strings</a>
+            <a href="#">Phish</a>
+            <a href="#">Greensky Bluegrass</a>
+          </nav>
+          <section class="mac-main">
+            <div class="show-head">
+              <div class="art"><svg viewBox="0 0 300 300" aria-hidden="true"><use href="#art-westville"/></svg></div>
+              <div>
+                <h2>Westville Music Bowl</h2>
+                <p><a href="#">Goose</a><br>June 15, 2024, New Haven, Connecticut</p>
+                <div class="actions">
+                  <button class="btn primary"><svg width="15" height="15" aria-hidden="true"><use href="#i-play"/></svg>Play show</button>
+                  <button class="btn quiet"><svg width="15" height="15" aria-hidden="true"><use href="#i-star"/></svg>Save show</button>
+                </div>
+              </div>
+            </div>
+            <div class="setname">Set 1</div>
+            <ol class="setlist">
+              <li><span class="n">1</span><span class="t">Hungersite</span><span class="d">12:08</span></li>
+              <li><span class="n">2</span><span class="t">Arcadia</span><span class="d">9:47</span></li>
+              <li><span class="n">3</span><span class="t">Hot Tea</span><span class="d">14:30</span></li>
+              <li><span class="n">4</span><span class="t">Madhuvan</span><span class="d">16:52</span></li>
+              <li><span class="n">5</span><span class="t">Echo of a Rose</span><span class="d">8:21</span></li>
+            </ol>
+            <div class="setname">Set 2</div>
+            <ol class="setlist">
+              <li><span class="n">1</span><span class="t">Drive</span><span class="d">18:04</span></li>
+              <li><span class="n">2</span><span class="t">Tumble</span><span class="d">11:40</span></li>
+              <li class="playing"><span class="n"><span class="rs stock" role="img" aria-label="Playing"><span class="stair"><i></i><i></i><i></i><i></i></span></span></span><span class="t">Yeti</span><span class="d">22:41</span></li>
+              <li><span class="n">4</span><span class="t">Dripfield</span><span class="d">10:15</span></li>
+              <li><span class="n">5</span><span class="t">Empress of Organos</span><span class="d">13:33</span></li>
+            </ol>
+          </section>
+          <aside class="insp" aria-label="Dashboard">
+            <div class="sec"><h3>Here it comes</h3></div>
+            <div class="mini">
+              <div class="bubble sm"><div class="art"><svg viewBox="0 0 300 300" aria-hidden="true"><use href="#art-westville"/></svg></div></div>
+              <div>
+                <h4 class="sweep rest" data-sweep>Yeti</h4>
+                <p class="by"><a href="#">Goose</a></p>
+              </div>
+            </div>
+            <p class="venue">Westville Music Bowl, New Haven, Connecticut</p>
+            <div class="track" role="slider" tabindex="0" aria-label="Playback position" aria-valuemin="0" aria-valuemax="1361" aria-valuenow="552"><div class="fill" style="width:40.5%"></div><div class="knob" style="left:40.5%;width:11px;height:11px"></div></div>
+            <div class="times"><span>9:12</span><span>-13:29</span></div>
+            <div class="transport">
+              <button aria-label="Previous track" data-skip><svg width="22" height="22" aria-hidden="true"><use href="#i-prev"/></svg></button>
+              <button class="play-sticker stock" data-toggle aria-label="Pause"><svg width="22" height="22" aria-hidden="true"><use href="#i-pause"/></svg></button>
+              <button aria-label="Next track" data-skip><svg width="22" height="22" aria-hidden="true"><use href="#i-next"/></svg></button>
+            </div>
+
+            <div class="sec"><h3>Says so on the box</h3><span class="sticker tiny stock" role="img" aria-label="Lossless, 24-bit 96 kilohertz"><small>Lossless</small><strong>24/96</strong></span></div>
+            <dl class="signal">
+              <dt>Format</dt><dd>FLAC</dd>
+              <dt>Bit depth</dt><dd>24-bit</dd>
+              <dt>Sample rate</dt><dd>96 kHz</dd>
+              <dt>Source</dt><dd>Soundboard</dd>
+              <dt>Buffered</dt><dd>4:10 ahead</dd>
+            </dl>
+
+            <div class="sec"><h3>Coming up next</h3></div>
+            <ol class="queue">
+              <li class="now"><span class="rs sm stock" role="img" aria-label="Playing"><span class="stair"><i></i><i></i><i></i><i></i></span></span><span class="t">Yeti</span><span class="d">22:41</span></li>
+              <li><span class="n">4</span><span class="t">Dripfield</span><span class="d">10:15</span></li>
+              <li><span class="n">5</span><span class="t">Empress of Organos</span><span class="d">13:33</span></li>
+            </ol>
+          </aside>
+        </div>
+      </div>
+      <figcaption style="max-width:880px"><b>Mac with the dashboard at 340pt.</b> The miniplayer art is the only bubble on the Mac. Barker lines head the three sections, the lossless sticker sits on the quality header inside the column's inset, and the playing row in the setlist and the queue is tinted sale yellow behind its row sticker. The traffic lights are drawn frost gray.</figcaption>
+    </figure>
+
+    <section class="panel stickers" aria-labelledby="st-h">
+      <h2 id="st-h">Stickers</h2>
+      <p class="lede">Every sticker is the same stock: sale yellow, night ink, a few degrees off true. Pink is never printed on one.</p>
+      <div class="st-grid">
+        <div class="st-cell"><div class="holder"><span class="sticker tiny stock" style="width:58px;height:58px" role="img" aria-label="Lossless, 24-bit 96 kilohertz"><small style="font-size:9.5px">Lossless</small><strong style="font-size:14px">24/96</strong></span></div>
+          <div class="spec"><b>Price sticker</b>The lossless badge. Rides the bubble's corner, and the quality header on the Mac.</div></div>
+        <div class="st-cell"><div class="holder"><span class="play-sticker stock" style="width:54px;height:54px" role="img" aria-label="Play button"><svg width="24" height="24" aria-hidden="true"><use href="#i-play"/></svg></span></div>
+          <div class="spec"><b>Play sticker</b>The play and pause control on the hero, now playing and the Mac mini.</div></div>
+        <div class="st-cell"><div class="holder"><span class="rs lg stock" role="img" aria-label="Playing"><span class="stair"><i></i><i></i><i></i><i></i></span></span></div>
+          <div class="spec"><b>Row sticker, playing</b>Four ink bars stepping down 100, 75, 50, 25. Static: it never bounces.</div></div>
+        <div class="st-cell"><div class="holder"><span class="rs lg paused" role="img" aria-label="Paused"><span class="stair"><i></i><i></i><i></i><i></i></span></span></div>
+          <div class="spec"><b>Row sticker, paused</b>Same disc, same size. The stair lies flat and the stock goes idle gray.</div></div>
+      </div>
+      <ul class="rules">
+        <li><b>Constant size.</b> The row sticker is one fixed frame in both states (20pt in setlists, 16pt in the queue's slot), so a pause never resizes a row.</li>
+        <li><b>Fallback if the play sticker costs too much.</b> Keep the standard play glyph and let the price sticker carry play state instead: lossless while playing, a play glyph while paused.</li>
+      </ul>
+    </section>
+  </div>
+
+  <!-- ===================== row 3: motion + tokens ===================== -->
+  <div class="row">
+    <section class="panel motion" aria-labelledby="mo-h">
+      <h2 id="mo-h">FoilSweep, the one moment</h2>
+      <p class="lede">A band of foil pink crosses the now-playing title once, left to right, when a new track starts. It lasts 1,020 ms on a standard ease-in-out, then the title rests in snow for the rest of the track.</p>
+      <div class="chart" aria-hidden="true">
+        <div class="lane"><span>Foil crosses</span>
+          <span class="bar"><svg viewBox="0 0 100 26" preserveAspectRatio="none">
+            <!-- cubic-bezier(.4,0,.2,1), band position over time -->
+            <path d="M0 24 C40 24 20 2 100 2 L100 26 L0 26Z" fill="rgba(255,143,196,.22)"/>
+            <path d="M0 24 C40 24 20 2 100 2" fill="none" stroke="#FF8FC4" stroke-width="1.6" vector-effect="non-scaling-stroke"/>
+            <g stroke="#E9EEF7" stroke-opacity=".45" stroke-width="1" vector-effect="non-scaling-stroke" stroke-dasharray="2 2">
+              <path d="M9.8 0V26"/><path d="M29.4 0V26"/><path d="M58.8 0V26"/>
+            </g>
+          </svg></span>
+        </div>
+        <div class="ticks"><span></span><div><span>0</span><span>250</span><span>500</span><span>750</span><span>1,020 ms</span></div></div>
+      </div>
+      <div class="frames" aria-hidden="true">
+        <div class="frame"><span class="ft sweep f100">Yeti</span><div class="lab">100 ms, entering</div></div>
+        <div class="frame"><span class="ft sweep f300">Yeti</span><div class="lab">300 ms</div></div>
+        <div class="frame"><span class="ft sweep f600">Yeti</span><div class="lab">600 ms, leaving</div></div>
+        <div class="frame"><span class="ft sweep rest">Yeti</span><div class="lab">1,020 ms, at rest</div></div>
+      </div>
+      <ul class="rules">
+        <li><b>Trigger.</b> The first time playback is running for a new <code>player.current</code>. A track change fires it; pause then resume does not, so a three-hour show with ten pauses sees it once per track. A launch-restored queue fires on its first play, not at launch.</li>
+        <li><b>Reads no playback time.</b> It keys on the track's identity and runs its own animation. It never reads <code>currentTime</code>, so it adds nothing to the 4 Hz tick.</li>
+        <li><b>Overlay only.</b> The band is drawn over the title's own glyphs (a masked gradient), so the title never changes size or wraps differently mid-pass.</li>
+        <li><b>Reduce Motion.</b> Skipped entirely: the title simply appears in snow.</li>
+        <li><b>Where.</b> The now-playing title on the iPhone card and the Mac miniplayer. Nowhere else.</li>
+      </ul>
+    </section>
+
+    <section class="panel sheet" aria-labelledby="tk-h">
+      <h2 id="tk-h">Tokens</h2>
+      <p class="lede">These map one to one onto <code>Theme</code>. Pink is the accent, the ring, the scrub, the sweep and the focus outline, and is never a fill. Yellow is every sticker. Snow is the light, and primary buttons are snow with night ink.</p>
+      <div class="sheet-cols">
+        <div>
+          <div class="swatches">
+            <div class="sw"><div class="chip" style="background:#0F1424"></div><b>Night</b><span>base #0F1424</span></div>
+            <div class="sw"><div class="chip" style="background:#18203A"></div><b>Shelf</b><span>raised #18203A</span></div>
+            <div class="sw"><div class="chip" style="background:#2E3A5C"></div><b>Frost</b><span>hairline #2E3A5C</span></div>
+            <div class="sw"><div class="chip" style="background:#E9EEF7"></div><b>Snow</b><span>textPrimary #E9EEF7</span></div>
+            <div class="sw"><div class="chip" style="background:#9FABCE"></div><b>Slush</b><span>textSecondary #9FABCE</span></div>
+            <div class="sw"><div class="chip" style="background:#8590B0"></div><b>Lamp off</b><span>textIdle #8590B0</span></div>
+            <div class="sw"><div class="chip" style="background:#FF8FC4"></div><b>Foil</b><span>accent #FF8FC4</span></div>
+            <div class="sw"><div class="chip" style="background:#F2E27A"></div><b>Sale</b><span>losslessBadge, playState #F2E27A</span></div>
+            <div class="sw"><div class="chip" style="background:#1B2443"></div><b>Card stock</b><span>labelPaper #1B2443</span></div>
+          </div>
+          <h3>Contrast (WCAG, text)</h3>
+          <table>
+            <thead><tr><th>Text</th><th class="num">base</th><th class="num">raised</th><th class="num">card</th><th class="num">inspector</th></tr></thead>
+            <tbody>
+              <tr><td>Snow</td><td class="num">15.7</td><td class="num">13.8</td><td class="num">13.1</td><td class="num">15.0</td></tr>
+              <tr><td>Slush</td><td class="num">8.0</td><td class="num">7.0</td><td class="num">6.7</td><td class="num">7.7</td></tr>
+              <tr><td>Lamp off</td><td class="num">5.8</td><td class="num">5.1</td><td class="num">4.8</td><td class="num">5.5</td></tr>
+              <tr><td>Foil</td><td class="num">8.7</td><td class="num">7.6</td><td class="num">7.2</td><td class="num">8.3</td></tr>
+              <tr><td>Sale</td><td class="num">13.9</td><td class="num">12.2</td><td class="num">11.6</td><td class="num">13.3</td></tr>
+              <tr><td colspan="5"><span class="muted">Night ink on sale stock 13.9. Nothing under 4.5 anywhere; the earlier idle gray #7D89AC fell to 4.4 on the card and was raised.</span></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div>
+          <h3 style="margin-top:0">Type: system rounded only</h3>
+          <div class="scale">
+            <div><span style="font-weight:900;font-size:40px;line-height:1;letter-spacing:-.02em">Yeti</span><span>nameplate 34 to 44, heavy<br>now-playing card only</span></div>
+            <div><span style="font-weight:900;font-size:30px;line-height:1.05">Westville</span><span>hero 34, title 30, heavy</span></div>
+            <div><span style="font-weight:900;font-size:22px">The nice list</span><span>section 22, inspector 17, heavy</span></div>
+            <div><span style="font-size:15px">New Haven, Connecticut</span><span>body 15, meta 14, regular</span></div>
+            <div><span style="font-size:13px">9:12&nbsp;&nbsp;22:41&nbsp;&nbsp;62 h</span><span>numeric 13, rounded, monospaced digits</span></div>
+          </div>
+          <h3>Copy, caps and signature</h3>
+          <table>
+            <tbody>
+              <tr><th>nowPlaying, dashboardIdle</th><td>It's on its way</td></tr>
+              <tr><th>dashHeaders</th><td>Here it comes<br>Says so on the box<br>Coming up next</td></tr>
+              <tr><th>caps</th><td>[.equalizerRows], drawn as the static row sticker</td></tr>
+              <tr><th>transport</th><td>.standard</td></tr>
+              <tr><th>accentMode</th><td>.staticAccent</td></tr>
+              <tr><th>washStyle</th><td>.none, textureOpacity 0, no grain</td></tr>
+              <tr><th>darkOnly</th><td>true</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <!-- ===================== row 4: code handoff ===================== -->
+  <div class="row">
+    <section class="panel code" aria-labelledby="sw-h">
+          <h2 id="sw-h">Theme.swift</h2>
+<pre><b>static let yeti</b> = Theme(
+    id: .yeti,
+    palette: Palette(
+        base: Color(hex: 0x0F1424), raised: Color(hex: 0x18203A),
+        hairline: Color(hex: 0x2E3A5C),
+        textPrimary: Color(hex: 0xE9EEF7),
+        textSecondary: Color(hex: 0x9FABCE),
+        textIdle: Color(hex: 0x8590B0),
+        accent: Color(hex: 0xFF8FC4),
+        losslessBadge: Color(hex: 0xF2E27A),
+        playState: Color(hex: 0xF2E27A), vuPeak: nil,
+        labelPaper: Color(hex: 0x1B2443),  <b>// backing card</b>
+        labelInk: Color(hex: 0x0F1424)),   <b>// sticker ink</b>
+    type: Typography(
+        hero:    { .system(size: $0, weight: .heavy, design: .rounded) },
+        title:   { .system(size: $0, weight: .heavy, design: .rounded) },
+        section: { .system(size: $0, weight: .heavy, design: .rounded) },
+        body:    { .system(size: $0, design: .rounded) },
+        numeric: { .system(size: $0, design: .rounded)
+                       .monospacedDigit() }),
+    textureOpacity: 0,
+    copy: IdleCopy(
+        nowPlaying: "It's on its way",
+        dashboardIdle: "It's on its way",
+        dashHeaders: ("Here it comes",
+                      "Says so on the box",
+                      "Coming up next")),
+    caps: [.equalizerRows],
+    transport: .standard,
+    accentMode: .staticAccent,
+    washStyle: .none,
+    darkOnly: true)</pre>
+    </section>
+    <section class="panel wiring" aria-labelledby="wi-h">
+          <h2 id="wi-h">Wiring it in</h2>
+          <ul class="rules">
+            <li><b>ThemeID.</b> Add <code>case yeti</code>, display name "Yeti", and the <code>Theme.make</code> branch.</li>
+            <li><b>labelPaper and labelInk</b> are documented as Tape Room only; only the cassette miniplayer reads them, so Yeti can reuse them for card stock and sticker ink. Update the comments.</li>
+            <li><b>Playing row tint is free.</b> <code>activeEmphasis</code> returns <code>playState</code> for a static accent, so setlist and queue rows go sale yellow with no code change.</li>
+            <li><b>Row sticker.</b> <code>EqualizerBars</code> animates three bars in the accent for every <code>.equalizerRows</code> theme (queue, now playing, crate header). Yeti needs a branch there that draws the static sticker stair, or it gets bouncing pink bars.</li>
+            <li><b>Play sticker.</b> The Mac mini's <code>.filled</code> triad paints its circle in the accent, which would be a pink fill; it needs a sticker style (playState fill, labelInk glyph). Now playing and the Home hero draw <code>*.circle.fill</code> glyphs that need the same. If that is too much, use the fallback on the sticker sheet.</li>
+            <li><b>New components.</b> <code>BlisterBubble</code> (hero, now playing, Mac mini art only) and <code>FoilSweep</code>.</li>
+            <li><b>Focus.</b> The foil focus outline is drawn per control; the system focus ring follows the user's accent color, so this needs a custom focus effect on macOS.</li>
+          </ul>
+    </section>
+  </div>
+</main>
+
+<script>
+  // The single flourish fires on a new track (Next or Previous), never on pause or resume.
+  function sweep(scope) {
+    scope.querySelectorAll('[data-sweep]').forEach(t => {
+      t.classList.remove('go', 'rest', 'f380');
+      void t.offsetWidth;
+      t.classList.add('go');
+    });
+  }
+  document.querySelectorAll('[data-skip]').forEach(btn => {
+    btn.addEventListener('click', () => sweep(btn.closest('.phone, .mac') || document));
+  });
+  // Play and pause only swap the sticker's glyph and the row sticker's pose.
+  document.querySelectorAll('[data-toggle]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const playing = btn.getAttribute('aria-label') === 'Pause';
+      btn.setAttribute('aria-label', playing ? 'Play' : 'Pause');
+      btn.querySelector('use').setAttribute('href', playing ? '#i-play' : '#i-pause');
+      const scope = btn.closest('.phone, .mac');
+      if (!scope) return;
+      scope.querySelectorAll('.rs').forEach(r => {
+        r.classList.toggle('paused', playing);
+        r.classList.toggle('stock', !playing);
+        r.setAttribute('aria-label', playing ? 'Paused' : 'Playing');
+      });
+    });
+  });
+</script>
+</body>
+</html>

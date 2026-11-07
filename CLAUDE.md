@@ -1,6 +1,6 @@
-# AppleNugs — guide for Claude
+# Yeti (formerly AppleNugs) — guide for Claude
 
-Native **macOS + iOS SwiftUI** client for nugs.net. Public repo `tsvb/applenugs`. Unofficial client (talks nugs.net's reverse-engineered API) — Developer ID / direct-download distribution, not App Store (5.2.2). Shipped: **v1.1** (Developer ID notarized DMG + Sparkle auto-update + iOS personal-install).
+Native **macOS + iOS SwiftUI** player for nugs.net, shipped to users as **Yeti — an unofficial player for nugs.net** (named for the Goose song). Public repo `tsvb/applenugs` (repo, bundle ids, Xcode project/target names and the `.app` file name still say AppleNugs on purpose — see "Yeti — compliance pass" below). Unofficial: talks nugs.net's private API with the user's own subscription, identifies itself honestly as Yeti. Developer ID / direct-download distribution, not App Store (5.2.2). Latest release on `main`: **v1.5**.
 
 ## Read first
 - **Claude Code auto-memory:** this project's memory index at `~/.claude/projects/<project-slug>/memory/MEMORY.md` (loaded automatically at session start) holds the deep, current project context — parity program, distribution/release runbook, iOS port, theme system, player backlog, gotchas. Skim the notes relevant to your task before acting.
@@ -44,6 +44,45 @@ Native **macOS + iOS SwiftUI** client for nugs.net. Public repo `tsvb/applenugs`
   fixed-geometry cluster uses `NowPlayingFit.scale` + `scaleEffect` + a matching `.frame` —
   `scaleEffect` alone keeps the old footprint.
 - Catalog dates are UTC-midnight instants — use `CrateSection.catalogCalendar`, not `Calendar.current` (see the `applenugs-catalog-dates-are-utc` memory).
+
+## START HERE — state as of 2026-11-07 (handoff for a new session)
+
+**Where the code is.** Worktree `.claude/worktrees/iphone-duo` (stay in it; don't cd to the main checkout).
+Branches, all local, NOT pushed:
+- `main` == `origin/main` == `805d766` (the iPhone Duo work, PR #5, merged 2026-11-06). The main checkout's
+  local `main` ref may still be behind — `git -C /Users/tim/applenugs fetch origin main:main` (Tim's call).
+- `pill-duck` (2 commits on `805d766`: the pill ducks on scroll on the Duo, verified on device).
+- **`yeti` (checked out; stacked on `pill-duck`)** — the compliance pass + Yeti rename + encrypted downloads +
+  perf pass + the Yeti theme DESIGN (docs only). Gate green: both schemes warning-free, **307 tests**.
+- `listening-stats` (in the main checkout; built, unmerged, based on the OLD main — needs a rebase onto
+  `805d766`+, with a CLAUDE.md conflict to resolve).
+
+**Next steps, in Tim's order of interest:**
+1. **Land `pill-duck` + `yeti`** — same path as PR #5: push, open a PR (CI runs on the `xcode-27` runner),
+   fast-forward `main` (`git push origin <branch>:main`, never a merge/rebase so commit hashes in this file stay
+   valid). Pushing is Tim's call — ask ("land it").
+2. **Finish verifying Yeti on hardware:** logout wipes downloads; the **Mac** build (old plaintext downloads
+   there must migrate to sealed `.yeti`; Reveal in Finder is gone). Mac local installs must be Developer
+   ID-signed (see the local-install-signing memory).
+3. **Implement the "Yeti" theme** (sixth theme) from the finished design: `docs/design/yeti-theme/yeti-theme.html`
+   (+ `.png`, and the three concepts it beat). It carries a token sheet that maps 1:1 onto `Theme` fields and a
+   "Wiring it in" list (ThemeID `.yeti`, EqualizerBars branch, play-sticker sites, FoilSweep, BlisterBubble).
+   Never quote the song's lyrics in the app or docs (copyrighted) — paraphrase only.
+4. **Nightstand / tent** (Tim chose all three: propped-open player with clock + night dimming, tent-pose
+   landscape player that auto-opens, StandBy Now Playing widget). Start with a DEBUG pose probe (hinge
+   status/angle, division regions, display) Tim screenshots in each pose. See the NEXT block below.
+5. Small follow-ups: regenerate the README banner SVGs (`scripts/generate-banner.swift` still writes
+   "APPLENUGS") and re-shoot `docs/images`; decide the `.app`/`PRODUCT_NAME` rename (DISTRIBUTION.md lays out
+   the Sparkle trade-off); goosealmanac's deep-link doc should mention `yeti://`; `VideoPlayerService` still
+   pushes Now Playing every 0.5 s during video; consider asking nugs.net for an official OAuth client (the
+   one thing honesty can't fix unilaterally).
+
+**Session gotchas:** the claude-artifacts publishing tools stopped working mid-session on 2026-11-07 (restart
+fixes it). The worktree-isolation shell guard rejects compound commands with variables/loops and `git -C`
+outside the worktree — use plain commands or a `zsh` script in the scratchpad. Disk on this Mac runs tight
+(~10 GB free): always delete DerivedData after a gate. Local-only specs for all of the above live in
+`docs/superpowers/specs/2026-11-0{5,6}-*.md` (gitignored — they die with the worktree; the decisions are
+copied into this file).
 
 ## Pick up here — state as of 2026-08-18
 

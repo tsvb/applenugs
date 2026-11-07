@@ -1,0 +1,701 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Yeti theme, concept C: Nameplate</title>
+<style>
+/* Safari resolves ui-rounded to SF Pro Rounded. Other browsers get Nunito,
+   the closest freely licensed rounded family, then the plain system stack. */
+@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap');
+
+:root {
+  /* palette: the only literal hex in this file */
+  --night:   #0F1424;  /* base */
+  --curb:    #18203A;  /* raised */
+  --frost:   #2E3A5C;  /* hairline */
+  --snow:    #EEF1FA;  /* textPrimary */
+  --slush:   #A3AECB;  /* textSecondary */
+  --lamp:    #808CAE;  /* textIdle */
+  --foil:    #FF8FC4;  /* accent + ring + sweep + focus */
+  --foil-hi: #FFE1EF;  /* sweep highlight only */
+  --sale:    #F2E27A;  /* sticker stock: lossless badge + play state */
+  --ink:     #0F1424;  /* sticker ink (same as base) */
+  --canvas:  #080B15;  /* presentation board, not a theme token */
+
+  --round: ui-rounded, "SF Pro Rounded", "Nunito", system-ui, -apple-system, sans-serif;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { background: var(--canvas); }
+body {
+  font-family: var(--round);
+  color: var(--snow);
+  -webkit-font-smoothing: antialiased;
+  font-variant-numeric: tabular-nums;
+  overflow-x: hidden;
+}
+button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; }
+:focus-visible { outline: 2px solid var(--foil); outline-offset: 3px; border-radius: 6px; }
+svg { display: block; }
+
+/* ---------- presentation board ---------- */
+.fit { width: 100%; overflow: hidden; }
+.stage { width: 1560px; padding: 40px 0 48px; transform-origin: top left; margin: 0 auto; }
+.row { display: flex; gap: 32px; align-items: flex-start; }
+.row + .row { margin-top: 44px; }
+.cap { margin-top: 14px; max-width: 390px; }
+.cap h2 { font-size: 17px; font-weight: 700; line-height: 1.25; }
+.cap p { font-size: 14px; line-height: 1.45; color: var(--slush); margin-top: 4px; }
+
+.intro { width: 330px; padding-top: 6px; }
+.intro .name { font-size: 64px; font-weight: 800; line-height: .86; letter-spacing: -.02em; }
+.intro .sub { font-size: 17px; font-weight: 600; color: var(--slush); margin-top: 14px; }
+.intro p { font-size: 15px; line-height: 1.5; color: var(--slush); margin-top: 18px; max-width: 34ch; }
+.intro p strong { color: var(--snow); font-weight: 700; }
+
+/* ---------- iPhone frame ---------- */
+.phone {
+  width: 390px; height: 844px; border-radius: 56px; position: relative; overflow: hidden;
+  background: var(--night);
+  box-shadow: 0 0 0 10px #1C2238, 0 0 0 11px var(--frost);
+}
+.island { position: absolute; top: 11px; left: 50%; width: 124px; height: 36px; margin-left: -62px; border-radius: 20px; background: #000; z-index: 5; }
+.status { height: 54px; display: flex; align-items: center; justify-content: space-between; padding: 6px 34px 0 42px; font-size: 17px; font-weight: 700; }
+.status .icons { display: flex; gap: 6px; align-items: center; }
+.screen { position: absolute; inset: 54px 0 0 0; overflow: hidden; }
+
+/* ---------- the nameplate: the one bold thing ---------- */
+.np { font-weight: 800; letter-spacing: -.025em; line-height: .84; color: var(--snow); }
+.np .l { display: block; white-space: nowrap; }
+.np .l > span { display: inline-block; }
+.np .l.date { letter-spacing: -.01em; }
+.np .l + .l { margin-top: .04em; }
+
+/* foil sweep: one pass, left to right, reads no playback time */
+.sweep {
+  background-image: linear-gradient(100deg,
+    var(--snow) 0%, var(--snow) 40%, var(--foil) 46%, var(--foil-hi) 50%,
+    var(--foil) 54%, var(--snow) 60%, var(--snow) 100%);
+  background-size: 300% 100%;
+  background-position: 0% 0;
+  -webkit-background-clip: text; background-clip: text;
+  color: transparent;
+}
+.sweep.frame { background-position: 56% 0; }   /* frozen mid-pass for the mock */
+@media (prefers-reduced-motion: no-preference) {
+  .sweep.run { animation: sweep 900ms cubic-bezier(.3,.1,.2,1) 1 both; }
+}
+@keyframes sweep { from { background-position: 100% 0; } to { background-position: 0% 0; } }
+
+/* ---------- blister pack ---------- */
+.card {
+  background: var(--curb); border-radius: 6px; position: relative;
+  box-shadow: inset 0 0 0 1px var(--frost);
+}
+.hang { position: absolute; top: 12px; left: 50%; width: 46px; height: 12px; margin-left: -23px; border-radius: 6px; background: var(--night); box-shadow: inset 0 1px 0 rgba(0,0,0,.5); }
+.bubble {
+  position: relative; border-radius: 26px; padding: 7px;
+  background: linear-gradient(150deg, rgba(238,241,250,.20), rgba(238,241,250,.05) 40%, rgba(238,241,250,.10));
+  box-shadow: inset 0 0 0 1px rgba(238,241,250,.22), 0 10px 18px -6px rgba(5,7,14,.8);
+}
+.bubble .art { border-radius: 20px; overflow: hidden; }
+.bubble .art svg { width: 100%; height: 100%; }
+.bubble::after { /* plastic glint, top-left */
+  content: ""; position: absolute; left: 14px; top: 12px; width: 38%; height: 26%;
+  border-radius: 30px 40px 60px 20px;
+  background: linear-gradient(140deg, rgba(255,255,255,.32), rgba(255,255,255,0) 70%);
+  pointer-events: none;
+}
+
+/* ---------- price sticker ---------- */
+.sticker {
+  position: absolute; border-radius: 50%; background: var(--sale); color: var(--ink);
+  display: grid; place-content: center; text-align: center;
+  box-shadow: inset 0 0 0 3px var(--sale), inset 0 0 0 4px rgba(15,20,36,.28), 0 2px 4px rgba(5,7,14,.45);
+  transform: rotate(-9deg); z-index: 2;
+}
+.sticker b { font-weight: 800; letter-spacing: -.01em; line-height: 1; display: block; }
+.sticker i { font-style: normal; font-weight: 700; line-height: 1.1; display: block; }
+.sticker.lg { width: 74px; height: 74px; } .sticker.lg b { font-size: 15px; } .sticker.lg i { font-size: 12px; }
+.sticker.md { width: 58px; height: 58px; } .sticker.md b { font-size: 12px; } .sticker.md i { font-size: 10px; }
+
+/* play-state dot: a small sticker holding the descending figure */
+.dot { width: 22px; height: 22px; border-radius: 50%; background: var(--sale); display: grid; place-items: center; flex: none; transform: rotate(-9deg); }
+.eq { display: flex; gap: 2px; align-items: flex-end; height: 10px; }
+.eq span { width: 2.5px; border-radius: 1px; background: var(--ink); }
+.eq span:nth-child(1) { height: 10px; } .eq span:nth-child(2) { height: 7.5px; }
+.eq span:nth-child(3) { height: 5px; }  .eq span:nth-child(4) { height: 2.5px; }
+
+/* ---------- shared bits ---------- */
+.btn { height: 44px; padding: 0 20px; border-radius: 22px; font-size: 17px; font-weight: 700; display: inline-flex; align-items: center; gap: 8px; }
+.btn.solid { background: var(--snow); color: var(--night); }
+.btn.line { box-shadow: inset 0 0 0 1px var(--frost); color: var(--snow); }
+.ico { width: 24px; height: 24px; fill: currentColor; }
+.scrub { height: 4px; border-radius: 2px; background: var(--frost); position: relative; }
+.scrub .fill { position: absolute; inset: 0 auto 0 0; border-radius: 2px; background: var(--foil); }
+.scrub .thumb { position: absolute; top: 50%; width: 14px; height: 14px; margin: -7px 0 0 -7px; border-radius: 50%; background: var(--snow); box-shadow: 0 1px 3px rgba(5,7,14,.6); }
+.clock { display: flex; justify-content: space-between; font-size: 13px; color: var(--slush); margin-top: 8px; font-variant-numeric: tabular-nums; }
+
+/* iOS 26 floating tab bar */
+.tabbar { position: absolute; left: 18px; right: 18px; bottom: 26px; height: 62px; border-radius: 31px; display: flex; justify-content: space-around; align-items: center;
+  background: rgba(24,32,58,.78); backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px); box-shadow: inset 0 0 0 1px rgba(238,241,250,.12); z-index: 4; }
+.tab { display: grid; justify-items: center; gap: 2px; font-size: 10px; font-weight: 700; color: var(--slush); width: 72px; }
+.tab .ico { width: 22px; height: 22px; }
+.tab.on { color: var(--snow); }
+.fade { position: absolute; left: 0; right: 0; bottom: 0; height: 150px; background: linear-gradient(rgba(15,20,36,0), var(--night) 70%); z-index: 3; pointer-events: none; }
+.home-ind { position: absolute; bottom: 8px; left: 50%; width: 134px; height: 5px; margin-left: -67px; border-radius: 3px; background: var(--snow); z-index: 6; }
+
+/* ---------- Home ---------- */
+.home { padding: 6px 16px 0; }
+.greet { display: flex; justify-content: space-between; align-items: center; height: 44px; }
+.greet h1 { font-size: 28px; font-weight: 800; letter-spacing: -.015em; }
+.avatar { width: 34px; height: 34px; border-radius: 50%; box-shadow: inset 0 0 0 1px var(--frost); display: grid; place-items: center; color: var(--slush); }
+.hero { margin-top: 10px; padding: 34px 16px 18px; }
+.hero .top { display: flex; gap: 16px; align-items: stretch; }
+.hero .bubble { width: 132px; height: 132px; flex: none; }
+.hero .bubble .art { width: 118px; height: 118px; }
+.hero .sticker { right: -12px; bottom: -10px; }
+.hero .blurb { flex: 1; min-width: 0; display: flex; flex-direction: column; padding-left: 6px; }
+.hero .blurb p { font-size: 15px; line-height: 1.35; color: var(--slush); }
+.hero .blurb .len { color: var(--snow); font-weight: 700; margin-top: 6px; }
+.hero .blurb .btn { margin-top: auto; height: 38px; font-size: 15px; padding: 0 16px; align-self: flex-start; }
+.hero .np { margin-top: 18px; }
+
+.nice { margin-top: 20px; padding: 0 2px; }
+.nice h2 { font-size: 22px; font-weight: 800; letter-spacing: -.01em; }
+.nice .lede { font-size: 14px; color: var(--slush); margin-top: 3px; }
+.totals { display: flex; gap: 22px; margin-top: 12px; font-size: 14px; color: var(--slush); }
+.totals b { color: var(--snow); font-weight: 800; font-size: 17px; margin-right: 4px; }
+.ledger { margin-top: 10px; list-style: none; }
+.ledger li { display: grid; grid-template-columns: 26px 1fr 64px 44px; align-items: center; height: 44px; border-top: 1px solid var(--frost); font-size: 16px; }
+.ledger .who { font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ledger .n, .ledger .h { text-align: right; color: var(--slush); font-size: 14px; font-variant-numeric: tabular-nums; }
+.check { width: 18px; height: 18px; border-radius: 5px; box-shadow: inset 0 0 0 1.5px var(--slush); display: grid; place-items: center; }
+.check svg { width: 12px; height: 12px; stroke: var(--snow); stroke-width: 3; fill: none; stroke-linecap: round; stroke-linejoin: round; }
+
+/* ---------- Now playing ---------- */
+.np-screen { padding: 4px 24px 0; }
+.np-head { display: flex; justify-content: space-between; align-items: center; height: 44px; color: var(--slush); }
+.np-head .grab { width: 36px; height: 5px; border-radius: 3px; background: var(--frost); }
+.np-screen .bubble { width: 342px; height: 300px; margin-top: 6px; }
+.np-screen .bubble .art { width: 328px; height: 286px; }
+.np-screen .sticker { right: -6px; top: -10px; }
+.np-screen .np { margin-top: 26px; }
+.meta { display: flex; justify-content: space-between; align-items: flex-start; margin-top: 12px; gap: 12px; }
+.meta .t { font-size: 17px; font-weight: 700; line-height: 1.3; }
+.meta .s { font-size: 15px; color: var(--slush); line-height: 1.35; }
+.meta .star { color: var(--slush); padding: 4px; }
+.np-screen .scrub { margin-top: 22px; }
+.ctrls { display: flex; justify-content: space-between; align-items: center; margin-top: 20px; padding: 0 6px; }
+.ctrls .ico { width: 30px; height: 30px; }
+.ctrls .big { width: 70px; height: 70px; border-radius: 50%; background: var(--snow); color: var(--night); display: grid; place-items: center; }
+.ctrls .big .ico { width: 32px; height: 32px; }
+.upnext { margin-top: 22px; padding-top: 12px; border-top: 1px solid var(--frost); font-size: 15px; color: var(--slush); display: flex; justify-content: space-between; }
+.upnext b { color: var(--snow); font-weight: 700; }
+.replay { margin-top: 12px; font-size: 14px; font-weight: 700; color: var(--slush); text-decoration: underline; text-underline-offset: 3px; }
+
+/* ---------- Artist list + pill ---------- */
+.list-screen { padding: 4px 16px 0; }
+.list-screen h1 { font-size: 34px; font-weight: 800; letter-spacing: -.02em; margin-top: 4px; }
+.search { margin-top: 10px; height: 38px; border-radius: 19px; background: var(--curb); display: flex; align-items: center; gap: 8px; padding: 0 14px; color: var(--lamp); font-size: 16px; }
+.letter { font-size: 15px; font-weight: 800; color: var(--slush); margin: 16px 0 2px; }
+.arow { display: flex; align-items: center; gap: 12px; height: 56px; border-bottom: 1px solid var(--frost); }
+.mono { width: 40px; height: 40px; border-radius: 10px; background: var(--curb); display: grid; place-items: center; font-weight: 800; font-size: 15px; color: var(--slush); flex: none; }
+.arow .nm { font-size: 17px; font-weight: 600; flex: 1; }
+.arow .ct { font-size: 14px; color: var(--slush); }
+.pill { position: absolute; left: 15px; bottom: 98px; width: 360px; height: 48px; border-radius: 24px; z-index: 4; display: flex; align-items: center; gap: 8px; padding: 0 8px;
+  background: rgba(24,32,58,.80); backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px); box-shadow: inset 0 0 0 1px rgba(238,241,250,.14), 0 6px 20px rgba(5,7,14,.5); }
+.slot { width: 32px; height: 32px; position: relative; flex: none; }
+.slot .chip { position: absolute; inset: 3px; border-radius: 50%; overflow: hidden; }
+.slot .chip svg { width: 100%; height: 100%; }
+.slot .ring { position: absolute; inset: 0; }
+.pill .txt { flex: 1; min-width: 0; line-height: 1.15; }
+.pill .txt b { display: block; font-size: 14px; font-weight: 800; }
+.pill .txt span { display: block; font-size: 12px; color: var(--slush); }
+.pill .pc { display: flex; gap: 2px; align-items: center; }
+.pill .pc .ico { width: 18px; height: 18px; }
+.pill .pc button { width: 28px; height: 32px; display: grid; place-items: center; }
+.pill .chev { width: 24px; color: var(--slush); }
+
+/* ---------- Mac window ---------- */
+.mac { width: 1200px; height: 760px; border-radius: 12px; overflow: hidden; background: var(--night); display: grid; grid-template-rows: 52px 1fr 64px;
+  box-shadow: 0 0 0 1px var(--frost), 0 30px 60px rgba(0,0,0,.5); }
+.mac .bar { display: flex; align-items: center; gap: 18px; padding: 0 14px; border-bottom: 1px solid var(--frost); }
+.lights { display: flex; gap: 8px; width: 196px; }
+.lights i { width: 12px; height: 12px; border-radius: 50%; background: var(--frost); }
+.mac .bar .nav { display: flex; gap: 6px; color: var(--lamp); }
+.mac .bar .field { margin-left: auto; width: 260px; height: 30px; border-radius: 8px; background: var(--curb); color: var(--lamp); font-size: 13px; display: flex; align-items: center; gap: 6px; padding: 0 10px; }
+.mac .bar .tool { color: var(--slush); }
+.body { display: grid; grid-template-columns: 210px 1fr 340px; min-height: 0; }
+.side { border-right: 1px solid var(--frost); padding: 14px 10px; }
+.side h3 { font-size: 12px; font-weight: 700; color: var(--lamp); padding: 0 10px; margin: 6px 0 6px; }
+.side h3 + ul { margin-bottom: 14px; }
+.side ul { list-style: none; }
+.side li { height: 30px; display: flex; align-items: center; gap: 9px; padding: 0 10px; border-radius: 7px; font-size: 14px; color: var(--slush); }
+.side li .ico { width: 16px; height: 16px; }
+.side li.on { background: var(--curb); color: var(--snow); font-weight: 700; }
+
+.main { padding: 26px 32px; overflow: hidden; }
+.show { display: grid; grid-template-columns: 214px 1fr; gap: 28px; align-items: end; }
+.show .bubble { width: 214px; height: 214px; }
+.show .bubble .art { width: 200px; height: 200px; }
+.show .sticker { right: -10px; top: -8px; }
+.show .np { max-width: 370px; }
+.show .sline { font-size: 14px; color: var(--slush); margin-top: 12px; }
+.show .actions { display: flex; gap: 10px; margin-top: 14px; }
+.show .btn { height: 34px; font-size: 14px; padding: 0 16px; border-radius: 17px; }
+.set { margin-top: 26px; }
+.set h4 { font-size: 15px; font-weight: 800; margin-bottom: 4px; }
+.set h4 + ol { margin-bottom: 16px; }
+.set ol { list-style: none; }
+.set li { display: grid; grid-template-columns: 34px 1fr 60px; align-items: center; height: 32px; border-bottom: 1px solid var(--frost); font-size: 14px; }
+.set li .no { color: var(--lamp); font-variant-numeric: tabular-nums; }
+.set li .d { text-align: right; color: var(--slush); }
+.set li.on .t { color: var(--sale); font-weight: 700; }
+
+.insp { border-left: 1px solid var(--frost); padding: 18px 20px; overflow: hidden; }
+.insp h5 { font-size: 15px; font-weight: 800; color: var(--snow); margin-bottom: 10px; }
+.mini { display: grid; grid-template-columns: 112px 1fr; gap: 14px; align-items: start; }
+.mini .bubble { width: 112px; height: 112px; border-radius: 22px; padding: 6px; }
+.mini .bubble .art { width: 100px; height: 100px; border-radius: 17px; }
+.mini .bubble::after { left: 11px; top: 10px; }
+.mini .sticker { right: -12px; bottom: -10px; }
+.mini .ti { font-size: 30px; font-weight: 800; letter-spacing: -.02em; line-height: .95; }
+.mini .ar { font-size: 14px; font-weight: 700; margin-top: 6px; }
+.mini .ve { font-size: 13px; color: var(--slush); line-height: 1.35; margin-top: 2px; }
+.mini-scrub { margin-top: 16px; }
+.mini-ctrl { display: flex; justify-content: center; gap: 22px; align-items: center; margin-top: 8px; color: var(--snow); }
+.mini-ctrl .ico { width: 20px; height: 20px; }
+.mini-ctrl .pp { width: 38px; height: 38px; border-radius: 50%; background: var(--snow); color: var(--night); display: grid; place-items: center; }
+.sig { margin-top: 20px; }
+.sig dl { display: grid; grid-template-columns: 1fr auto; row-gap: 0; font-size: 13px; }
+.sig dt, .sig dd { height: 25px; display: flex; align-items: center; border-bottom: 1px solid var(--frost); }
+.sig dt { color: var(--slush); }
+.sig dd { justify-content: flex-end; font-variant-numeric: tabular-nums; }
+.sig dd.unk { color: var(--lamp); }
+.queue { margin-top: 20px; }
+.qrow { display: grid; grid-template-columns: 30px 1fr auto; align-items: center; height: 34px; border-bottom: 1px solid var(--frost); font-size: 13px; }
+.qrow .t { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.qrow .d { color: var(--slush); }
+.qrow.on .t { color: var(--sale); font-weight: 700; }
+.qrow .no { color: var(--lamp); }
+
+.transport { border-top: 1px solid var(--frost); display: grid; grid-template-columns: 300px 1fr 200px; align-items: center; padding: 0 18px; gap: 24px; }
+.transport .now { display: flex; gap: 10px; align-items: center; min-width: 0; }
+.transport .chip { width: 40px; height: 40px; border-radius: 9px; overflow: hidden; flex: none; }
+.transport .chip svg { width: 100%; height: 100%; }
+.transport .now b { display: block; font-size: 14px; font-weight: 800; }
+.transport .now span { display: block; font-size: 12px; color: var(--slush); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.transport .mid { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 12px; font-size: 12px; color: var(--slush); }
+.transport .tc { display: flex; gap: 14px; align-items: center; color: var(--snow); }
+.transport .tc .ico { width: 18px; height: 18px; }
+.transport .vol { display: flex; gap: 8px; align-items: center; color: var(--slush); justify-content: flex-end; }
+.transport .vol .scrub { width: 100px; }
+.transport .vol .scrub .fill { background: var(--slush); }
+
+/* ---------- token sheet ---------- */
+.tokens { width: 328px; background: var(--night); border-radius: 12px; box-shadow: 0 0 0 1px var(--frost); padding: 22px 22px 18px; }
+.tokens h2 { font-size: 22px; font-weight: 800; letter-spacing: -.01em; }
+.tokens h3 { font-size: 14px; font-weight: 800; margin: 18px 0 8px; }
+.sw { display: grid; grid-template-columns: 30px 1fr auto; gap: 10px; align-items: center; font-size: 12.5px; height: 34px; border-bottom: 1px solid var(--frost); }
+.sw i { width: 26px; height: 26px; border-radius: 50%; box-shadow: inset 0 0 0 1px rgba(238,241,250,.18); }
+.sw b { font-weight: 700; }
+.sw span { color: var(--slush); }
+.sw em { font-style: normal; color: var(--slush); text-align: right; }
+.spec { border-bottom: 1px solid var(--frost); padding: 6px 0; display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
+.spec small { font-size: 12px; color: var(--slush); text-align: right; flex: none; }
+.kv { font-size: 12.5px; line-height: 1.5; }
+.kv div { display: grid; grid-template-columns: 104px 1fr; border-bottom: 1px solid var(--frost); padding: 5px 0; }
+.kv div span:first-child { color: var(--slush); }
+.note { font-size: 12.5px; color: var(--slush); line-height: 1.45; margin-top: 10px; }
+
+@media (prefers-reduced-motion: reduce) { .replay { display: none; } }
+</style>
+</head>
+<body>
+
+<!-- shared drawings: cover art for the Red Rocks show, and icons -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#1D2A55"/><stop offset=".62" stop-color="#5C4F86"/><stop offset="1" stop-color="#C7779A"/>
+    </linearGradient>
+    <linearGradient id="rock" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#C2603E"/><stop offset="1" stop-color="#6E2E26"/>
+    </linearGradient>
+    <symbol id="art" viewBox="0 0 100 100" preserveAspectRatio="xMidYMid slice">
+      <rect width="100" height="100" fill="url(#sky)"/>
+      <circle cx="68" cy="28" r="11" fill="#F4EFE4" opacity=".92"/>
+      <g fill="#F4EFE4" opacity=".5"><circle cx="18" cy="16" r=".7"/><circle cx="34" cy="9" r=".5"/><circle cx="46" cy="22" r=".6"/><circle cx="86" cy="12" r=".5"/><circle cx="90" cy="44" r=".6"/></g>
+      <path d="M0 66 L10 50 L18 54 L26 38 L36 60 L36 100 L0 100Z" fill="url(#rock)"/>
+      <path d="M62 100 L64 58 L72 44 L80 48 L90 34 L100 46 L100 100Z" fill="url(#rock)"/>
+      <path d="M0 86 Q50 70 100 86 L100 100 L0 100Z" fill="#141A33"/>
+      <path d="M8 90 Q50 78 92 90" stroke="#F4EFE4" stroke-width=".6" fill="none" opacity=".35"/>
+    </symbol>
+    <symbol id="i-play" viewBox="0 0 24 24"><path d="M8 5.2v13.6a1 1 0 0 0 1.5.86l10.6-6.8a1 1 0 0 0 0-1.72L9.5 4.34A1 1 0 0 0 8 5.2z"/></symbol>
+    <symbol id="i-pause" viewBox="0 0 24 24"><rect x="6" y="5" width="4.2" height="14" rx="1.4"/><rect x="13.8" y="5" width="4.2" height="14" rx="1.4"/></symbol>
+    <symbol id="i-prev" viewBox="0 0 24 24"><rect x="5" y="6" width="2.4" height="12" rx="1"/><path d="M18.5 6.8v10.4a.9.9 0 0 1-1.4.74L9.6 12.74a.9.9 0 0 1 0-1.48l7.5-5.2a.9.9 0 0 1 1.4.74z"/></symbol>
+    <symbol id="i-next" viewBox="0 0 24 24"><rect x="16.6" y="6" width="2.4" height="12" rx="1"/><path d="M5.5 6.8v10.4a.9.9 0 0 0 1.4.74l7.5-5.2a.9.9 0 0 0 0-1.48l-7.5-5.2a.9.9 0 0 0-1.4.74z"/></symbol>
+    <symbol id="i-rew" viewBox="0 0 24 24"><path d="M11.5 7v10a.8.8 0 0 1-1.25.66L3.6 12.66a.8.8 0 0 1 0-1.32l6.65-5A.8.8 0 0 1 11.5 7zM20.5 7v10a.8.8 0 0 1-1.25.66l-6.65-5a.8.8 0 0 1 0-1.32l6.65-5A.8.8 0 0 1 20.5 7z"/></symbol>
+    <symbol id="i-ff" viewBox="0 0 24 24"><path d="M12.5 7v10a.8.8 0 0 0 1.25.66l6.65-5a.8.8 0 0 0 0-1.32l-6.65-5A.8.8 0 0 0 12.5 7zM3.5 7v10a.8.8 0 0 0 1.25.66l6.65-5a.8.8 0 0 0 0-1.32l-6.65-5A.8.8 0 0 0 3.5 7z"/></symbol>
+    <symbol id="i-home" viewBox="0 0 24 24"><path d="M12 3.2 3 10.4V20a1 1 0 0 0 1 1h5.2v-6.2h5.6V21H20a1 1 0 0 0 1-1v-9.6z"/></symbol>
+    <symbol id="i-grid" viewBox="0 0 24 24"><rect x="3.5" y="3.5" width="7.5" height="7.5" rx="2"/><rect x="13" y="3.5" width="7.5" height="7.5" rx="2"/><rect x="3.5" y="13" width="7.5" height="7.5" rx="2"/><rect x="13" y="13" width="7.5" height="7.5" rx="2"/></symbol>
+    <symbol id="i-star" viewBox="0 0 24 24"><path d="M12 3.6l2.6 5.3 5.8.85-4.2 4.1 1 5.8L12 16.9l-5.2 2.75 1-5.8-4.2-4.1 5.8-.85z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></symbol>
+    <symbol id="i-search" viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6" fill="none" stroke="currentColor" stroke-width="2.2"/><path d="M15 15l5 5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></symbol>
+    <symbol id="i-person" viewBox="0 0 24 24"><circle cx="12" cy="8.5" r="4"/><path d="M4 20c.8-4 4-6 8-6s7.2 2 8 6z"/></symbol>
+    <symbol id="i-mic" viewBox="0 0 24 24"><path d="M12 3a3 3 0 0 1 3 3v6a3 3 0 0 1-6 0V6a3 3 0 0 1 3-3zM6 11.5a6 6 0 0 0 12 0" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M12 17.5V21" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+    <symbol id="i-down" viewBox="0 0 24 24"><path d="M6 9.5l6 6 6-6" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-up" viewBox="0 0 24 24"><path d="M6 14.5l6-6 6 6" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-more" viewBox="0 0 24 24"><circle cx="5.5" cy="12" r="1.9"/><circle cx="12" cy="12" r="1.9"/><circle cx="18.5" cy="12" r="1.9"/></symbol>
+    <symbol id="i-back" viewBox="0 0 24 24"><path d="M14.5 6l-6 6 6 6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-fwd" viewBox="0 0 24 24"><path d="M9.5 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-panel" viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="14" rx="3" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M14.5 5v14" stroke="currentColor" stroke-width="1.8"/></symbol>
+    <symbol id="i-wave" viewBox="0 0 24 24"><path d="M4 12h2M8 8v8M12 5v14M16 9v6M20 11v2" stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none"/></symbol>
+    <symbol id="i-heart" viewBox="0 0 24 24"><path d="M12 20s-7.5-4.6-7.5-10A4.3 4.3 0 0 1 12 7.6 4.3 4.3 0 0 1 19.5 10c0 5.4-7.5 10-7.5 10z"/></symbol>
+    <symbol id="i-dl" viewBox="0 0 24 24"><path d="M12 4v11M7 10.5l5 5 5-5M5 20h14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-vol" viewBox="0 0 24 24"><path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z"/><path d="M15.5 9a4 4 0 0 1 0 6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></symbol>
+  </defs>
+</svg>
+
+<div class="fit" id="fit">
+<main class="stage" id="stage">
+
+  <!-- row one: three phones, then the concept statement -->
+  <div class="row">
+
+    <!-- Surface 1: Home -->
+    <section aria-labelledby="c1">
+      <div class="phone">
+        <div class="island"></div>
+        <div class="status"><span>9:41</span><span class="icons" aria-hidden="true"><svg width="18" height="12" viewBox="0 0 18 12"><rect x="0" y="8" width="3" height="4" rx="1" fill="#EEF1FA"/><rect x="5" y="5" width="3" height="7" rx="1" fill="#EEF1FA"/><rect x="10" y="2.5" width="3" height="9.5" rx="1" fill="#EEF1FA"/><rect x="15" y="0" width="3" height="12" rx="1" fill="#EEF1FA"/></svg><svg width="27" height="13" viewBox="0 0 27 13"><rect x=".5" y=".5" width="23" height="12" rx="3.5" fill="none" stroke="#A3AECB"/><rect x="2" y="2" width="17" height="9" rx="2" fill="#EEF1FA"/><rect x="24.5" y="4.5" width="2" height="4" rx="1" fill="#A3AECB"/></svg></span></div>
+        <div class="screen">
+          <div class="home">
+            <div class="greet"><h1>Good evening, Tim</h1><button class="avatar" aria-label="Account"><svg class="ico" style="width:18px;height:18px"><use href="#i-person"/></svg></button></div>
+
+            <article class="card hero" aria-label="Featured show">
+              <div class="hang" aria-hidden="true"></div>
+              <div class="top">
+                <div class="bubble">
+                  <div class="art"><svg role="img" aria-label="Cover art: red rock towers under a night sky"><use href="#art"/></svg></div>
+                  <div class="sticker md" role="img" aria-label="Lossless, 24-bit"><b>Lossless</b><i>24-bit</i></div>
+                </div>
+                <div class="blurb">
+                  <p>It's on its way.</p>
+                  <p class="len">June 21, 2024</p>
+                  <p>2 sets, 3 h 04 m</p>
+                  <button class="btn solid"><svg class="ico" style="width:16px;height:16px"><use href="#i-play"/></svg>Play show</button>
+                </div>
+              </div>
+              <h2 class="np" data-fit="118">
+                <span class="l"><span>Goose</span></span>
+                <span class="l"><span>Red Rocks</span></span>
+              </h2>
+            </article>
+
+            <section class="nice" aria-labelledby="nice-h">
+              <h2 id="nice-h">The nice list</h2>
+              <p class="lede">Everyone who was nice to your ears, all time.</p>
+              <div class="totals"><span><b>212</b>hours listened</span><span><b>14</b>artists</span></div>
+              <ol class="ledger">
+                <li><span class="check" aria-hidden="true"><svg viewBox="0 0 24 24"><use href="#i-check"/></svg></span><span class="who">Goose</span><span class="n">41 plays</span><span class="h">88 h</span></li>
+                <li><span class="check" aria-hidden="true"><svg viewBox="0 0 24 24"><use href="#i-check"/></svg></span><span class="who">Billy Strings</span><span class="n">19 plays</span><span class="h">31 h</span></li>
+                <li><span class="check" aria-hidden="true"><svg viewBox="0 0 24 24"><use href="#i-check"/></svg></span><span class="who">Dead &amp; Company</span><span class="n">12 plays</span><span class="h">27 h</span></li>
+                <li><span class="check" aria-hidden="true"><svg viewBox="0 0 24 24"><use href="#i-check"/></svg></span><span class="who">Widespread Panic</span><span class="n">9 plays</span><span class="h">18 h</span></li>
+                <li><span class="check" aria-hidden="true"><svg viewBox="0 0 24 24"><use href="#i-check"/></svg></span><span class="who">moe.</span><span class="n">6 plays</span><span class="h">11 h</span></li>
+              </ol>
+            </section>
+          </div>
+          <div class="fade"></div>
+        </div>
+        <nav class="tabbar" aria-label="Tabs">
+          <span class="tab on"><svg class="ico"><use href="#i-home"/></svg>Home</span>
+          <span class="tab"><svg class="ico"><use href="#i-grid"/></svg>Browse</span>
+          <span class="tab"><svg class="ico"><use href="#i-heart"/></svg>Favorites</span>
+          <span class="tab"><svg class="ico"><use href="#i-search"/></svg>Search</span>
+        </nav>
+        <div class="home-ind"></div>
+      </div>
+      <div class="cap"><h2 id="c1">Home</h2><p>The hero is a blister card: art sealed in a raised bubble, a hang slot, a sale sticker. The nice list is a checked ledger of artists, plays and hours.</p></div>
+    </section>
+
+    <!-- Surface 2: Now playing -->
+    <section aria-labelledby="c2">
+      <div class="phone">
+        <div class="island"></div>
+        <div class="status"><span>9:41</span><span class="icons" aria-hidden="true"><svg width="27" height="13" viewBox="0 0 27 13"><rect x=".5" y=".5" width="23" height="12" rx="3.5" fill="none" stroke="#A3AECB"/><rect x="2" y="2" width="17" height="9" rx="2" fill="#EEF1FA"/><rect x="24.5" y="4.5" width="2" height="4" rx="1" fill="#A3AECB"/></svg></span></div>
+        <div class="screen">
+          <div class="np-screen">
+            <div class="np-head"><button aria-label="Close player"><svg class="ico"><use href="#i-down"/></svg></button><span class="grab"></span><button aria-label="More"><svg class="ico"><use href="#i-more"/></svg></button></div>
+            <div class="bubble">
+              <div class="art"><svg role="img" aria-label="Cover art: red rock towers under a night sky"><use href="#art"/></svg></div>
+              <div class="sticker lg" role="img" aria-label="Lossless, 24-bit, 48 kilohertz"><b>Lossless</b><i>24/48</i></div>
+            </div>
+            <h1 class="np sweep frame" id="sweepTitle" data-fit="170"><span class="l"><span>Yeti</span></span></h1>
+            <div class="meta">
+              <div><div class="t">Goose</div><div class="s">Red Rocks Amphitheatre, June 21, 2024</div></div>
+              <button class="star" aria-label="Save show"><svg class="ico"><use href="#i-star"/></svg></button>
+            </div>
+            <div class="scrub" role="slider" aria-label="Playback position" aria-valuetext="12 minutes 4 seconds of 21 minutes 36 seconds" tabindex="0"><div class="fill" style="width:56%"></div><div class="thumb" style="left:56%"></div></div>
+            <div class="clock"><span>12:04</span><span>&minus;9:32</span></div>
+            <div class="ctrls">
+              <button aria-label="Previous track"><svg class="ico"><use href="#i-prev"/></svg></button>
+              <button aria-label="Back 15 seconds"><svg class="ico"><use href="#i-rew"/></svg></button>
+              <button class="big" aria-label="Pause"><svg class="ico"><use href="#i-pause"/></svg></button>
+              <button aria-label="Forward 15 seconds"><svg class="ico"><use href="#i-ff"/></svg></button>
+              <button aria-label="Next track"><svg class="ico"><use href="#i-next"/></svg></button>
+            </div>
+            <div class="upnext"><span>Coming up next</span><b>Arcadia</b></div>
+          </div>
+        </div>
+        <div class="home-ind"></div>
+      </div>
+      <div class="cap"><h2 id="c2">Full-screen now playing</h2><p>Shown frozen mid-sweep: the foil band crosses the title once, about 0.9 s, when playback starts. Under reduced motion it never runs.</p>
+        <button class="replay" id="replay">Replay the sweep</button></div>
+    </section>
+
+    <!-- Surface 3: Pill over an artist list -->
+    <section aria-labelledby="c3">
+      <div class="phone">
+        <div class="island"></div>
+        <div class="status"><span>9:41</span><span class="icons" aria-hidden="true"><svg width="27" height="13" viewBox="0 0 27 13"><rect x=".5" y=".5" width="23" height="12" rx="3.5" fill="none" stroke="#A3AECB"/><rect x="2" y="2" width="17" height="9" rx="2" fill="#EEF1FA"/><rect x="24.5" y="4.5" width="2" height="4" rx="1" fill="#A3AECB"/></svg></span></div>
+        <div class="screen">
+          <div class="list-screen">
+            <h1>Artists</h1>
+            <div class="search"><svg class="ico" style="width:17px;height:17px"><use href="#i-search"/></svg>Find an artist</div>
+            <div class="letter">G</div>
+            <div class="arow"><span class="mono">GM</span><span class="nm">Gov't Mule</span><span class="ct">212 shows</span></div>
+            <div class="arow"><span class="mono">G</span><span class="nm">Goose</span><span class="ct">164 shows</span></div>
+            <div class="arow"><span class="mono">GD</span><span class="nm">Grateful Dead</span><span class="ct">38 shows</span></div>
+            <div class="arow"><span class="mono">GB</span><span class="nm">Greensky Bluegrass</span><span class="ct">97 shows</span></div>
+            <div class="letter">H</div>
+            <div class="arow"><span class="mono">HS</span><span class="nm">Hard Working Americans</span><span class="ct">21 shows</span></div>
+            <div class="arow"><span class="mono">HB</span><span class="nm">Hot Buttered Rum</span><span class="ct">44 shows</span></div>
+            <div class="letter">J</div>
+            <div class="arow"><span class="mono">JR</span><span class="nm">Joe Russo's Almost Dead</span><span class="ct">130 shows</span></div>
+            <div class="arow"><span class="mono">JG</span><span class="nm">Jerry Garcia Band</span><span class="ct">26 shows</span></div>
+          </div>
+          <div class="fade"></div>
+        </div>
+        <div class="pill" role="group" aria-label="Now playing">
+          <div class="slot" aria-hidden="true">
+            <div class="chip"><svg><use href="#art"/></svg></div>
+            <svg class="ring" viewBox="0 0 32 32"><circle cx="16" cy="16" r="15" fill="none" stroke="#2E3A5C" stroke-width="2"/><circle cx="16" cy="16" r="15" fill="none" stroke="#FF8FC4" stroke-width="2" stroke-linecap="round" stroke-dasharray="52.8 94.25" transform="rotate(-90 16 16)"/></svg>
+          </div>
+          <div class="txt"><b>Yeti</b><span>Goose</span></div>
+          <div class="pc">
+            <button aria-label="Previous track"><svg class="ico"><use href="#i-prev"/></svg></button>
+            <button aria-label="Back 15 seconds"><svg class="ico"><use href="#i-rew"/></svg></button>
+            <button aria-label="Pause"><svg class="ico"><use href="#i-pause"/></svg></button>
+            <button aria-label="Forward 15 seconds"><svg class="ico"><use href="#i-ff"/></svg></button>
+            <button aria-label="Next track"><svg class="ico"><use href="#i-next"/></svg></button>
+          </div>
+          <button class="chev" aria-label="Open player panel"><svg class="ico" style="width:20px;height:20px"><use href="#i-up"/></svg></button>
+        </div>
+        <nav class="tabbar" aria-label="Tabs">
+          <span class="tab"><svg class="ico"><use href="#i-home"/></svg>Home</span>
+          <span class="tab on"><svg class="ico"><use href="#i-grid"/></svg>Browse</span>
+          <span class="tab"><svg class="ico"><use href="#i-heart"/></svg>Favorites</span>
+          <span class="tab"><svg class="ico"><use href="#i-search"/></svg>Search</span>
+        </nav>
+        <div class="home-ind"></div>
+      </div>
+      <div class="cap"><h2 id="c3">The pill over an artist list</h2><p>Unchanged except the ring, now foil pink at 56% through the track. Glass, layout and controls stay as shipped.</p></div>
+    </section>
+
+    <aside class="intro" aria-label="Concept">
+      <div class="name">Name&shy;plate</div>
+      <div class="sub">Yeti theme, concept C</div>
+      <p>The type is the toy box. Every title is set in <strong>heavy rounded</strong>, stacked one phrase per line, each line grown until it fills the card edge to edge, the way a figure's name is printed across its packaging.</p>
+      <p>Everything else stays deadpan: a cold street-level night, snow-white text, one sale sticker, one foil ring. The only flourish is the foil passing over that nameplate once, when the show starts.</p>
+      <p>Built for a three-hour show in the background: no wash, no grain, no motion after the first second.</p>
+    </aside>
+  </div>
+
+  <!-- row two: Mac window, then token sheet -->
+  <div class="row">
+    <section aria-labelledby="c4">
+      <div class="mac">
+        <div class="bar">
+          <div class="lights" aria-hidden="true"><i></i><i></i><i></i></div>
+          <div class="nav"><svg class="ico" style="width:18px;height:18px"><use href="#i-back"/></svg><svg class="ico" style="width:18px;height:18px"><use href="#i-fwd"/></svg></div>
+          <div class="field"><svg class="ico" style="width:14px;height:14px"><use href="#i-search"/></svg>Search shows, songs, venues</div>
+          <span class="tool" aria-hidden="true"><svg class="ico" style="width:18px;height:18px"><use href="#i-person"/></svg></span>
+          <button class="tool" aria-label="Hide dashboard"><svg class="ico" style="width:20px;height:20px"><use href="#i-panel"/></svg></button>
+        </div>
+        <div class="body">
+          <nav class="side" aria-label="Sidebar">
+            <ul>
+              <li><svg class="ico"><use href="#i-home"/></svg>Home</li>
+              <li class="on"><svg class="ico"><use href="#i-grid"/></svg>Browse</li>
+              <li><svg class="ico"><use href="#i-person"/></svg>Artists</li>
+              <li><svg class="ico"><use href="#i-mic"/></svg>Livestreams</li>
+            </ul>
+            <h3>Yours</h3>
+            <ul>
+              <li><svg class="ico"><use href="#i-heart"/></svg>Favorites</li>
+              <li><svg class="ico"><use href="#i-dl"/></svg>Downloads</li>
+            </ul>
+          </nav>
+
+          <div class="main">
+            <div class="show">
+              <div class="bubble">
+                <div class="art"><svg role="img" aria-label="Cover art: red rock towers under a night sky"><use href="#art"/></svg></div>
+              </div>
+              <div>
+                <h1 class="np" data-fit="140">
+                  <span class="l"><span>Goose</span></span>
+                  <span class="l"><span>Red Rocks</span></span>
+                  <span class="l date"><span>June 21, 2024</span></span>
+                </h1>
+                <p class="sline">Red Rocks Amphitheatre, Morrison, Colorado.<br>2 sets, 3 h 04 m.</p>
+                <div class="actions"><button class="btn solid">Play show</button><button class="btn line">Save show</button></div>
+              </div>
+            </div>
+            <div class="set">
+              <h4>Set one</h4>
+              <ol>
+                <li><span class="no">1</span><span class="t">Tumble</span><span class="d">12:31</span></li>
+                <li><span class="no">2</span><span class="t">Hungersite</span><span class="d">10:05</span></li>
+                <li class="on" aria-current="true"><span class="no"><span class="dot" role="img" aria-label="Playing"><span class="eq"><span></span><span></span><span></span><span></span></span></span></span><span class="t">Yeti</span><span class="d">21:36</span></li>
+                <li><span class="no">4</span><span class="t">Arcadia</span><span class="d">14:21</span></li>
+                <li><span class="no">5</span><span class="t">Rockdale</span><span class="d">9:48</span></li>
+              </ol>
+              <h4>Set two</h4>
+              <ol>
+                <li><span class="no">6</span><span class="t">Madhuvan</span><span class="d">18:40</span></li>
+                <li><span class="no">7</span><span class="t">Hot Tea</span><span class="d">11:12</span></li>
+                <li><span class="no">8</span><span class="t">Echo of a Rose</span><span class="d">7:55</span></li>
+              </ol>
+            </div>
+          </div>
+
+          <aside class="insp" aria-label="Dashboard">
+            <h5>Here it comes</h5>
+            <div class="mini">
+              <div class="bubble">
+                <div class="art"><svg role="img" aria-label="Cover art"><use href="#art"/></svg></div>
+                <div class="sticker md" role="img" aria-label="Lossless, 24/48"><b>Lossless</b><i>24/48</i></div>
+              </div>
+              <div>
+                <div class="ti">Yeti</div>
+                <div class="ar">Goose</div>
+                <div class="ve">Red Rocks Amphitheatre, Morrison, Colorado</div>
+              </div>
+            </div>
+            <div class="mini-scrub">
+              <div class="scrub"><div class="fill" style="width:56%"></div><div class="thumb" style="left:56%;width:10px;height:10px;margin:-5px 0 0 -5px"></div></div>
+              <div class="clock" style="font-size:12px"><span>12:04</span><span>&minus;9:32</span></div>
+            </div>
+            <div class="mini-ctrl">
+              <button aria-label="Previous track"><svg class="ico"><use href="#i-prev"/></svg></button>
+              <button aria-label="Back 15 seconds"><svg class="ico"><use href="#i-rew"/></svg></button>
+              <button class="pp" aria-label="Pause"><svg class="ico"><use href="#i-pause"/></svg></button>
+              <button aria-label="Forward 15 seconds"><svg class="ico"><use href="#i-ff"/></svg></button>
+              <button aria-label="Next track"><svg class="ico"><use href="#i-next"/></svg></button>
+            </div>
+
+            <section class="sig">
+              <h5>Signal</h5>
+              <dl>
+                <dt>Format</dt><dd>ALAC</dd>
+                <dt>Bit depth</dt><dd>24-bit</dd>
+                <dt>Sample rate</dt><dd>48 kHz</dd>
+                <dt>Bitrate</dt><dd>2,116 kbps</dd>
+                <dt>Source</dt><dd>Soundboard</dd>
+                <dt>Buffered</dt><dd class="unk">&mdash;</dd>
+              </dl>
+            </section>
+
+            <section class="queue">
+              <h5>Coming up next</h5>
+              <div class="qrow on"><span class="dot" role="img" aria-label="Playing"><span class="eq"><span></span><span></span><span></span><span></span></span></span><span class="t">Yeti</span><span class="d">21:36</span></div>
+              <div class="qrow"><span class="no">4</span><span class="t">Arcadia</span><span class="d">14:21</span></div>
+              <div class="qrow"><span class="no">5</span><span class="t">Rockdale</span><span class="d">9:48</span></div>
+              <div class="qrow"><span class="no">6</span><span class="t">Madhuvan</span><span class="d">18:40</span></div>
+            </section>
+          </aside>
+        </div>
+        <div class="transport">
+          <div class="now"><div class="chip"><svg><use href="#art"/></svg></div><div style="min-width:0"><b>Yeti</b><span>Goose, Red Rocks Amphitheatre</span></div></div>
+          <div class="mid">
+            <div class="tc"><svg class="ico"><use href="#i-prev"/></svg><svg class="ico" style="width:22px;height:22px"><use href="#i-pause"/></svg><svg class="ico"><use href="#i-next"/></svg></div>
+            <div class="scrub"><div class="fill" style="width:56%"></div></div>
+            <span>12:04 / 21:36</span>
+          </div>
+          <div class="vol"><svg class="ico" style="width:18px;height:18px"><use href="#i-vol"/></svg><div class="scrub"><div class="fill" style="width:70%"></div></div></div>
+        </div>
+      </div>
+      <div class="cap" style="max-width:700px"><h2 id="c4">Mac main window with the dashboard mini-player</h2><p>The inspector column at 340 pt. Barker headers sit over the mini-player and the queue; Signal stays plain. The play state is a small sale sticker holding four bars that step down left to right.</p></div>
+    </section>
+
+    <aside class="tokens" aria-labelledby="tok">
+      <h2 id="tok">Token sheet</h2>
+      <h3>Palette</h3>
+      <div class="sw"><i style="background:#0F1424"></i><div><b>Night street</b> <span>base</span></div><em>#0F1424</em></div>
+      <div class="sw"><i style="background:#18203A"></i><div><b>Curb</b> <span>raised</span></div><em>#18203A</em></div>
+      <div class="sw"><i style="background:#2E3A5C"></i><div><b>Frost</b> <span>hairline</span></div><em>#2E3A5C</em></div>
+      <div class="sw"><i style="background:#EEF1FA"></i><div><b>Snowlight</b> <span>text 16.2:1</span></div><em>#EEF1FA</em></div>
+      <div class="sw"><i style="background:#A3AECB"></i><div><b>Slush</b> <span>secondary 8.3:1</span></div><em>#A3AECB</em></div>
+      <div class="sw"><i style="background:#808CAE"></i><div><b>Lamp-off</b> <span>idle 4.8:1 on curb</span></div><em>#808CAE</em></div>
+      <div class="sw"><i style="background:#FF8FC4"></i><div><b>Foil</b> <span>accent, ring, sweep</span></div><em>#FF8FC4</em></div>
+      <div class="sw"><i style="background:#F2E27A"></i><div><b>Sale</b> <span>lossless, play state</span></div><em>#F2E27A</em></div>
+
+      <h3>Type, all system rounded</h3>
+      <div class="spec"><span style="font-size:40px;font-weight:800;letter-spacing:-.025em;line-height:.9">Goose</span><small>hero, heavy<br>fit to width</small></div>
+      <div class="spec"><span style="font-size:24px;font-weight:800;letter-spacing:-.015em">Good evening</span><small>title, heavy 22/28</small></div>
+      <div class="spec"><span style="font-size:15px;font-weight:800">Set one</span><small>section, heavy 15</small></div>
+      <div class="spec"><span style="font-size:15px">Red Rocks Amphitheatre</span><small>body, regular 13/15/17</small></div>
+      <div class="spec"><span style="font-size:15px;font-variant-numeric:tabular-nums">11:11<br>00:48</span><small>numeric, rounded<br>monospaced digits</small></div>
+
+      <h3>Signature and flags</h3>
+      <div class="kv">
+        <div><span>transport</span><span>.standard</span></div>
+        <div><span>accentMode</span><span>.staticAccent</span></div>
+        <div><span>washStyle</span><span>.none, texture 0</span></div>
+        <div><span>caps</span><span>[.equalizerRows]</span></div>
+        <div><span>darkOnly</span><span>true</span></div>
+        <div><span>idle copy</span><span>It's on its way</span></div>
+        <div><span>headers</span><span>Here it comes, Signal, Coming up next</span></div>
+      </div>
+      <p class="note">Keyed on theme ID, not new tokens: the blister bubble around art, the sticker badge, the down-stepping bar shape, and the one-shot sweep.</p>
+    </aside>
+  </div>
+</main>
+</div>
+
+<script>
+// Fit each nameplate line to its column, like type grown to the edge of a box.
+function fitNameplates() {
+  document.querySelectorAll('[data-fit]').forEach(function (np) {
+    var max = parseFloat(np.dataset.fit);
+    var w = np.offsetWidth;
+    np.querySelectorAll('.l').forEach(function (line) {
+      line.style.fontSize = '100px';
+      var m = line.firstElementChild.offsetWidth;
+      line.style.fontSize = Math.min(max, 100 * w / m).toFixed(1) + 'px';
+    });
+  });
+}
+// Scale the whole board to the viewport (phones stay true to 390 x 844 inside it).
+function scaleStage() {
+  var stage = document.getElementById('stage'), fit = document.getElementById('fit');
+  var s = Math.min(1, (window.innerWidth - 24) / 1560);
+  stage.style.transform = 'scale(' + s + ')';
+  stage.style.marginLeft = s < 1 ? '12px' : 'auto';
+  fit.style.height = (stage.offsetHeight * s) + 'px';
+}
+function layout() { fitNameplates(); scaleStage(); }
+(document.fonts ? document.fonts.ready : Promise.resolve()).then(layout);
+window.addEventListener('resize', layout);
+
+// The sweep: one pass, user-replayable in the mock; reduced motion skips it.
+document.getElementById('replay').addEventListener('click', function () {
+  var t = document.getElementById('sweepTitle');
+  t.classList.remove('frame', 'run'); void t.offsetWidth; t.classList.add('run');
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,777 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Yeti theme, concept B: Walk-down</title>
+<style>
+@import url("https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap");
+
+/* SF Pro Rounded is the real face. Local system file first, Nunito only as a web fallback. */
+@font-face {
+  font-family: "Yeti Rounded";
+  src: local("SF Pro Rounded"), local(".SF NS Rounded"), url("file:///System/Library/Fonts/SFNSRounded.ttf") format("truetype");
+  font-weight: 100 1000;
+}
+
+:root {
+  /* Theme tokens */
+  --base:   #0F1424;  /* Night street */
+  --raised: #18203A;  /* Backing card */
+  --frost:  #2E3A5C;  /* Frost hairline */
+  --snow:   #E9EEF8;  /* Snowlight, textPrimary */
+  --snow2:  #A3AECB;  /* Slush, textSecondary */
+  --idle:   #8590B0;  /* Streetlamp-off, textIdle */
+  --foil:   #FF8FC4;  /* Pink foil, accent + ring */
+  --sale:   #F2E27A;  /* Sale sticker, lossless + play state */
+
+  --round: "Yeti Rounded", ui-rounded, "SF Pro Rounded", "Nunito", system-ui, -apple-system, sans-serif;
+  --board: #0B0F1B;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  background: var(--board);
+  color: var(--snow);
+  font-family: var(--round);
+  font-weight: 400;
+  -webkit-font-smoothing: antialiased;
+  padding: 40px 40px 56px;
+}
+.num { font-variant-numeric: tabular-nums; }
+button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; }
+:focus-visible { outline: 2px solid var(--foil); outline-offset: 3px; border-radius: 6px; }
+svg.i { width: 22px; height: 22px; display: block; flex: none; }
+svg.i.s { width: 16px; height: 16px; }
+svg.i.l { width: 30px; height: 30px; }
+
+/* ---------- Board ---------- */
+.board-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 32px; flex-wrap: wrap; margin-bottom: 24px; max-width: 1520px; }
+.board-head h1 { font-weight: 900; font-size: 52px; line-height: 1; margin: 0 0 10px; letter-spacing: -0.01em; }
+.board-head p { margin: 0; max-width: 64ch; color: var(--snow2); font-size: 16px; line-height: 1.5; }
+.controls { display: flex; gap: 10px; }
+.btn {
+  height: 40px; padding: 0 18px; border-radius: 999px; font-weight: 800; font-size: 15px;
+  display: inline-flex; align-items: center; gap: 8px;
+}
+.btn.foil { background: var(--foil); color: var(--base); }
+.btn.ghost { border: 1.5px solid var(--frost); color: var(--snow); }
+.row { display: flex; gap: 28px; align-items: flex-start; flex-wrap: wrap; margin-bottom: 28px; max-width: 1520px; }
+figure { margin: 0; }
+figcaption { margin-top: 12px; font-size: 14px; line-height: 1.45; color: var(--snow2); max-width: 320px; }
+
+/* ---------- Device frames ---------- */
+.phone-wrap { zoom: .78; }
+.phone-wrap + figcaption { margin-top: 12px; }
+.phone {
+  position: relative; width: 390px; height: 844px; border-radius: 56px; overflow: hidden;
+  background: var(--base); box-shadow: 0 0 0 10px #1A2034, 0 0 0 11px #2A3150, 0 30px 60px rgba(0,0,0,.5);
+}
+.status { height: 54px; display: flex; align-items: center; justify-content: space-between; padding: 0 30px 0 36px; font-weight: 700; font-size: 16px; }
+.status .island { position: absolute; left: 50%; top: 11px; width: 124px; height: 36px; margin-left: -62px; background: #000; border-radius: 20px; }
+.status .bat { width: 26px; height: 12px; border: 1.5px solid var(--snow); border-radius: 4px; padding: 1.5px; opacity: .9; }
+.status .bat::after { content: ""; display: block; height: 100%; width: 70%; background: var(--snow); border-radius: 1.5px; }
+.screen { padding: 0 20px; }
+
+/* Floating tab bar */
+.tabbar {
+  position: absolute; left: 16px; right: 16px; bottom: 26px; height: 62px; border-radius: 31px;
+  background: rgba(24,32,58,.86); border: 1px solid rgba(233,238,248,.10);
+  backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px);
+  display: grid; grid-template-columns: repeat(5, 1fr); align-items: center; padding: 0 6px;
+}
+.tab { display: flex; flex-direction: column; align-items: center; gap: 3px; font-size: 10px; font-weight: 600; color: var(--idle); height: 52px; justify-content: center; border-radius: 26px; }
+.tab.on { color: var(--snow); background: rgba(233,238,248,.08); }
+
+/* ---------- Blister pack ---------- */
+.card {
+  position: relative; background: var(--raised); border-radius: 6px;
+  padding: 30px 18px 18px;
+}
+.hang { position: absolute; top: 10px; left: 50%; width: 44px; height: 10px; margin-left: -22px; border-radius: 5px; background: var(--base); box-shadow: inset 0 1px 2px rgba(0,0,0,.6); }
+.seal { position: relative; padding: 5px; border-radius: 26px; border: 1px solid var(--frost); }
+.bubble {
+  position: relative; border-radius: 21px; padding: 8px;
+  background: linear-gradient(150deg, rgba(233,238,248,.20), rgba(233,238,248,.05) 38%, rgba(233,238,248,.02) 70%, rgba(233,238,248,.08));
+  border: 1px solid rgba(233,238,248,.22);
+  box-shadow: inset 0 1px 0 rgba(233,238,248,.40), inset 0 -3px 8px rgba(4,6,14,.45), 0 10px 22px rgba(4,6,14,.55);
+}
+.bubble svg.art { display: block; width: 100%; height: auto; border-radius: 13px; }
+.bubble::after { /* the shine on the plastic: light from snow, never a flake */
+  content: ""; position: absolute; inset: 8px; border-radius: 13px; pointer-events: none;
+  background: linear-gradient(125deg, rgba(255,255,255,.26) 0%, rgba(255,255,255,.06) 22%, transparent 34%);
+}
+.sticker {
+  position: absolute; right: -10px; bottom: -10px; width: 54px; height: 54px; border-radius: 50%;
+  background: var(--sale); color: var(--base); transform: rotate(-11deg);
+  display: flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1;
+  box-shadow: 0 2px 0 rgba(4,6,14,.35);
+  z-index: 2;
+}
+.sticker b { font-weight: 900; font-size: 13px; }
+.sticker span { font-weight: 700; font-size: 9.5px; margin-top: 3px; }
+.sticker svg { width: 11px; height: 11px; margin-top: 3px; }
+.sticker.sm { width: 40px; height: 40px; right: -9px; bottom: -9px; }
+.sticker.sm b { font-size: 10.5px; }
+.sticker.sm span { font-size: 8px; margin-top: 2px; }
+
+/* ---------- The descending stair (equalizerRows) ---------- */
+.stair { display: inline-flex; align-items: flex-end; gap: 3px; height: 26px; flex: none; }
+.stair .col { display: flex; flex-direction: column-reverse; gap: 2px; }
+.stair i { display: block; width: 5px; height: 3px; border-radius: 1px; background: var(--sale); transition: opacity .3s; }
+.stair.sm { height: 16px; gap: 2px; }
+.stair.sm i { width: 3px; height: 2px; }
+.stair.sm .col { gap: 1px; }
+.is-paused .stair i:nth-child(n+3) { opacity: 0; }
+.is-paused .stair i { background: var(--idle); }
+
+/* ---------- Foil sweep: an overlay that never moves the layout ---------- */
+.foil-title { position: relative; display: inline-block; }
+.foil-title::after {
+  content: attr(data-text); position: absolute; inset: 0; white-space: nowrap; pointer-events: none;
+  color: transparent; -webkit-background-clip: text; background-clip: text;
+  background-image: linear-gradient(104deg, transparent 0%, transparent 40%, #FF8FC4 45.5%, #FFE6F2 50%, #FF8FC4 54.5%, transparent 60%, transparent 100%);
+  background-size: 300% 100%; background-position: 100% 0; opacity: 0;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .moment .foil-title::after { animation: sweep 600ms cubic-bezier(.45,0,.25,1) both; }
+  .moment .stair .col { animation: drop 260ms cubic-bezier(.25,1.4,.5,1) both; }
+  .moment .stair .col:nth-child(1) { animation-delay: 400ms; }
+  .moment .stair .col:nth-child(2) { animation-delay: 490ms; }
+  .moment .stair .col:nth-child(3) { animation-delay: 580ms; }
+  .moment .stair .col:nth-child(4) { animation-delay: 670ms; }
+  .moment .stair .col:nth-child(5) { animation-delay: 760ms; }
+}
+@keyframes sweep {
+  0%   { opacity: 1; background-position: 100% 0; }
+  92%  { opacity: 1; }
+  100% { opacity: 0; background-position: 0% 0; }
+}
+@keyframes drop { from { transform: translateY(-9px); opacity: 0; } to { transform: none; opacity: 1; } }
+
+/* ---------- Surface 1: Home ---------- */
+.home-top { display: flex; align-items: center; justify-content: space-between; margin: 10px 0 16px; }
+.home-top h2 { font-weight: 900; font-size: 32px; margin: 0; letter-spacing: -0.01em; }
+.avatar { width: 34px; height: 34px; border-radius: 50%; background: var(--raised); display: grid; place-items: center; color: var(--snow2); }
+.hero { display: grid; grid-template-columns: 150px 1fr; gap: 18px; align-items: center; }
+.hero h3 { font-weight: 900; font-size: 24px; margin: 0 0 4px; line-height: 1.05; }
+.hero .venue { font-size: 15px; color: var(--snow2); margin: 0; line-height: 1.35; }
+.hero .when { font-size: 13px; color: var(--idle); margin: 2px 0 14px; }
+.btn.play { height: 38px; padding: 0 16px; border-radius: 12px; font-size: 15px; }
+.ledger { margin-top: 26px; }
+.ledger h3 { font-weight: 900; font-size: 22px; margin: 0 0 2px; }
+.ledger .sub { margin: 0 0 10px; font-size: 14px; color: var(--idle); }
+.nice { list-style: none; margin: 0; padding: 0; }
+.nice li { display: grid; grid-template-columns: 26px 1fr 66px 44px; align-items: center; height: 44px; border-bottom: 1px solid var(--frost); font-size: 16px; }
+.nice li:last-child { border-bottom: 0; }
+.nice .name { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding-right: 8px; }
+.nice .n { text-align: right; color: var(--snow2); font-size: 15px; }
+.nice .h { text-align: right; color: var(--idle); font-size: 15px; }
+.tick { width: 18px; height: 18px; border-radius: 5px; border: 1.5px solid var(--snow2); display: grid; place-items: center; }
+.tick svg { width: 12px; height: 12px; }
+.totals { display: flex; gap: 22px; margin: 0 0 6px; font-size: 14px; color: var(--snow2); }
+.totals b { color: var(--snow); font-weight: 800; font-size: 17px; margin-right: 5px; }
+
+/* ---------- Surface 2: Now playing ---------- */
+.np-top { display: flex; align-items: center; justify-content: space-between; height: 44px; color: var(--snow2); }
+.np-top .mid { font-size: 14px; font-weight: 600; color: var(--snow2); }
+.np .card { margin-top: 6px; padding: 32px 22px 20px; }
+.np .seal { width: 290px; margin: 0 auto; }
+.np-title { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; margin-top: 22px; }
+.np-title h3 { font-weight: 900; font-size: 34px; line-height: 1; margin: 0; letter-spacing: -0.01em; }
+.np .artist { margin: 8px 0 0; font-size: 17px; color: var(--snow2); font-weight: 600; }
+.np .place { margin: 2px 0 0; font-size: 14px; color: var(--idle); }
+.scrub { margin: 22px 4px 0; }
+.track { position: relative; height: 4px; border-radius: 2px; background: var(--frost); }
+.track .fill { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 2px; background: var(--foil); }
+.track .thumb { position: absolute; top: 50%; width: 12px; height: 12px; margin: -6px 0 0 -6px; border-radius: 50%; background: var(--snow); }
+.times { display: flex; justify-content: space-between; margin-top: 8px; font-size: 13px; color: var(--idle); }
+.transport { display: flex; align-items: center; justify-content: space-between; margin: 14px 8px 0; color: var(--snow); }
+.bigplay { width: 72px; height: 72px; border-radius: 50%; background: var(--snow); color: var(--base); display: grid; place-items: center; }
+.bigplay svg { width: 30px; height: 30px; }
+.np-foot { display: flex; justify-content: space-between; margin: 22px 10px 0; color: var(--snow2); }
+
+/* ---------- Surface 3: Pill over artist list ---------- */
+.big-title { font-weight: 900; font-size: 34px; margin: 6px 0 12px; letter-spacing: -0.01em; }
+.searchf { height: 38px; border-radius: 11px; background: var(--raised); display: flex; align-items: center; gap: 8px; padding: 0 12px; color: var(--idle); font-size: 16px; }
+.alist { list-style: none; margin: 8px 0 0; padding: 0; }
+.alist .letter { font-weight: 900; font-size: 15px; color: var(--snow2); padding: 14px 0 4px; }
+.alist .ar { display: grid; grid-template-columns: 38px 1fr 16px; gap: 12px; align-items: center; height: 52px; border-bottom: 1px solid var(--frost); font-size: 17px; }
+.mono { width: 38px; height: 38px; border-radius: 9px; background: var(--raised); display: grid; place-items: center; font-weight: 900; font-size: 16px; color: var(--snow2); }
+.alist .ar .c { color: var(--idle); }
+.pill {
+  position: absolute; left: 15px; width: 360px; bottom: 98px; height: 52px; border-radius: 26px;
+  background: rgba(28,37,66,.80); border: 1px solid rgba(233,238,248,.13);
+  backdrop-filter: blur(20px) saturate(1.2); -webkit-backdrop-filter: blur(20px) saturate(1.2);
+  display: flex; align-items: center; gap: 10px; padding: 0 12px 0 10px;
+  box-shadow: 0 10px 26px rgba(4,6,14,.5);
+}
+.ring { position: relative; width: 32px; height: 32px; flex: none; }
+.ring svg.r { position: absolute; inset: 0; width: 32px; height: 32px; transform: rotate(-90deg); }
+.ring .chip { position: absolute; left: 3px; top: 3px; width: 26px; height: 26px; border-radius: 50%; overflow: hidden; }
+.ring .chip svg { width: 26px; height: 26px; display: block; }
+.pill .txt { flex: 1; min-width: 0; line-height: 1.15; }
+.pill .t { font-weight: 700; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pill .a { font-size: 12.5px; color: var(--snow2); }
+.pill .ctl { display: flex; align-items: center; gap: 14px; color: var(--snow); }
+.pill .ctl .chev { color: var(--snow2); }
+
+/* ---------- Surface 4: Mac ---------- */
+.mac-wrap { zoom: .84; }
+.mac-fig { width: 1008px; }
+.mac {
+  width: 1200px; height: 760px; border-radius: 12px; overflow: hidden; background: var(--base);
+  box-shadow: 0 0 0 1px #2A3150, 0 30px 70px rgba(0,0,0,.55); display: flex; flex-direction: column;
+}
+.titlebar { height: 52px; flex: none; display: flex; align-items: center; gap: 14px; padding: 0 16px; border-bottom: 1px solid var(--frost); background: #121932; }
+.lights { display: flex; gap: 8px; width: 204px; }
+.lights i { width: 12px; height: 12px; border-radius: 50%; background: #FF5F57; }
+.lights i:nth-child(2) { background: #FEBC2E; }
+.lights i:nth-child(3) { background: #28C840; }
+.tb-nav { display: flex; gap: 6px; color: var(--snow2); }
+.tb-title { font-weight: 800; font-size: 15px; flex: 1; }
+.tb-search { width: 200px; height: 30px; border-radius: 8px; background: var(--raised); display: flex; align-items: center; gap: 6px; padding: 0 10px; color: var(--idle); font-size: 13px; }
+.tb-btn { width: 32px; height: 30px; border-radius: 8px; display: grid; place-items: center; color: var(--snow2); }
+.tb-btn.on { background: rgba(233,238,248,.10); color: var(--snow); }
+.macbody { flex: 1; display: grid; grid-template-columns: 210px 1fr 340px; min-height: 0; }
+.side { background: #131A30; border-right: 1px solid var(--frost); padding: 14px 10px; }
+.side .grp { font-weight: 800; font-size: 12px; color: var(--idle); padding: 14px 10px 6px; }
+.side a { display: flex; align-items: center; gap: 10px; height: 32px; padding: 0 10px; border-radius: 8px; color: var(--snow2); text-decoration: none; font-size: 14px; }
+.side a.on { background: rgba(233,238,248,.09); color: var(--snow); font-weight: 600; }
+.side a svg { width: 17px; height: 17px; }
+.main { padding: 26px 32px; overflow: hidden; }
+.main h2 { font-weight: 900; font-size: 34px; margin: 0 0 18px; letter-spacing: -0.01em; }
+.mac .hero { grid-template-columns: 200px 1fr; gap: 26px; }
+.mac .hero h3 { font-size: 30px; }
+.mac .card { padding: 30px 24px 22px; }
+.mac-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 34px; margin-top: 26px; }
+.crate { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 10px; }
+.crate .cv svg { width: 100%; height: auto; display: block; border-radius: 8px; }
+.crate .cv p { margin: 6px 0 0; font-size: 13px; font-weight: 600; }
+.crate .cv span { display: block; font-size: 12px; color: var(--idle); font-weight: 400; margin-top: 1px; }
+.mac .ledger { margin-top: 0; }
+.mac h4 { font-weight: 900; font-size: 20px; margin: 0 0 2px; }
+
+.insp { border-left: 1px solid var(--frost); padding: 18px 18px; background: #111830; overflow: hidden; }
+.insp h4 { font-weight: 900; font-size: 17px; margin: 0 0 10px; }
+.mini { display: grid; grid-template-columns: 96px 1fr; gap: 16px; align-items: center; }
+.mini .seal { padding: 4px; border-radius: 20px; }
+.mini .bubble { padding: 6px; border-radius: 16px; }
+.mini .bubble svg.art { border-radius: 10px; }
+.mini .bubble::after { inset: 6px; border-radius: 10px; }
+.mini .tt { display: flex; align-items: flex-end; gap: 8px; }
+.mini .tt .foil-title { font-weight: 900; font-size: 21px; line-height: 1.05; }
+.mini .ar { font-size: 14px; color: var(--snow2); font-weight: 600; margin: 5px 0 0; }
+.mini .pl { font-size: 12.5px; color: var(--idle); margin: 2px 0 0; line-height: 1.3; }
+.insp .scrub { margin: 16px 0 0; }
+.insp .times { font-size: 12px; margin-top: 6px; }
+.mini-tr { display: flex; align-items: center; justify-content: space-between; margin-top: 10px; color: var(--snow); padding: 0 4px; }
+.mini-tr .midc { display: flex; align-items: center; gap: 22px; }
+.mini-tr .pp { width: 42px; height: 42px; border-radius: 50%; background: var(--snow); color: var(--base); display: grid; place-items: center; }
+.mini-tr .side-ic { color: var(--snow2); }
+.sect { margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--frost); }
+.sig { display: grid; grid-template-columns: 1fr auto; row-gap: 7px; font-size: 13px; }
+.sig dt { color: var(--snow2); }
+.sig dd { margin: 0; text-align: right; color: var(--snow); }
+.q { list-style: none; margin: 0; padding: 0; }
+.q li { display: grid; grid-template-columns: 22px 1fr auto; align-items: center; height: 32px; font-size: 13.5px; }
+.q li .d { color: var(--idle); font-size: 12.5px; }
+.q li.now .t { font-weight: 700; }
+
+/* ---------- Token sheet & motion score ---------- */
+.sheet { width: 440px; background: #10162A; border: 1px solid var(--frost); border-radius: 6px; padding: 22px 22px 18px; }
+.sheet h2, .score h2 { font-weight: 900; font-size: 22px; margin: 0 0 12px; }
+.sheet h3 { font-weight: 800; font-size: 15px; margin: 18px 0 8px; color: var(--snow); }
+.sw { display: grid; grid-template-columns: 34px 1fr auto; gap: 10px; align-items: center; font-size: 13px; padding: 4px 0; }
+.sw i { width: 34px; height: 24px; border-radius: 5px; display: block; box-shadow: inset 0 0 0 1px rgba(233,238,248,.15); }
+.sw b { font-weight: 700; }
+.sw span { color: var(--snow2); }
+.sw em { font-style: normal; color: var(--idle); font-size: 12px; }
+.scale p { margin: 0 0 6px; line-height: 1.15; }
+.scale small { color: var(--idle); font-size: 12px; font-weight: 400; margin-left: 6px; }
+pre.code {
+  margin: 0; padding: 12px 14px; background: var(--base); border-radius: 6px; border: 1px solid var(--frost);
+  font: 11.5px/1.5 ui-monospace, "SF Mono", Menlo, monospace; color: var(--snow2); overflow-x: auto; white-space: pre;
+}
+pre.code b { color: var(--snow); font-weight: 600; }
+
+.score { width: 440px; }
+.score p { color: var(--snow2); font-size: 14px; line-height: 1.5; margin: 0 0 14px; }
+.lanes { position: relative; border-top: 1px solid var(--frost); border-bottom: 1px solid var(--frost); padding: 10px 0 8px; }
+.lane { display: grid; grid-template-columns: 110px 1fr; align-items: center; height: 30px; font-size: 13px; color: var(--snow2); }
+.lane .bar { position: relative; height: 10px; }
+.lane .bar span { position: absolute; top: 0; height: 10px; border-radius: 5px; }
+.ticks { display: grid; grid-template-columns: 110px 1fr; font-size: 11.5px; color: var(--idle); margin-top: 6px; }
+.ticks div { display: flex; justify-content: space-between; }
+.frames { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin: 18px 0 8px; }
+.frame { background: var(--raised); border-radius: 6px; padding: 10px 8px 8px; }
+.frame .foil-title { font-weight: 900; font-size: 15px; }
+.frame .stair { height: 16px; margin-top: 6px; }
+.frame .lab { font-size: 11.5px; color: var(--idle); margin-top: 6px; }
+.frame.f1 .foil-title::after { opacity: 1; background-position: 84% 0; }
+.frame.f2 .foil-title::after { opacity: 1; background-position: 42% 0; }
+.frame.f1 .stair .col, .frame.f2 .stair .col { opacity: 0; }
+.frame.f3 .stair .col:nth-child(n+3) { opacity: 0; }
+.frame.f3 .stair .col:nth-child(2) { transform: translateY(-5px); opacity: .5; }
+
+@media (max-width: 1100px) {
+  .phone-wrap { zoom: .62; }
+  .mac-wrap { zoom: .55; }
+  .sheet, .score { width: 100%; }
+}
+@media (max-width: 600px) {
+  body { padding: 20px; }
+  .phone-wrap { zoom: .7; }
+  .mac-wrap { zoom: .28; }
+  .board-head h1 { font-size: 38px; }
+}
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="i-play" viewBox="0 0 24 24"><path d="M7.5 4.8v14.4a.8.8 0 0 0 1.2.7l11.6-7.2a.8.8 0 0 0 0-1.4L8.7 4.1a.8.8 0 0 0-1.2.7z" fill="currentColor"/></symbol>
+    <symbol id="i-pause" viewBox="0 0 24 24"><rect x="6" y="4.5" width="4.2" height="15" rx="1.4" fill="currentColor"/><rect x="13.8" y="4.5" width="4.2" height="15" rx="1.4" fill="currentColor"/></symbol>
+    <symbol id="i-prev" viewBox="0 0 24 24"><rect x="4.5" y="5.5" width="2.6" height="13" rx="1.2" fill="currentColor"/><path d="M19.5 6.4v11.2a.8.8 0 0 1-1.25.66L9.9 12.66a.8.8 0 0 1 0-1.32l8.35-5.6a.8.8 0 0 1 1.25.66z" fill="currentColor"/></symbol>
+    <symbol id="i-next" viewBox="0 0 24 24"><rect x="16.9" y="5.5" width="2.6" height="13" rx="1.2" fill="currentColor"/><path d="M4.5 6.4v11.2a.8.8 0 0 0 1.25.66l8.35-5.6a.8.8 0 0 0 0-1.32L5.75 5.74a.8.8 0 0 0-1.25.66z" fill="currentColor"/></symbol>
+    <symbol id="i-down" viewBox="0 0 24 24"><path d="M6 9.5l6 6 6-6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-up" viewBox="0 0 24 24"><path d="M6 14.5l6-6 6 6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-right" viewBox="0 0 24 24"><path d="M9.5 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-left" viewBox="0 0 24 24"><path d="M14.5 6l-6 6 6 6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-air" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 17H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-1"/></g><path d="M12 14.5l5 6H7z" fill="currentColor"/></symbol>
+    <symbol id="i-queue" viewBox="0 0 24 24"><path d="M4 6.5h16M4 12h16M4 17.5h10" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></symbol>
+    <symbol id="i-home" viewBox="0 0 24 24"><path d="M3.5 10.8 12 4l8.5 6.8V20a1 1 0 0 1-1 1H15v-6H9v6H4.5a1 1 0 0 1-1-1z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></symbol>
+    <symbol id="i-artists" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="9" cy="8" r="3.6"/><path d="M2.8 20a6.2 6.2 0 0 1 12.4 0"/><path d="M15.5 4.6a3.6 3.6 0 0 1 0 6.8M18 14.2a6.2 6.2 0 0 1 3.2 5.8"/></g></symbol>
+    <symbol id="i-search" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5 20.5 20.5"/></g></symbol>
+    <symbol id="i-dl" viewBox="0 0 24 24"><path d="M12 3.5v11M7 10l5 5 5-5M5 20.5h14" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-star" viewBox="0 0 24 24"><path d="M12 3.6l2.6 5.3 5.8.8-4.2 4.1 1 5.8L12 16.9l-5.2 2.7 1-5.8-4.2-4.1 5.8-.8z" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"/></symbol>
+    <symbol id="i-person" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="8.5" r="4"/><path d="M4.5 20.5a7.5 7.5 0 0 1 15 0"/></g></symbol>
+    <symbol id="i-live" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="2.2" fill="currentColor"/><path d="M8 8a5.6 5.6 0 0 0 0 8M16 8a5.6 5.6 0 0 1 0 8M5 5a9.8 9.8 0 0 0 0 14M19 5a9.8 9.8 0 0 1 0 14"/></g></symbol>
+    <symbol id="i-sidebar" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.9"><rect x="3" y="4.5" width="18" height="15" rx="3"/><path d="M15 4.5v15"/></g></symbol>
+    <symbol id="i-more" viewBox="0 0 24 24"><g fill="currentColor"><circle cx="5.5" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="18.5" cy="12" r="1.8"/></g></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5" fill="none" stroke="#E9EEF8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+
+    <!-- Cover art, drawn: a Rocky Mountain dusk for the Denver show -->
+    <symbol id="art-denver" viewBox="0 0 100 100">
+      <rect width="100" height="100" fill="#21365E"/>
+      <rect width="100" height="40" fill="#1A2B4D"/>
+      <circle cx="50" cy="62" r="25" fill="#F2A65A"/>
+      <path d="M0 64 18 46 30 56 46 36 62 54 74 44 100 66 100 100 0 100z" fill="#14213D"/>
+      <rect x="16" y="72" width="68" height="3" rx="1.5" fill="#E9EEF8" opacity=".75"/>
+      <rect x="25" y="79" width="50" height="3" rx="1.5" fill="#E9EEF8" opacity=".55"/>
+      <rect x="34" y="86" width="32" height="3" rx="1.5" fill="#E9EEF8" opacity=".35"/>
+    </symbol>
+    <symbol id="art-rings" viewBox="0 0 100 100">
+      <rect width="100" height="100" fill="#3A2542"/>
+      <g fill="none" stroke="#E8C9A2" stroke-width="3.5"><circle cx="34" cy="66" r="12"/><circle cx="34" cy="66" r="24"/><circle cx="34" cy="66" r="36"/><circle cx="34" cy="66" r="48"/></g>
+    </symbol>
+    <symbol id="art-bands" viewBox="0 0 100 100">
+      <rect width="100" height="100" fill="#1E3B39"/>
+      <g fill="#C7D66B"><path d="M-10 70 70 -10 84 4 4 84z"/><path d="M20 110 110 20 118 28 28 118z" opacity=".7"/></g>
+    </symbol>
+    <symbol id="art-grid" viewBox="0 0 100 100">
+      <rect width="100" height="100" fill="#2B2F4F"/>
+      <g fill="#9FC6E8"><circle cx="25" cy="25" r="9"/><circle cx="50" cy="25" r="9"/><circle cx="75" cy="25" r="9"/><circle cx="25" cy="50" r="9"/><circle cx="50" cy="50" r="9" fill="#F2A65A"/><circle cx="75" cy="50" r="9"/><circle cx="25" cy="75" r="9"/><circle cx="50" cy="75" r="9"/><circle cx="75" cy="75" r="9"/></g>
+    </symbol>
+  </defs>
+</svg>
+
+<header class="board-head">
+  <div>
+    <h1>Walk-down</h1>
+    <p>Yeti, concept B. The theme holds still for the whole show. When a track starts, one short moment unboxes it: a strip of foil crosses the title, then the bars drop into a descending stair, one step at a time. Then nothing moves but the scrub.</p>
+  </div>
+  <div class="controls">
+    <button class="btn foil" id="replay" type="button">Play the moment again</button>
+    <button class="btn ghost" id="pause" type="button" aria-pressed="false">Pause</button>
+  </div>
+</header>
+
+<!-- ================= Row 1: three phones + token sheet ================= -->
+<section class="row" aria-label="iPhone surfaces and token sheet">
+
+  <!-- Surface 1: Home -->
+  <figure>
+    <div class="phone-wrap">
+      <div class="phone" role="img" aria-label="iPhone Home in the Yeti theme">
+        <div class="status"><span class="num">9:41</span><span class="island"></span><span class="bat"></span></div>
+        <div class="screen">
+          <div class="home-top">
+            <h2>Good evening</h2>
+            <span class="avatar"><svg class="i s"><use href="#i-person"/></svg></span>
+          </div>
+
+          <article class="card">
+            <span class="hang"></span>
+            <div class="hero">
+              <div class="seal">
+                <div class="bubble">
+                  <svg class="art" viewBox="0 0 100 100" aria-hidden="true"><use href="#art-denver"/></svg>
+                  <span class="sticker sm"><b>ALAC</b><span class="num">24/48</span></span>
+                </div>
+              </div>
+              <div>
+                <h3>Goose</h3>
+                <p class="venue">Mission Ballroom</p>
+                <p class="when">Denver, Aug 17, 2024</p>
+                <button class="btn foil play" type="button"><svg class="i s"><use href="#i-play"/></svg>Play show</button>
+              </div>
+            </div>
+          </article>
+
+          <section class="ledger">
+            <h3>The nice list</h3>
+            <p class="sub">Artists you've played most</p>
+            <div class="totals num"><span><b>112</b>hours</span><span><b>14</b>artists</span></div>
+            <ul class="nice">
+              <li><span class="tick"><svg><use href="#i-check"/></svg></span><span class="name">Goose</span><span class="n num">61 plays</span><span class="h num">48 h</span></li>
+              <li><span class="tick"><svg><use href="#i-check"/></svg></span><span class="name">Billy Strings</span><span class="n num">27 plays</span><span class="h num">19 h</span></li>
+              <li><span class="tick"><svg><use href="#i-check"/></svg></span><span class="name">Umphrey's McGee</span><span class="n num">19 plays</span><span class="h num">14 h</span></li>
+              <li><span class="tick"><svg><use href="#i-check"/></svg></span><span class="name">Dead &amp; Company</span><span class="n num">12 plays</span><span class="h num">11 h</span></li>
+              <li><span class="tick"><svg><use href="#i-check"/></svg></span><span class="name">Trey Anastasio Band</span><span class="n num">9 plays</span><span class="h num">7 h</span></li>
+            </ul>
+          </section>
+        </div>
+        <nav class="tabbar" aria-label="Tabs">
+          <span class="tab on"><svg class="i"><use href="#i-home"/></svg>Home</span>
+          <span class="tab"><svg class="i"><use href="#i-artists"/></svg>Artists</span>
+          <span class="tab"><svg class="i"><use href="#i-search"/></svg>Search</span>
+          <span class="tab"><svg class="i"><use href="#i-star"/></svg>Favorites</span>
+          <span class="tab"><svg class="i"><use href="#i-dl"/></svg>Downloads</span>
+        </nav>
+      </div>
+    </div>
+    <figcaption>Home. The hero is the only blister on the screen; the nice list below is plain checked rows with play counts and hours in two columns.</figcaption>
+  </figure>
+
+  <!-- Surface 2: Full-screen now playing -->
+  <figure>
+    <div class="phone-wrap">
+      <div class="phone np" data-moment role="img" aria-label="iPhone full-screen now playing in the Yeti theme">
+        <div class="status"><span class="num">9:41</span><span class="island"></span><span class="bat"></span></div>
+        <div class="screen">
+          <div class="np-top">
+            <svg class="i"><use href="#i-down"/></svg>
+            <span class="mid">Here it comes</span>
+            <svg class="i"><use href="#i-more"/></svg>
+          </div>
+          <article class="card">
+            <span class="hang"></span>
+            <div class="seal">
+              <div class="bubble">
+                <svg class="art" viewBox="0 0 100 100" aria-hidden="true"><use href="#art-denver"/></svg>
+                <span class="sticker"><b>ALAC</b><span class="num">24/48</span><svg><use class="pp-use" href="#i-play"/></svg></span>
+              </div>
+            </div>
+            <div class="np-title">
+              <h3 class="foil-title" data-text="Dripfield">Dripfield</h3>
+              <span class="stair" aria-hidden="true">
+                <span class="col"><i></i><i></i><i></i><i></i><i></i><i></i></span>
+                <span class="col"><i></i><i></i><i></i><i></i><i></i></span>
+                <span class="col"><i></i><i></i><i></i><i></i></span>
+                <span class="col"><i></i><i></i><i></i></span>
+                <span class="col"><i></i><i></i></span>
+              </span>
+            </div>
+            <p class="artist">Goose</p>
+            <p class="place">Mission Ballroom, Denver, Aug 17, 2024</p>
+          </article>
+          <div class="scrub">
+            <div class="track"><span class="fill" style="width:56%"></span><span class="thumb" style="left:56%"></span></div>
+            <div class="times num"><span>14:22</span><span>&minus;11:05</span></div>
+          </div>
+          <div class="transport">
+            <svg class="i" style="color:var(--snow2)"><use href="#i-star"/></svg>
+            <svg class="i l"><use href="#i-prev"/></svg>
+            <span class="bigplay"><svg><use class="pp-use" href="#i-pause"/></svg></span>
+            <svg class="i l"><use href="#i-next"/></svg>
+            <svg class="i" style="color:var(--snow2)"><use href="#i-queue"/></svg>
+          </div>
+          <div class="np-foot">
+            <svg class="i"><use href="#i-air"/></svg>
+            <span style="font-size:14px">Coming up next: Yeti</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <figcaption>Full-screen now playing. The card carries the title like a printed package name; the sticker holds the lossless badge and the play state.</figcaption>
+  </figure>
+
+  <!-- Surface 3: Pill over artist list -->
+  <figure>
+    <div class="phone-wrap">
+      <div class="phone" role="img" aria-label="iPhone artist list with the now-playing pill in the Yeti theme">
+        <div class="status"><span class="num">9:41</span><span class="island"></span><span class="bat"></span></div>
+        <div class="screen">
+          <h2 class="big-title">Artists</h2>
+          <div class="searchf"><svg class="i s"><use href="#i-search"/></svg>Search artists</div>
+          <ul class="alist">
+            <li class="letter">B</li>
+            <li class="ar"><span class="mono">B</span>Billy Strings<svg class="i s c"><use href="#i-right"/></svg></li>
+            <li class="letter">D</li>
+            <li class="ar"><span class="mono">D</span>Dead &amp; Company<svg class="i s c"><use href="#i-right"/></svg></li>
+            <li class="ar"><span class="mono">D</span>Disco Biscuits<svg class="i s c"><use href="#i-right"/></svg></li>
+            <li class="letter">G</li>
+            <li class="ar"><span class="mono">G</span>Goose<svg class="i s c"><use href="#i-right"/></svg></li>
+            <li class="ar"><span class="mono">G</span>Greensky Bluegrass<svg class="i s c"><use href="#i-right"/></svg></li>
+            <li class="letter">J</li>
+            <li class="ar"><span class="mono">J</span>Joe Russo's Almost Dead<svg class="i s c"><use href="#i-right"/></svg></li>
+            <li class="ar"><span class="mono">K</span>King Gizzard &amp; the Lizard Wizard<svg class="i s c"><use href="#i-right"/></svg></li>
+            <li class="ar"><span class="mono">L</span>Lettuce<svg class="i s c"><use href="#i-right"/></svg></li>
+          </ul>
+        </div>
+        <div class="pill">
+          <span class="ring">
+            <svg class="r" viewBox="0 0 32 32" aria-hidden="true">
+              <circle cx="16" cy="16" r="15" fill="none" stroke="#2E3A5C" stroke-width="2"/>
+              <circle cx="16" cy="16" r="15" fill="none" stroke="#FF8FC4" stroke-width="2" stroke-linecap="round" stroke-dasharray="52.8 94.25"/>
+            </svg>
+            <span class="chip"><svg viewBox="0 0 100 100"><use href="#art-denver"/></svg></span>
+          </span>
+          <div class="txt"><div class="t">Dripfield</div><div class="a">Goose</div></div>
+          <span class="ctl">
+            <svg class="i s"><use href="#i-prev"/></svg>
+            <svg class="i"><use class="pp-use" href="#i-pause"/></svg>
+            <svg class="i s"><use href="#i-next"/></svg>
+            <svg class="i s chev"><use href="#i-up"/></svg>
+          </span>
+        </div>
+        <nav class="tabbar" aria-label="Tabs">
+          <span class="tab"><svg class="i"><use href="#i-home"/></svg>Home</span>
+          <span class="tab on"><svg class="i"><use href="#i-artists"/></svg>Artists</span>
+          <span class="tab"><svg class="i"><use href="#i-search"/></svg>Search</span>
+          <span class="tab"><svg class="i"><use href="#i-star"/></svg>Favorites</span>
+          <span class="tab"><svg class="i"><use href="#i-dl"/></svg>Downloads</span>
+        </nav>
+      </div>
+    </div>
+    <figcaption>The pill over the artist list. Only the ring changes, to pink foil. No sweep here: the pill stays exactly as it ships.</figcaption>
+  </figure>
+
+  <!-- Token sheet -->
+  <aside class="sheet" aria-label="Token sheet">
+    <h2>Tokens</h2>
+    <div class="sw"><i style="background:#0F1424"></i><span><b>Night street</b> base</span><em>#0F1424</em></div>
+    <div class="sw"><i style="background:#18203A"></i><span><b>Backing card</b> raised</span><em>#18203A</em></div>
+    <div class="sw"><i style="background:#2E3A5C"></i><span><b>Frost</b> hairline</span><em>#2E3A5C</em></div>
+    <div class="sw"><i style="background:#E9EEF8"></i><span><b>Snowlight</b> text, 15.8:1</span><em>#E9EEF8</em></div>
+    <div class="sw"><i style="background:#A3AECB"></i><span><b>Slush</b> secondary, 8.3:1</span><em>#A3AECB</em></div>
+    <div class="sw"><i style="background:#8590B0"></i><span><b>Lamp off</b> idle, 5.8:1</span><em>#8590B0</em></div>
+    <div class="sw"><i style="background:#FF8FC4"></i><span><b>Pink foil</b> accent, ring, sweep</span><em>#FF8FC4</em></div>
+    <div class="sw"><i style="background:#F2E27A"></i><span><b>Sale sticker</b> lossless, play state</span><em>#F2E27A</em></div>
+
+    <h3>Type: SF Pro Rounded, system only</h3>
+    <div class="scale">
+      <p style="font-weight:900;font-size:34px">Dripfield <small>hero 34 heavy</small></p>
+      <p style="font-weight:900;font-size:22px">The nice list <small>title 22 heavy</small></p>
+      <p style="font-weight:800;font-size:17px">Coming up next <small>section 17 bold</small></p>
+      <p style="font-size:15px">Mission Ballroom, Denver <small>body 15 regular</small></p>
+      <p class="num" style="font-size:15px">14:22 and 61 plays <small>numeric, rounded, tabular digits</small></p>
+    </div>
+
+    <h3>Theme.swift</h3>
+<pre class="code"><b>static let yeti</b> = Theme(id: .yeti,
+  palette: Palette(base: 0x0F1424, raised: 0x18203A,
+    hairline: 0x2E3A5C, textPrimary: 0xE9EEF8,
+    textSecondary: 0xA3AECB, textIdle: 0x8590B0,
+    accent: 0xFF8FC4, losslessBadge: 0xF2E27A,
+    playState: 0xF2E27A, vuPeak: nil,
+    labelPaper: nil, labelInk: nil),
+  type: hero/title .heavy, section .bold,
+    body .regular, all design: .rounded;
+    numeric .rounded + .monospacedDigit(),
+  textureOpacity: 0,
+  copy: ("It's on its way. Pick a show to start.",
+    "It's on its way",
+    ("Here it comes", "What's in the box",
+     "Coming up next")),
+  caps: [.equalizerRows], transport: <b>.standard</b>,
+  accentMode: .staticAccent, washStyle: .none,
+  darkOnly: true)</pre>
+  </aside>
+</section>
+
+<!-- ================= Row 2: Mac + motion score ================= -->
+<section class="row" aria-label="Mac surface and motion score">
+  <figure class="mac-fig">
+    <div class="mac-wrap">
+      <div class="mac" role="img" aria-label="Mac main window with the dashboard mini-player in the Yeti theme">
+        <div class="titlebar">
+          <span class="lights"><i></i><i></i><i></i></span>
+          <span class="tb-nav"><svg class="i s"><use href="#i-left"/></svg><svg class="i s"><use href="#i-right"/></svg></span>
+          <span class="tb-title">Home</span>
+          <span class="tb-search"><svg class="i s"><use href="#i-search"/></svg>Search</span>
+          <span class="tb-btn"><svg class="i s"><use href="#i-person"/></svg></span>
+          <span class="tb-btn on"><svg class="i s"><use href="#i-sidebar"/></svg></span>
+        </div>
+        <div class="macbody">
+          <nav class="side" aria-label="Sidebar">
+            <a class="on" href="#"><svg class="i"><use href="#i-home"/></svg>Home</a>
+            <a href="#"><svg class="i"><use href="#i-artists"/></svg>Artists</a>
+            <a href="#"><svg class="i"><use href="#i-live"/></svg>Livestreams</a>
+            <a href="#"><svg class="i"><use href="#i-star"/></svg>Favorites</a>
+            <a href="#"><svg class="i"><use href="#i-dl"/></svg>Downloads</a>
+            <div class="grp">Following</div>
+            <a href="#"><span class="mono" style="width:20px;height:20px;font-size:11px;border-radius:5px">G</span>Goose</a>
+            <a href="#"><span class="mono" style="width:20px;height:20px;font-size:11px;border-radius:5px">B</span>Billy Strings</a>
+            <a href="#"><span class="mono" style="width:20px;height:20px;font-size:11px;border-radius:5px">U</span>Umphrey's McGee</a>
+          </nav>
+
+          <main class="main">
+            <h2>Good evening</h2>
+            <article class="card">
+              <span class="hang"></span>
+              <div class="hero">
+                <div class="seal">
+                  <div class="bubble">
+                    <svg class="art" viewBox="0 0 100 100" aria-hidden="true"><use href="#art-denver"/></svg>
+                    <span class="sticker"><b>ALAC</b><span class="num">24/48</span></span>
+                  </div>
+                </div>
+                <div>
+                  <h3>Goose</h3>
+                  <p class="venue">Mission Ballroom</p>
+                  <p class="when">Denver, Aug 17, 2024. Two sets, 2 h 41 min.</p>
+                  <button class="btn foil play" type="button"><svg class="i s"><use href="#i-play"/></svg>Play show</button>
+                </div>
+              </div>
+            </article>
+
+            <div class="mac-cols">
+              <section class="ledger">
+                <h4>The nice list</h4>
+                <p class="sub">Artists you've played most</p>
+                <ul class="nice">
+                  <li><span class="tick"><svg><use href="#i-check"/></svg></span><span class="name">Goose</span><span class="n num">61 plays</span><span class="h num">48 h</span></li>
+                  <li><span class="tick"><svg><use href="#i-check"/></svg></span><span class="name">Billy Strings</span><span class="n num">27 plays</span><span class="h num">19 h</span></li>
+                  <li><span class="tick"><svg><use href="#i-check"/></svg></span><span class="name">Umphrey's McGee</span><span class="n num">19 plays</span><span class="h num">14 h</span></li>
+                  <li><span class="tick"><svg><use href="#i-check"/></svg></span><span class="name">Dead &amp; Company</span><span class="n num">12 plays</span><span class="h num">11 h</span></li>
+                </ul>
+              </section>
+              <section>
+                <h4>New this week</h4>
+                <div class="crate">
+                  <div class="cv"><svg viewBox="0 0 100 100"><use href="#art-rings"/></svg><p>Goose<span>Capitol Theatre, Oct 4</span></p></div>
+                  <div class="cv"><svg viewBox="0 0 100 100"><use href="#art-bands"/></svg><p>Billy Strings<span>Red Rocks, Sep 28</span></p></div>
+                </div>
+              </section>
+            </div>
+          </main>
+
+          <aside class="insp" data-moment aria-label="Dashboard">
+            <h4>Here it comes</h4>
+            <div class="mini">
+              <div class="seal">
+                <div class="bubble">
+                  <svg class="art" viewBox="0 0 100 100" aria-hidden="true"><use href="#art-denver"/></svg>
+                  <span class="sticker sm"><b>ALAC</b><svg><use class="pp-use" href="#i-play"/></svg></span>
+                </div>
+              </div>
+              <div style="min-width:0">
+                <div class="tt">
+                  <span class="foil-title" data-text="Dripfield">Dripfield</span>
+                  <span class="stair sm" aria-hidden="true">
+                    <span class="col"><i></i><i></i><i></i><i></i><i></i><i></i></span>
+                    <span class="col"><i></i><i></i><i></i><i></i><i></i></span>
+                    <span class="col"><i></i><i></i><i></i><i></i></span>
+                    <span class="col"><i></i><i></i><i></i></span>
+                    <span class="col"><i></i><i></i></span>
+                  </span>
+                </div>
+                <p class="ar">Goose</p>
+                <p class="pl">Mission Ballroom, Denver</p>
+              </div>
+            </div>
+            <div class="scrub">
+              <div class="track"><span class="fill" style="width:56%"></span><span class="thumb" style="left:56%"></span></div>
+              <div class="times num"><span>14:22</span><span>&minus;11:05</span></div>
+            </div>
+            <div class="mini-tr">
+              <svg class="i s side-ic"><use href="#i-star"/></svg>
+              <span class="midc">
+                <svg class="i"><use href="#i-prev"/></svg>
+                <span class="pp"><svg class="i"><use class="pp-use" href="#i-pause"/></svg></span>
+                <svg class="i"><use href="#i-next"/></svg>
+              </span>
+              <svg class="i s side-ic"><use href="#i-air"/></svg>
+            </div>
+
+            <section class="sect">
+              <h4>What's in the box</h4>
+              <dl class="sig num">
+                <dt>Format</dt><dd>ALAC</dd>
+                <dt>Resolution</dt><dd>24-bit, 48 kHz</dd>
+                <dt>Bitrate</dt><dd>2,304 kbps</dd>
+                <dt>Buffered</dt><dd>4:12 ahead</dd>
+                <dt>Source</dt><dd>Soundboard</dd>
+                <dt>Output</dt><dd>MacBook Pro Speakers</dd>
+              </dl>
+            </section>
+
+            <section class="sect">
+              <h4>Coming up next</h4>
+              <ul class="q num">
+                <li class="now"><span class="stair sm" aria-label="Playing" style="height:12px"><span class="col"><i></i><i></i><i></i><i></i></span><span class="col"><i></i><i></i><i></i></span><span class="col"><i></i><i></i></span></span><span class="t">Dripfield</span><span class="d">25:27</span></li>
+                <li><span></span><span>Yeti</span><span class="d">17:48</span></li>
+                <li><span></span><span>Madhuvan</span><span class="d">14:02</span></li>
+                <li><span></span><span>Hungersite</span><span class="d">11:37</span></li>
+                <li><span></span><span>Arcadia</span><span class="d">9:15</span></li>
+              </ul>
+            </section>
+          </aside>
+        </div>
+      </div>
+    </div>
+    <figcaption style="max-width:none">Mac with the dashboard at 340 pt: the standard mini-player, with the sticker, the stair and barker copy in the three headers.</figcaption>
+  </figure>
+
+  <aside class="score" aria-label="Motion score">
+    <h2>The one moment</h2>
+    <p>It fires when a new track starts, once, and lasts about a second. It reads no playback time. With reduced motion on, every beat lands in its final state at once and the sweep is skipped.</p>
+    <div class="lanes">
+      <div class="lane"><span>Foil crosses</span><span class="bar"><span style="left:0;width:59%;background:var(--foil)"></span></span></div>
+      <div class="lane"><span>Stair drops in</span><span class="bar"><span style="left:39%;width:61%;background:var(--sale)"></span></span></div>
+    </div>
+    <div class="ticks num"><span></span><div><span>0</span><span>250</span><span>500</span><span>750</span><span>1,020 ms</span></div></div>
+
+    <div class="frames num" aria-hidden="true">
+      <div class="frame f1"><span class="foil-title" data-text="Dripfield">Dripfield</span><span class="stair sm"><span class="col"><i></i><i></i><i></i><i></i><i></i><i></i></span><span class="col"><i></i><i></i><i></i><i></i><i></i></span><span class="col"><i></i><i></i><i></i><i></i></span><span class="col"><i></i><i></i><i></i></span><span class="col"><i></i><i></i></span></span><div class="lab">100 ms</div></div>
+      <div class="frame f2"><span class="foil-title" data-text="Dripfield">Dripfield</span><span class="stair sm"><span class="col"><i></i><i></i><i></i><i></i><i></i><i></i></span><span class="col"><i></i><i></i><i></i><i></i><i></i></span><span class="col"><i></i><i></i><i></i><i></i></span><span class="col"><i></i><i></i><i></i></span><span class="col"><i></i><i></i></span></span><div class="lab">300 ms</div></div>
+      <div class="frame f3"><span class="foil-title" data-text="Dripfield">Dripfield</span><span class="stair sm"><span class="col"><i></i><i></i><i></i><i></i><i></i><i></i></span><span class="col"><i></i><i></i><i></i><i></i><i></i></span><span class="col"><i></i><i></i><i></i><i></i></span><span class="col"><i></i><i></i><i></i></span><span class="col"><i></i><i></i></span></span><div class="lab">600 ms</div></div>
+      <div class="frame f4"><span class="foil-title" data-text="Dripfield">Dripfield</span><span class="stair sm"><span class="col"><i></i><i></i><i></i><i></i><i></i><i></i></span><span class="col"><i></i><i></i><i></i><i></i><i></i></span><span class="col"><i></i><i></i><i></i><i></i></span><span class="col"><i></i><i></i><i></i></span><span class="col"><i></i><i></i></span></span><div class="lab">1,020 ms, at rest</div></div>
+    </div>
+    <p>Paused, the stair lays flat in lamp-off gray and the sticker shows a play glyph. Press Pause above to see it. Nothing else on any surface animates.</p>
+  </aside>
+</section>
+
+<script>
+  const els = () => document.querySelectorAll('[data-moment]');
+  function runMoment() {
+    els().forEach(el => { el.classList.remove('moment'); void el.offsetWidth; el.classList.add('moment'); });
+  }
+  document.getElementById('replay').addEventListener('click', () => {
+    if (document.body.classList.contains('is-paused')) togglePause();
+    runMoment();
+  });
+  const pauseBtn = document.getElementById('pause');
+  function togglePause() {
+    const paused = document.body.classList.toggle('is-paused');
+    pauseBtn.setAttribute('aria-pressed', String(paused));
+    pauseBtn.textContent = paused ? 'Play' : 'Pause';
+    document.querySelectorAll('.pp-use').forEach(u => {
+      const inSticker = u.closest('.sticker');
+      // Transport buttons show the action; the sticker shows the state.
+      const showPlay = inSticker ? !paused : paused;
+      u.setAttribute('href', showPlay ? '#i-play' : '#i-pause');
+    });
+    // Resuming is not a new track, so the moment does not fire again.
+  }
+  pauseBtn.addEventListener('click', togglePause);
+  // #still renders the resting state (used for static screenshots).
+  if (location.hash !== '#still') window.addEventListener('load', () => setTimeout(runMoment, 400));
+</script>
+</body>
+</html>
