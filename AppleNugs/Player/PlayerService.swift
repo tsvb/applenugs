@@ -617,7 +617,9 @@ final class PlayerService {
     /// No-op until a duration is known.
     func seek(by delta: Double) {
         guard duration > 0 else { return }
-        seek(to: min(max(currentTime + delta, 0), duration))
+        // livePosition, not currentTime: the lock screen's skip buttons fire
+        // while backgrounded, where the tick-fed currentTime is stale.
+        seek(to: min(max(livePosition + delta, 0), duration))
     }
 
     // --- playback engine --------------------------------------------------------
