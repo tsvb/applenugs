@@ -212,9 +212,19 @@ struct StandardNowPlayingScreen: View {
             // The card layout moves the star to the bottom row (AirPlay / star
             // / queue, as drawn); the ⋯ queue menu takes its slot here so the
             // bottom row holds exactly three.
+            // The ZStack keeps the 44pt slot when `moreMenu` is empty (no
+            // queue) — a frame around an empty `if` reserves nothing, and the
+            // centered header line would drift. The plain menu style drops the
+            // macOS pull-down bezel and chevron, which spill past the slot.
             if card {
-                moreMenu
-                    .frame(width: 44, height: 44)
+                ZStack {
+                    Color.clear
+                    moreMenu
+                        .menuStyle(.button)
+                        .buttonStyle(.plain)
+                        .menuIndicator(.hidden)
+                }
+                .frame(width: 44, height: 44)
             } else {
                 star
                     .frame(width: 44, height: 44)
@@ -433,7 +443,7 @@ struct StandardNowPlayingScreen: View {
     }
 
     /// "More queue actions" (Clear Queue, confirmed). Present while there is a
-    /// queue; nothing otherwise (the card header's 44pt frame keeps the slot).
+    /// queue; nothing otherwise (the card header's ZStack keeps the 44pt slot).
     @ViewBuilder
     private var moreMenu: some View {
         if !player.queue.isEmpty {
