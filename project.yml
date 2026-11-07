@@ -287,6 +287,9 @@ targets:
       - path: AppleNugs/Core/PriceStickerLabel.swift
         # Pure Foundation policy for Yeti's lossless price sticker: what it
         # prints, what VoiceOver reads, and when a known lossy pick hides it.
+      - path: AppleNugs/Core/FoilSweepTrigger.swift
+        # Pure Foundation policy for Yeti's one-shot title sweep: fires once per
+        # new track while playing, never on pause/resume or at launch.
     scheme:
       testTargets:
         - AppleNugsTests
