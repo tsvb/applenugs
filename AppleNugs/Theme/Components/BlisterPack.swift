@@ -77,6 +77,13 @@ struct BlisterPack<Art: View, Below: View>: View {
                 // ideal-size pass): the design's bubble size.
                 .frame(idealWidth: m.idealBubble, idealHeight: m.idealBubble)
                 .frame(maxWidth: maxBubbleSide, maxHeight: maxBubbleSide)
+                // Keep the slot square. A max-only frame reports
+                // max(child, proposal) up to its cap, so in a column narrower
+                // than it is tall (the Duo's 300pt upright column) a capped
+                // slot stood 320pt tall around a 208pt bubble, padding the
+                // card with dead space. Fitting a square first proposes the
+                // frame the bubble's own side.
+                .aspectRatio(1, contentMode: .fit)
                 .frame(maxWidth: .infinity)
             below
                 .frame(maxWidth: .infinity,
