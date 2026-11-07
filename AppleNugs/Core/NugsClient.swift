@@ -83,6 +83,11 @@ actor NugsClient {
                 expiresAt: Date().addingTimeInterval(TimeInterval(token.expires_in - 60))),
             userId: userId,
             sub: sub))
+        // The sign-in's own subscription answer is fresh.
+        if SubscriptionRecheck.decide(sub.isContentAccessible ? .active : .inactive,
+                                      currentlyAccessible: sub.isContentAccessible).stamp {
+            OfflineVerification.record(Date())
+        }
     }
 
     func logout() {
@@ -127,8 +132,35 @@ actor NugsClient {
             accessToken: token.access_token,
             refreshToken: token.refresh_token,
             expiresAt: Date().addingTimeInterval(TimeInterval(token.expires_in - 60)))
+        // Persist the rotated refresh token before anything else can fail.
         try store.save(refreshed)
-        return try Session(refreshed)
+        return try Session(await recheckSubscription(refreshed))
+    }
+
+    /// Ask the subscriptions endpoint again (one extra request per access-
+    /// token refresh — no timer of its own) and apply the answer per
+    /// `SubscriptionRecheck`: active renews the offline-play stamp, inactive
+    /// marks the session inaccessible, and a failed request changes nothing
+    /// (and never fails the refresh). Only `isContentAccessible` is taken
+    /// from the answer; the plan and dates the stream resolver sends stay as
+    /// sign-in recorded them.
+    private func recheckSubscription(_ state: PersistedSession) async -> PersistedSession {
+        let outcome: SubscriptionRecheck.Outcome
+        if let sub = try? await fetchSubInfo(accessToken: state.tokens.accessToken) {
+            outcome = sub.isContentAccessible ? .active : .inactive
+        } else {
+            outcome = .failed
+        }
+        let decision = SubscriptionRecheck.decide(
+            outcome, currentlyAccessible: state.sub.isContentAccessible)
+        var updated = state
+        if decision.isContentAccessible != state.sub.isContentAccessible {
+            updated.sub.isContentAccessible = decision.isContentAccessible
+            // Best-effort like the rest of the store; the tokens are saved.
+            try? store.save(updated)
+        }
+        if decision.stamp { OfflineVerification.record(Date()) }
+        return updated
     }
 
     private func fetchUserId(accessToken: String) async throws -> String {

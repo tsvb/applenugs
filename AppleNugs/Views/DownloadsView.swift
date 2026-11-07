@@ -1,7 +1,4 @@
 import SwiftUI
-#if os(macOS)
-import AppKit
-#endif
 
 /// Offline shows straight from the download manifest — playable with no
 /// network, deletable by swipe (and right-click on the Mac). Rows build their
@@ -93,10 +90,7 @@ struct DownloadsView: View {
         }
         #if os(macOS)
         .contextMenu {
-            Button("Reveal in Finder") {
-                NSWorkspace.shared.activateFileViewerSelecting(
-                    [app.downloads.showDirectory(containerID: show.containerID)])
-            }
+            // No Reveal in Finder: downloads are sealed and only play here.
             Button("Remove Download", role: .destructive) {
                 app.downloads.delete(containerID: show.containerID)
             }

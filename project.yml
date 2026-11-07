@@ -258,6 +258,15 @@ targets:
         # Pure Foundation layout policy for the iOS full-screen player (alone /
         # arrangement / explicit columns, and the queue column's width).
         # Compiled in for the same host-free reason as the drag policy above.
+      - path: AppleNugs/Downloads/SealedFile.swift
+        # The sealed-download format (Foundation + CryptoKit): header, chunk/
+        # range math, streaming seal, random-access open. DownloadManifest
+        # (above) depends on it for `isSealed`.
+      - path: AppleNugs/Downloads/OfflineAccessPolicy.swift
+        # The 30-day offline-play window, clock injected.
+      - path: AppleNugs/Downloads/SealedAssetLoader.swift
+        # AVFoundation + CryptoKit only (the Keychain key is injected), so the
+        # integration tests can play a sealed FLAC/ALAC through it host-free.
     scheme:
       testTargets:
         - AppleNugsTests

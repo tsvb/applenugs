@@ -92,6 +92,9 @@ final class PlayerService {
     /// True while the current picks are the local file — lets the failure
     /// path fall back to network resolution instead of giving up.
     private var usingLocalPick = false
+    /// Latched when the current track's download failed to play, so the
+    /// stream fallback never hands playback back to the same broken file.
+    private var localPickFailed = false
     private let player = AVQueuePlayer()
     private var timeObserver: Any?
     private var statusObservation: NSKeyValueObservation?
@@ -467,6 +470,7 @@ final class PlayerService {
         playbackError = nil
         failedTiers = []
         streamFailures = 0
+        localPickFailed = false
 
         guard let track = current else {
             loadArtwork(for: nil)
@@ -478,17 +482,30 @@ final class PlayerService {
 
         // Downloaded tracks play from disk with no network round-trip; the
         // failure path in loadCurrentPick falls back to stream resolution.
-        if let local = downloads?.localURL(trackId: track.trackId) {
-            let format = downloads?.manifest.track(id: track.trackId)?.formatRaw
-                .flatMap(AudioFormat.init(rawValue:)) ?? .unknown
-            usingLocalPick = true
-            picks = [StreamPick(url: local.absoluteString, platformId: 0, format: format)]
-            pickIndex = 0
-            loadCurrentPick()
+        // A download past its offline window (`.needsVerification`) streams
+        // instead. If the resolve refreshed the access token, the client
+        // rechecked the subscription on the way; when that renewed the
+        // window, resolveNetworkStreams switches back to the download.
+        if case .available(let local) = downloads?.localPlayback(trackId: track.trackId) {
+            playLocal(local)
             return
         }
         usingLocalPick = false
         resolveNetworkStreams(for: track, generation: generation)
+    }
+
+    private func playLocal(_ pick: StreamPick) {
+        usingLocalPick = true
+        picks = [pick]
+        pickIndex = 0
+        loadCurrentPick()
+    }
+
+    /// True when the track has a download that's only waiting on a trip
+    /// online — so a network failure reads "Go online to keep listening
+    /// offline" instead of a raw transport error.
+    private func downloadNeedsVerification(_ track: QueueTrack) -> Bool {
+        downloads?.localPlayback(trackId: track.trackId) == .needsVerification
     }
 
     private func resolveNetworkStreams(for track: QueueTrack, generation: Int,
@@ -498,8 +515,19 @@ final class PlayerService {
                 let resolved = try await client.resolveStreams(trackId: track.trackId,
                                                                skipping: skipping)
                 guard generation == loadGeneration else { return }
+                // If the resolve's token refresh rechecked the subscription
+                // and renewed the window, a download that was waiting on it
+                // plays after all (skipped when we're here because the local
+                // file itself failed).
+                if skipping.isEmpty, !localPickFailed,
+                   case .available(let local) = downloads?.localPlayback(trackId: track.trackId) {
+                    playLocal(local)
+                    return
+                }
                 guard !resolved.isEmpty else {
-                    if skipping.isEmpty {
+                    if downloadNeedsVerification(track) {
+                        playbackError = OfflineAccessPolicy.expiredMessage
+                    } else if skipping.isEmpty {
                         playbackError = "nugs has no stream for this track."
                     } else {
                         playbackError = "Every available stream format failed to play."
@@ -512,7 +540,8 @@ final class PlayerService {
                 loadCurrentPick()
             } catch {
                 guard generation == loadGeneration else { return }
-                playbackError = error.localizedDescription
+                playbackError = downloadNeedsVerification(track)
+                    ? OfflineAccessPolicy.expiredMessage : error.localizedDescription
             }
         }
     }
@@ -523,6 +552,7 @@ final class PlayerService {
             // track — fall back to streaming as if it weren't downloaded.
             if usingLocalPick, let track = current {
                 usingLocalPick = false
+                localPickFailed = true
                 resolveNetworkStreams(for: track, generation: loadGeneration)
                 return
             }
@@ -559,7 +589,12 @@ final class PlayerService {
     /// The asset carries the app's CDN headers (`NugsIdentity.current`: the
     /// honest UA, no Referer — the Phase B probe showed the CDN serves
     /// without one).
+    /// A `yeti-local://` pick is a sealed download: its asset decrypts through
+    /// its own resource loader and needs no headers.
     private func makeItem(url: URL) -> AVPlayerItem {
+        if url.scheme == SealedFile.urlScheme, let asset = downloads?.makeAsset(for: url) {
+            return AVPlayerItem(asset: asset)
+        }
         let asset = AVURLAsset(url: url, options: [
             "AVURLAssetHTTPHeaderFieldsKey": NugsIdentity.current.cdnHeaders,
         ])
@@ -680,7 +715,8 @@ final class PlayerService {
         nowPick = p.pick
         // Keep the local/network flag honest across gapless transitions so
         // a failing local file still falls back to streaming.
-        usingLocalPick = URL(string: p.pick.url)?.isFileURL == true
+        usingLocalPick = p.pick.isLocalDownload
+        localPickFailed = false
         playbackError = nil
         currentTime = 0
         duration = 0
@@ -712,15 +748,20 @@ final class PlayerService {
         preloadTask = Task {
             // A downloaded next track preloads from disk — offline gapless
             // works and no cellular data is spent on an owned file.
+            // One that's waiting on a subscription check resolves a stream like
+            // any other track — and if that renewed the window (via a token
+            // refresh's subscription recheck), takes the download after all.
             let picks: [StreamPick]
-            if let local = downloads?.localURL(trackId: track.trackId) {
-                let format = downloads?.manifest.track(id: track.trackId)?.formatRaw
-                    .flatMap(AudioFormat.init(rawValue:)) ?? .unknown
-                picks = [StreamPick(url: local.absoluteString, platformId: 0, format: format)]
+            if case .available(let local) = downloads?.localPlayback(trackId: track.trackId) {
+                picks = [local]
             } else {
-                guard let resolved = try? await client.resolveStreams(trackId: track.trackId),
-                      !resolved.isEmpty else { return }
-                picks = resolved
+                let resolved = try? await client.resolveStreams(trackId: track.trackId)
+                if case .available(let local) = downloads?.localPlayback(trackId: track.trackId) {
+                    picks = [local]
+                } else {
+                    guard let resolved, !resolved.isEmpty else { return }
+                    picks = resolved
+                }
             }
             guard !Task.isCancelled, generation == loadGeneration,
                   queue.indices.contains(index + 1), queue[index + 1].id == track.id

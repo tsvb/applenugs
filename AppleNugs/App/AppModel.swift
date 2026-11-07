@@ -81,8 +81,11 @@ final class AppModel {
             sessionState = .loggedIn(plan: session.planDescription)
         } catch NugsError.http(let status) where (400..<500).contains(status) {
             // The stored refresh token was rejected (revoked/expired) — really
-            // log out so the user re-authenticates.
+            // log out so the user re-authenticates. That is a sign-out like
+            // any other, so the downloads go with it.
+            // (Nothing is playing yet at launch, so no item holds a file.)
             await client.logout()
+            discardOfflineLibrary()
             sessionState = .loggedOut
         } catch {
             // Offline / server / transient error: keep the session and let the
@@ -154,11 +157,20 @@ final class AppModel {
     func logout() {
         Task { await client.logout() }
         video.stop()
+        // The player lets go of any downloaded item before the files go.
         player.clear()
+        discardOfflineLibrary()
         cachedArtists = nil
         artistShowsCache.removeAll()
         artistVideosCache.removeAll()
         sessionState = .loggedOut
+    }
+
+    /// Downloads belong to a signed-in subscriber: signing out removes every
+    /// download, the key that seals them, and the offline-play stamp.
+    private func discardOfflineLibrary() {
+        downloads.deleteAll()
+        OfflineVerification.clear()
     }
 
     /// An artist's complete show/release catalog if one was loaded within the

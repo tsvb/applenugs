@@ -41,4 +41,11 @@ final class StreamPickDownloadTests: XCTestCase {
         // No usable extension anywhere → a neutral default.
         XCTAssertEqual(pick("https://cdn/mystery/track", format: .unknown).downloadFileExtension, "bin")
     }
+
+    func testOnlyTheSealedSchemeIsALocalDownload() {
+        XCTAssertTrue(pick("yeti-local://download/s1/abc.yeti", format: .flac16).isLocalDownload)
+        XCTAssertFalse(pick("https://cdn/c.flac16/t.flac", format: .flac16).isLocalDownload)
+        // Plain files no longer count: downloads never play unsealed.
+        XCTAssertFalse(pick("file:///tmp/t.flac", format: .flac16).isLocalDownload)
+    }
 }

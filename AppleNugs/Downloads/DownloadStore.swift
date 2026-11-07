@@ -1,5 +1,18 @@
+import AVFoundation
 import Foundation
 import Observation
+
+/// What the player asks about a track's download.
+enum LocalPlayback: Equatable {
+    /// Not downloaded (or not yet sealed) — stream it.
+    case none
+    /// Downloaded and allowed to play: the `yeti-local://` pick.
+    case available(StreamPick)
+    /// Downloaded, but the subscription hasn't been confirmed online within
+    /// `OfflineAccessPolicy.window`. Stream it if the network allows; if not,
+    /// the player says "Go online to keep listening offline".
+    case needsVerification
+}
 
 /// What the UI asks about a show's offline state.
 enum ShowDownloadState: Equatable {
@@ -28,6 +41,12 @@ struct ShowDownloadRequest {
 /// Source of truth for the offline library: the persisted manifest, live
 /// per-track transfer progress, and the orchestration that turns a request
 /// into files on disk. Platform-neutral; the Mac target can adopt it as-is.
+///
+/// Files at rest are sealed (`SealedFile`): each finished transfer is
+/// encrypted off the main actor into `<uuid>.yeti` and the plaintext deleted
+/// at once; playback decrypts through `SealedAssetLoader`. Plaintext
+/// downloads from before encryption are sealed by a one-time launch
+/// migration — or deleted if they can't be — and never play as they are.
 @MainActor
 @Observable
 final class DownloadStore {
@@ -43,13 +62,22 @@ final class DownloadStore {
     private var inFlight: [String: PendingShow] = [:]
     private struct PendingShow {
         var request: ShowDownloadRequest
-        var remaining: Set<String>          // trackIds still transferring
-        var completed: [String: (fileName: String, bytes: Int64, formatRaw: String?)] = [:]
+        var remaining: Set<String>          // trackIds still transferring or sealing
+        var completed: [String: Sealed] = [:]
         /// Which download attempt this is — stale resolution loops from a
         /// cancelled/failed attempt check it and stand down.
         var generation: Int = 0
     }
+    /// One sealed track file, ready to be committed to the manifest.
+    private struct Sealed {
+        var fileName: String
+        var bytes: Int64
+        var formatRaw: String?
+        var contentType: String
+    }
     private var downloadGeneration = 0
+    /// Bumped by `deleteAll` so a migration pass started before it stands down.
+    private var libraryEpoch = 0
     /// trackId → owning containerID for routing manager callbacks.
     private var trackOwner: [String: String] = [:]
     /// trackId → chosen pick metadata, captured at fetch time.
@@ -80,16 +108,29 @@ final class DownloadStore {
         var values = URLResourceValues()
         values.isExcludedFromBackup = true
         try? noBackup.setResourceValues(values)
+        DownloadSealing.protect(dir)
 
         // Reconcile disk with the manifest: show directories without a
-        // manifest entry are half-finished downloads from a dead run.
+        // manifest entry are half-finished downloads from a dead run, and
+        // files inside a known show that the manifest doesn't name are debris
+        // from an interrupted seal or migration step (either side of its
+        // manifest save) — a sealed file never committed, or the plaintext
+        // original of one that was.
         let known = Set(manifest.shows.map(\.containerID))
         if let entries = try? FileManager.default.contentsOfDirectory(
             at: dir, includingPropertiesForKeys: [.isDirectoryKey]) {
             for entry in entries
-            where (try? entry.resourceValues(forKeys: [.isDirectoryKey]).isDirectory) == true
-                && !known.contains(entry.lastPathComponent) {
-                try? FileManager.default.removeItem(at: entry)
+            where (try? entry.resourceValues(forKeys: [.isDirectoryKey]).isDirectory) == true {
+                guard known.contains(entry.lastPathComponent) else {
+                    try? FileManager.default.removeItem(at: entry)
+                    continue
+                }
+                let expected = manifest.fileNames(containerID: entry.lastPathComponent)
+                for file in (try? FileManager.default.contentsOfDirectory(
+                    at: entry, includingPropertiesForKeys: nil)) ?? []
+                where !expected.contains(file.lastPathComponent) {
+                    try? FileManager.default.removeItem(at: file)
+                }
             }
         }
 
@@ -109,6 +150,8 @@ final class DownloadStore {
             onComplete: { [weak self] trackId, result in
                 self?.transferFinished(trackId: trackId, result: result)
             })
+
+        migrateUnsealedDownloads()
     }
 
     // --- queries ---------------------------------------------------------------
@@ -128,25 +171,51 @@ final class DownloadStore {
     }
 
     func isDownloaded(trackId: String) -> Bool {
-        localURL(trackId: trackId) != nil
+        sealedFile(trackId: trackId) != nil
     }
 
-    /// The playable local file for a track — nil unless it exists on disk.
-    func localURL(trackId: String) -> URL? {
+    /// How the player should treat a track: play the download, stream it, or
+    /// stream it because the download is waiting on a subscription check.
+    func localPlayback(trackId: String, now: Date = Date()) -> LocalPlayback {
+        guard let (containerID, track) = sealedFile(trackId: trackId) else { return .none }
+        guard OfflineAccessPolicy.allowsOfflinePlay(
+            lastVerifiedAt: OfflineVerification.lastVerifiedAt(), now: now) else {
+            return .needsVerification
+        }
+        var components = URLComponents()
+        components.scheme = SealedFile.urlScheme
+        components.host = "download"
+        components.path = "/\(containerID)/\(track.fileName)"
+        guard let url = components.url else { return .none }
+        let format = track.formatRaw.flatMap(AudioFormat.init(rawValue:)) ?? .unknown
+        return .available(StreamPick(url: url.absoluteString, platformId: 0, format: format))
+    }
+
+    /// The asset for a `yeti-local://download/<containerID>/<file>` pick from
+    /// `localPlayback`: decrypted on the fly by its own resource loader.
+    func makeAsset(for url: URL) -> AVURLAsset? {
+        // pathComponents is ["/", containerID, fileName].
+        let parts = url.pathComponents
+        guard url.scheme == SealedFile.urlScheme, parts.count == 3,
+              !parts[1].contains(".."), !parts[2].contains("..") else { return nil }
+        let fileURL = root.appendingPathComponent(parts[1], isDirectory: true)
+            .appendingPathComponent(parts[2])
+        return SealedURLAsset(fileURL: fileURL, name: parts[2]) {
+            try DownloadKeyStore.shared.key(creatingIfMissing: false)
+        }
+    }
+
+    /// The manifest entry for a track whose sealed file is on disk. Plaintext
+    /// entries awaiting migration don't count — they never play.
+    private func sealedFile(trackId: String) -> (containerID: String, track: DownloadedTrack)? {
         for show in manifest.shows {
-            if let track = show.tracks.first(where: { $0.trackId == trackId }) {
-                let url = root.appendingPathComponent(show.containerID, isDirectory: true)
-                    .appendingPathComponent(track.fileName)
-                return FileManager.default.fileExists(atPath: url.path) ? url : nil
-            }
+            guard let track = show.tracks.first(where: { $0.trackId == trackId }) else { continue }
+            guard track.isSealed else { return nil }
+            let url = root.appendingPathComponent(show.containerID, isDirectory: true)
+                .appendingPathComponent(track.fileName)
+            return FileManager.default.fileExists(atPath: url.path) ? (show.containerID, track) : nil
         }
         return nil
-    }
-
-    /// The show's on-disk folder (pure path computation — no I/O). Used by
-    /// the Mac's Reveal-in-Finder row action.
-    func showDirectory(containerID: String) -> URL {
-        root.appendingPathComponent(containerID, isDirectory: true)
     }
 
     // --- commands ---------------------------------------------------------------
@@ -160,6 +229,7 @@ final class DownloadStore {
 
         let dir = root.appendingPathComponent(request.containerID, isDirectory: true)
         try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        DownloadSealing.protect(dir)
 
         downloadGeneration += 1
         let generation = downloadGeneration
@@ -222,6 +292,26 @@ final class DownloadStore {
             at: root.appendingPathComponent(containerID, isDirectory: true))
     }
 
+    /// Logout: every download, every in-flight transfer, the manifest, and the
+    /// key. Call after the player has let go of any local item.
+    func deleteAll() {
+        libraryEpoch += 1
+        manager.cancel(trackIds: Array(trackOwner.keys))
+        inFlight = [:]
+        trackOwner = [:]
+        trackProgress = [:]
+        pendingPicks = [:]
+        failures = [:]
+        manifest = DownloadManifest()
+        saveManifest()
+        for entry in (try? FileManager.default.contentsOfDirectory(
+            at: root, includingPropertiesForKeys: nil)) ?? []
+        where entry != manifestURL {
+            try? FileManager.default.removeItem(at: entry)
+        }
+        DownloadKeyStore.shared.delete()
+    }
+
     // --- internals ---------------------------------------------------------------
 
     private func transferFinished(trackId: String, result: Result<URL, Error>) {
@@ -236,25 +326,55 @@ final class DownloadStore {
             }
             return
         }
-        pending.remaining.remove(trackId)
 
         switch result {
         case .success(let parkedFile):
-            let ext = pick?.downloadFileExtension ?? "bin"
-            let fileName = "\(trackId).\(ext)"
+            // Seal off the main actor (a FLAC set is tens of MB). The track
+            // stays in `remaining` — showing as fully transferred — until the
+            // sealed file is committed in `sealFinished`.
+            trackProgress[trackId] = 1
+            let contentType = SealedFile.contentType(
+                forExtension: pick?.downloadFileExtension ?? "bin")
+            let fileName = "\(UUID().uuidString.lowercased()).\(SealedFile.fileExtension)"
             let dest = root.appendingPathComponent(containerID, isDirectory: true)
                 .appendingPathComponent(fileName)
-            do {
-                try? FileManager.default.removeItem(at: dest)
-                try FileManager.default.moveItem(at: parkedFile, to: dest)
-                let attrs = try? FileManager.default.attributesOfItem(atPath: dest.path)
-                let bytes = (attrs?[.size] as? Int64) ?? 0
-                pending.completed[trackId] = (fileName, bytes, pick?.format.rawValue)
-            } catch {
-                failShow(containerID: containerID, pending: pending, message: error.localizedDescription)
-                return
+            let generation = pending.generation
+            let formatRaw = pick?.format.rawValue
+            Task.detached(priority: .utility) { [weak self] in
+                let outcome = Result {
+                    try DownloadSealing.seal(plaintext: parkedFile, to: dest,
+                                             contentType: contentType, deletingPlaintext: true)
+                }
+                await self?.sealFinished(
+                    trackId: trackId, containerID: containerID, generation: generation,
+                    dest: dest, outcome: outcome.map {
+                        Sealed(fileName: fileName, bytes: $0, formatRaw: formatRaw,
+                               contentType: contentType)
+                    })
             }
 
+        case .failure(let error):
+            pending.remaining.remove(trackId)
+            failShow(containerID: containerID, pending: pending, message: error.localizedDescription)
+        }
+    }
+
+    /// A finished transfer has been sealed (or failed to). Commits the show
+    /// once every track is in. A seal that lands after its show was deleted,
+    /// failed, or restarted removes its own file.
+    private func sealFinished(trackId: String, containerID: String, generation: Int,
+                              dest: URL, outcome: Result<Sealed, Error>) {
+        guard var pending = inFlight[containerID], pending.generation == generation,
+              pending.remaining.contains(trackId) else {
+            try? FileManager.default.removeItem(at: dest)
+            return
+        }
+        trackProgress[trackId] = nil
+        pending.remaining.remove(trackId)
+
+        switch outcome {
+        case .success(let sealed):
+            pending.completed[trackId] = sealed
         case .failure(let error):
             failShow(containerID: containerID, pending: pending, message: error.localizedDescription)
             return
@@ -268,7 +388,8 @@ final class DownloadStore {
                 return DownloadedTrack(
                     trackId: track.trackId, title: track.title, artist: track.artist,
                     durationText: track.durationText, fileName: done.fileName,
-                    formatRaw: done.formatRaw, bytes: done.bytes)
+                    formatRaw: done.formatRaw, bytes: done.bytes,
+                    contentType: done.contentType)
             }
             manifest.upsert(DownloadedShow(
                 containerID: request.containerID, title: request.title,
@@ -298,5 +419,108 @@ final class DownloadStore {
     private func saveManifest() {
         guard let data = try? JSONEncoder().encode(manifest) else { return }
         try? data.write(to: manifestURL, options: .atomic)
+    }
+
+    // --- migration ---------------------------------------------------------------
+
+    /// Seal every plaintext download left by a pre-encryption build, one
+    /// track at a time, off the main actor. Per track the order is: write the
+    /// sealed file → point the manifest at it and save → delete the
+    /// plaintext. A crash between any two steps leaves an unreferenced file
+    /// that the next launch's sweep (in init) deletes, and an entry that
+    /// still names a file that exists — so re-running is always safe, and a
+    /// finished migration has nothing left to do. A track that can't be
+    /// sealed takes its whole show with it: plaintext is never kept.
+    private func migrateUnsealedDownloads() {
+        let work = manifest.unsealedTracks
+        guard !work.isEmpty else { return }
+        let epoch = libraryEpoch
+        let root = self.root
+        Task { [weak self] in
+            for (containerID, track) in work {
+                guard let self, self.libraryEpoch == epoch else { return }
+                let dir = root.appendingPathComponent(containerID, isDirectory: true)
+                let source = dir.appendingPathComponent(track.fileName)
+                // Still the same entry? (The show may have been deleted.)
+                guard self.manifest.show(id: containerID)?.tracks
+                    .contains(where: { $0.trackId == track.trackId && $0.fileName == track.fileName }) == true
+                else { continue }
+                guard FileManager.default.fileExists(atPath: source.path) else {
+                    // Nothing to seal; the track would only stream anyway.
+                    // Drop the show rather than keep a half-local entry.
+                    self.delete(containerID: containerID)
+                    continue
+                }
+                let ext = (track.fileName as NSString).pathExtension
+                let contentType = SealedFile.contentType(forExtension: ext)
+                let newName = "\(UUID().uuidString.lowercased()).\(SealedFile.fileExtension)"
+                let dest = dir.appendingPathComponent(newName)
+                let outcome = await Task.detached(priority: .utility) {
+                    Result {
+                        try DownloadSealing.seal(plaintext: source, to: dest,
+                                                 contentType: contentType, deletingPlaintext: false)
+                    }
+                }.value
+                guard self.libraryEpoch == epoch else {
+                    try? FileManager.default.removeItem(at: dest)
+                    return
+                }
+                switch outcome {
+                case .success(let bytes):
+                    if self.manifest.replaceFile(trackId: track.trackId, containerID: containerID,
+                                                 oldFileName: track.fileName, newFileName: newName,
+                                                 bytes: bytes, contentType: contentType) {
+                        self.saveManifest()
+                        try? FileManager.default.removeItem(at: source)
+                    } else {
+                        try? FileManager.default.removeItem(at: dest)
+                    }
+                case .failure:
+                    try? FileManager.default.removeItem(at: dest)
+                    self.delete(containerID: containerID)
+                }
+            }
+        }
+    }
+}
+
+/// The file work of sealing a download, kept off the main actor.
+enum DownloadSealing {
+    /// Seal `plaintext` into `destination` with the install's key (created on
+    /// first use) and return the sealed file's size. On failure nothing is
+    /// left at `destination`. With `deletingPlaintext`, the plaintext is
+    /// removed whatever the outcome.
+    static func seal(plaintext: URL, to destination: URL, contentType: String,
+                     deletingPlaintext: Bool) throws -> Int64 {
+        defer {
+            if deletingPlaintext { try? FileManager.default.removeItem(at: plaintext) }
+        }
+        do {
+            let key = try DownloadKeyStore.shared.key(creatingIfMissing: true)
+            try SealedFile.seal(contentsOf: plaintext, to: destination, key: key,
+                                contentType: contentType)
+            protect(destination)
+            let attributes = try FileManager.default.attributesOfItem(atPath: destination.path)
+            return (attributes[.size] as? NSNumber)?.int64Value ?? 0
+        } catch {
+            try? FileManager.default.removeItem(at: destination)
+            throw error
+        }
+    }
+
+    /// iOS data protection for a download file or folder. Deliberately
+    /// `.completeUntilFirstUserAuthentication`, NOT `.complete`: the
+    /// resource loader decrypts lazily, chunk by chunk, as playback reaches
+    /// them — and the gapless preload opens the next track's file mid-queue.
+    /// Under `.complete` both become unreadable seconds after the phone locks,
+    /// so a downloaded show would stop at the first unread chunk on the lock
+    /// screen. This matches the key's Keychain class
+    /// (`AfterFirstUnlockThisDeviceOnly`). No-op on macOS.
+    static func protect(_ url: URL) {
+        #if os(iOS)
+        try? FileManager.default.setAttributes(
+            [.protectionKey: FileProtectionType.completeUntilFirstUserAuthentication],
+            ofItemAtPath: url.path)
+        #endif
     }
 }

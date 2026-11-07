@@ -10,6 +10,12 @@ extension StreamPick {
         format != .hls && !url.lowercased().contains(".m3u8")
     }
 
+    /// True for the pick a sealed download plays through (`yeti-local://`),
+    /// which is what lets a failing local item fall back to streaming.
+    var isLocalDownload: Bool {
+        url.lowercased().hasPrefix(SealedFile.urlScheme + ":")
+    }
+
     /// The on-disk extension for a downloaded pick. Format knowledge first
     /// (the container is implied by the tier), URL path extension as the
     /// fallback, "bin" when nothing usable exists.
