@@ -185,6 +185,11 @@ struct IOSRootView: View {
             app: app,
             onTap: { nowPlayingPresented = true },
             onExpand: { panelShown = true }))
+        // The Home hero (Yeti) opens the same cover the pill's tap does —
+        // one presentation, one owner.
+        .environment(\.openNowPlaying, OpenNowPlayingAction { [presented = $nowPlayingPresented] in
+            presented.wrappedValue = true
+        })
         .dismissesOnNavigation($nowPlayingPresented, ui: ui)
         .fullScreenCover(isPresented: $nowPlayingPresented) {
             // On iPhone Duo's inner display the player sits beside its queue;

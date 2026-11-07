@@ -20,12 +20,24 @@ enum LedgerSummary {
         var seconds: Double
     }
 
+    /// A number and its unit, kept apart so a ledger can set them in two
+    /// weights (`.plainVoice`'s "**41** plays", "**62** h", "**112** hours
+    /// listened"). Read together they say exactly what the joined string says.
+    struct Figure: Equatable {
+        let value: String
+        let unit: String
+    }
+
     struct Row: Identifiable, Equatable {
         let rank: Int
         let key: String
         let displayName: String
         let playsText: String
         let hoursText: String
+        /// The same two numbers, split for the column layout ("41" "plays",
+        /// "62" "h"; under an hour, "41" "m").
+        let plays: Figure
+        let hours: Figure
 
         var id: String { key }
     }
@@ -34,6 +46,9 @@ enum LedgerSummary {
         let hoursText: String
         let artistCountText: String
         let artistCount: Int
+        /// The one-line totals ("**112** hours listened · **9** artists").
+        let hours: Figure
+        let artists: Figure
     }
 
     /// The ledger lives inline on Home, so it is capped at what fits there.
@@ -55,7 +70,9 @@ enum LedgerSummary {
             .reduce(0, +)
         return Totals(hoursText: totalHoursText(seconds: seconds),
                       artistCountText: String(tallies.count),
-                      artistCount: tallies.count)
+                      artistCount: tallies.count,
+                      hours: totalHoursFigure(seconds: seconds),
+                      artists: artistsFigure(tallies.count))
     }
 
     /// Top artists by seconds. Ties break by plays, then by name, then by key,
@@ -76,7 +93,9 @@ enum LedgerSummary {
                     key: tally.key,
                     displayName: tally.displayName,
                     playsText: playsText(tally.plays),
-                    hoursText: hoursText(seconds: tally.seconds))
+                    hoursText: hoursText(seconds: tally.seconds),
+                    plays: playsFigure(tally.plays),
+                    hours: hoursFigure(seconds: tally.seconds))
             }
     }
 
@@ -100,5 +119,34 @@ enum LedgerSummary {
 
     static func playsText(_ plays: Int) -> String {
         plays == 1 ? "1 play" : "\(plays) plays"
+    }
+
+    // --- split figures (`.plainVoice`'s columns and totals line) -------------
+
+    /// The totals line's hours: the same number as `totalHoursText`, with the
+    /// unit spelled out. "1 hour listened", and "<1 hour listened" below one —
+    /// less than one hour is still singular.
+    static func totalHoursFigure(seconds: Double) -> Figure {
+        let value = totalHoursText(seconds: seconds)
+        let unit = (value == "1" || value == "<1") ? "hour listened" : "hours listened"
+        return Figure(value: value, unit: unit)
+    }
+
+    static func artistsFigure(_ count: Int) -> Figure {
+        Figure(value: String(count), unit: count == 1 ? "artist" : "artists")
+    }
+
+    /// A row's plays column: "41" "plays", "1" "play".
+    static func playsFigure(_ plays: Int) -> Figure {
+        Figure(value: String(plays), unit: plays == 1 ? "play" : "plays")
+    }
+
+    /// A row's hours column: the same rule as `hoursText` (whole hours once
+    /// there is one, else whole minutes), split into "62" "h" / "41" "m".
+    static func hoursFigure(seconds: Double) -> Figure {
+        guard seconds.isFinite, seconds > 0 else { return Figure(value: "0", unit: "m") }
+        let hours = Int(seconds / 3600)
+        if hours > 0 { return Figure(value: String(hours), unit: "h") }
+        return Figure(value: String(max(1, Int(seconds / 60))), unit: "m")
     }
 }

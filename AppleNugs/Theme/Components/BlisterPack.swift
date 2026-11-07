@@ -173,10 +173,13 @@ extension BlisterPack where Art == EmptyView, Below == EmptyView {
     }
 }
 
-/// The two pack sizes the sheets draw.
+/// The three pack sizes the sheets draw.
 enum BlisterPackStyle: Sendable {
     /// The now-playing card: 34/26/20 card padding around a full bubble.
     case regular
+    /// The iPhone Home hero (`.hero-card`): a full bubble on a tighter card,
+    /// 32/18/16, with the name panel 16pt below.
+    case hero
     /// `.card.pack.sm`: 30/16/16 padding around a `.bubble.sm`.
     case small
 
@@ -196,6 +199,12 @@ enum BlisterPackStyle: Sendable {
             return Metrics(bubble: .regular,
                            cardPadding: EdgeInsets(top: 34, leading: 26, bottom: 20, trailing: 26),
                            gap: 18, idealBubble: 298)
+        case .hero:
+            // `.hero-card { padding: 32px 18px 16px }`, `.hero-card .bubble
+            // { width: 186px }`, `.hero-card .name { margin-top: 16px }`.
+            return Metrics(bubble: .regular,
+                           cardPadding: EdgeInsets(top: 32, leading: 18, bottom: 16, trailing: 18),
+                           gap: 16, idealBubble: 186)
         case .small:
             // `.card.pack.sm { width: 156px; padding: 30px 16px 16px }`.
             return Metrics(bubble: .small,
