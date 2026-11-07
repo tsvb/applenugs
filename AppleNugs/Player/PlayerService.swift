@@ -544,10 +544,7 @@ final class PlayerService {
     /// just carries them.
     private func makeItem(url: URL) -> AVPlayerItem {
         let asset = AVURLAsset(url: url, options: [
-            "AVURLAssetHTTPHeaderFieldsKey": [
-                "Referer": NugsConstants.playerReferer,
-                "User-Agent": NugsConstants.mobileUserAgent,
-            ],
+            "AVURLAssetHTTPHeaderFieldsKey": NugsIdentity.current.cdnHeaders,
         ])
         return AVPlayerItem(asset: asset)
     }

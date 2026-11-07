@@ -149,13 +149,20 @@ actor NugsClient {
     }
 
     private func fetchSubInfo(accessToken: String) async throws -> SubInfo {
-        var req = URLRequest(url: NugsConstants.subInfoURL)
-        req.setValue("Bearer \(accessToken)", forHTTPHeaderField: "Authorization")
-        req.setValue(NugsConstants.mobileUserAgent, forHTTPHeaderField: "User-Agent")
+        let req = Self.subInfoRequest(accessToken: accessToken, identity: .current)
         let (data, res) = try await http.data(for: req)
         let status = (res as? HTTPURLResponse)?.statusCode ?? 0
         guard (200..<300).contains(status) else { throw NugsError.http(status) }
         return try JSONDecoder().decode(SubInfo.self, from: data)
+    }
+
+    /// The subscriptions request. Shared with the DEBUG network probe so it
+    /// tests exactly the request production sends, with only the identity varied.
+    static func subInfoRequest(accessToken: String, identity: NugsIdentity) -> URLRequest {
+        var req = URLRequest(url: NugsConstants.subInfoURL)
+        req.setValue("Bearer \(accessToken)", forHTTPHeaderField: "Authorization")
+        req.setValue(identity.userAgentAPI, forHTTPHeaderField: "User-Agent")
+        return req
     }
 
     // --- catalog ------------------------------------------------------------
@@ -168,11 +175,16 @@ actor NugsClient {
     }
 
     func album(id: String) async throws -> JSON {
-        try await catalogGet([
+        try await catalogGet(Self.albumQuery(id: id))
+    }
+
+    /// `catalog.container` for one show. Shared with the DEBUG network probe.
+    static func albumQuery(id: String) -> [String: String] {
+        [
             "method": "catalog.container",
             "containerID": id,
             "vdisp": "1",
-        ])
+        ]
     }
 
     func allArtists() async throws -> JSON {
@@ -198,8 +210,13 @@ actor NugsClient {
 
     private func catalogGet(_ query: [String: String]) async throws -> JSON {
         let session = try await currentSession()
-        let url = URL(string: "\(NugsConstants.streamAPIBase)/api.aspx?\(Self.encode(query))")!
-        return try await getJSON(url, bearer: session.accessToken)
+        return try await getJSON(Self.catalogURL(query), bearer: session.accessToken)
+    }
+
+    /// The legacy streamapi catalog endpoint (`api.aspx`) for a query. Shared
+    /// with the DEBUG network probe.
+    static func catalogURL(_ query: [String: String]) -> URL {
+        URL(string: "\(NugsConstants.streamAPIBase)/api.aspx?\(Self.encode(query))")!
     }
 
     /// REST GET against the modern video catalog host (`catalogV1Base`). Same
@@ -272,6 +289,19 @@ actor NugsClient {
     /// run concurrently off the actor; touches only the non-isolated `http` and
     /// the passed-in `session`.
     nonisolated func streamURL(trackId: String, platformId: Int, session: Session) async throws -> String? {
+        let req = Self.streamRequest(trackId: trackId, platformId: platformId,
+                                     session: session, identity: .current)
+        let (data, res) = try await http.data(for: req)
+        guard let code = (res as? HTTPURLResponse)?.statusCode, (200..<300).contains(code) else {
+            return nil
+        }
+        return JSON.parse(data).str("streamLink", "StreamLink")
+    }
+
+    /// One tier's `subPlayer.aspx` request. Shared with the DEBUG network
+    /// probe, which needs the status and body that `streamURL` swallows.
+    static func streamRequest(trackId: String, platformId: Int,
+                                          session: Session, identity: NugsIdentity) -> URLRequest {
         let query = [
             "trackID": trackId,
             "platformID": String(platformId),
@@ -286,12 +316,8 @@ actor NugsClient {
         var req = URLRequest(url: url)
         req.setValue("Bearer \(session.accessToken)", forHTTPHeaderField: "Authorization")
         // Legacy endpoints use a different UA than the JSON catalog ones.
-        req.setValue(NugsConstants.legacyUserAgent, forHTTPHeaderField: "User-Agent")
-        let (data, res) = try await http.data(for: req)
-        guard let code = (res as? HTTPURLResponse)?.statusCode, (200..<300).contains(code) else {
-            return nil
-        }
-        return JSON.parse(data).str("streamLink", "StreamLink")
+        req.setValue(identity.userAgentLegacy, forHTTPHeaderField: "User-Agent")
+        return req
     }
 
     /// A resolved video stream: a master `.m3u8` URL plus the access flags the
@@ -325,7 +351,7 @@ actor NugsClient {
         let url = URL(string: "\(NugsConstants.streamAPIBase)/bigriver/subPlayer.aspx?\(Self.encode(query))")!
         var req = URLRequest(url: url)
         req.setValue("Bearer \(session.accessToken)", forHTTPHeaderField: "Authorization")
-        req.setValue(NugsConstants.legacyUserAgent, forHTTPHeaderField: "User-Agent")
+        req.setValue(NugsIdentity.current.userAgentLegacy, forHTTPHeaderField: "User-Agent")
         let (data, res) = try await http.data(for: req)
         let status = (res as? HTTPURLResponse)?.statusCode ?? 0
         // Reserve a `nil` return for the PPV/owned seam (a 2xx with no
@@ -393,13 +419,20 @@ actor NugsClient {
     // --- helpers ------------------------------------------------------------
 
     private func getJSON(_ url: URL, bearer: String) async throws -> JSON {
-        var req = URLRequest(url: url)
-        req.setValue("Bearer \(bearer)", forHTTPHeaderField: "Authorization")
-        req.setValue(NugsConstants.mobileUserAgent, forHTTPHeaderField: "User-Agent")
+        let req = Self.apiRequest(url, bearer: bearer, identity: .current)
         let (data, res) = try await http.data(for: req)
         let status = (res as? HTTPURLResponse)?.statusCode ?? 0
         guard (200..<300).contains(status) else { throw NugsError.http(status) }
         return JSON.parse(data)
+    }
+
+    /// An authenticated GET against a JSON host (catalog, catalogV1, userinfo).
+    /// Shared with the DEBUG network probe.
+    static func apiRequest(_ url: URL, bearer: String, identity: NugsIdentity) -> URLRequest {
+        var req = URLRequest(url: url)
+        req.setValue("Bearer \(bearer)", forHTTPHeaderField: "Authorization")
+        req.setValue(identity.userAgentAPI, forHTTPHeaderField: "User-Agent")
+        return req
     }
 
     private func postForm(_ url: URL, form: [String: String]) async throws -> (Data, Int) {
@@ -407,7 +440,7 @@ actor NugsClient {
         req.httpMethod = "POST"
         req.httpBody = Self.encode(form).data(using: .utf8)
         req.setValue("application/x-www-form-urlencoded", forHTTPHeaderField: "Content-Type")
-        req.setValue(NugsConstants.mobileUserAgent, forHTTPHeaderField: "User-Agent")
+        req.setValue(NugsIdentity.current.userAgentAPI, forHTTPHeaderField: "User-Agent")
         let (data, res) = try await http.data(for: req)
         return (data, (res as? HTTPURLResponse)?.statusCode ?? 0)
     }
@@ -430,3 +463,87 @@ private struct TokenResponse: Decodable {
     let refresh_token: String
     let expires_in: Int
 }
+
+#if DEBUG
+// --- network probe (DEBUG only) ----------------------------------------------
+
+/// Single requests for the Network Probe screen (see NetworkProbe.swift). Each
+/// performs exactly ONE request with an explicit identity and reports what came
+/// back — status, body shape, headers — instead of the production paths'
+/// swallow-and-fall-through. They build their requests with the same builders
+/// production uses (`subInfoRequest`, `apiRequest` + `catalogURL` + `albumQuery`,
+/// `streamRequest`, `NugsIdentity.applyCDN`),
+/// so only the identity differs. None of them read or write `pickCache`.
+///
+/// Session problems (not logged in, a refresh the server rejects) THROW, so the
+/// caller can stop the run; anything after the session is in hand comes back
+/// as a result row.
+extension NugsClient {
+    func probeSubscriptions(step: ProbeStep, identity: NugsIdentity) async throws -> ProbeResult {
+        let session = try await currentSession()
+        let req = Self.subInfoRequest(accessToken: session.accessToken, identity: identity)
+        do {
+            let (data, res) = try await http.data(for: req)
+            return ProbeParse.api(step: step, status: (res as? HTTPURLResponse)?.statusCode ?? 0,
+                                  body: data)
+        } catch {
+            return ProbeParse.failure(step: step, error: error.localizedDescription)
+        }
+    }
+
+    /// `catalog.container` for the current track's show — the same request
+    /// `album(id:)` sends from every show page, on the busy browse host.
+    func probeCatalog(step: ProbeStep, showId: String, trackId: String,
+                      identity: NugsIdentity) async throws -> ProbeResult {
+        let session = try await currentSession()
+        let req = Self.apiRequest(Self.catalogURL(Self.albumQuery(id: showId)),
+                                  bearer: session.accessToken, identity: identity)
+        do {
+            let (data, res) = try await http.data(for: req)
+            return ProbeParse.catalog(step: step, status: (res as? HTTPURLResponse)?.statusCode ?? 0,
+                                      body: data, showId: showId, trackId: trackId)
+        } catch {
+            return ProbeParse.failure(step: step, error: error.localizedDescription)
+        }
+    }
+
+    func probeResolve(step: ProbeStep, trackId: String, platformId: Int,
+                      identity: NugsIdentity) async throws -> ProbeResult {
+        let session = try await currentSession()
+        let req = Self.streamRequest(trackId: trackId, platformId: platformId,
+                                     session: session, identity: identity)
+        do {
+            let (data, res) = try await http.data(for: req)
+            return ProbeParse.resolve(step: step, status: (res as? HTTPURLResponse)?.statusCode ?? 0,
+                                      body: data)
+        } catch {
+            return ProbeParse.failure(step: step, error: error.localizedDescription)
+        }
+    }
+
+    /// A ranged GET (`bytes=0-1023`) cancelled the moment headers arrive — not
+    /// HEAD, which a CDN may refuse outright, and not `data(for:)`, which would
+    /// pull a whole FLAC if the Range were ignored.
+    nonisolated func probeCDN(step: ProbeStep, url: String, identity: NugsIdentity) async -> ProbeResult {
+        guard let target = URL(string: url) else {
+            return ProbeParse.failure(step: step, error: "Unparseable stream URL")
+        }
+        var req = URLRequest(url: target)
+        identity.applyCDN(to: &req)
+        req.setValue("bytes=0-1023", forHTTPHeaderField: "Range")
+        do {
+            let (bytes, res) = try await http.bytes(for: req)
+            bytes.task.cancel()
+            guard let res = res as? HTTPURLResponse else {
+                return ProbeParse.failure(step: step, error: "Not an HTTP response")
+            }
+            return ProbeParse.cdn(step: step, status: res.statusCode,
+                                  contentType: res.value(forHTTPHeaderField: "Content-Type"),
+                                  contentLength: res.value(forHTTPHeaderField: "Content-Length"),
+                                  contentRange: res.value(forHTTPHeaderField: "Content-Range"))
+        } catch {
+            return ProbeParse.failure(step: step, error: error.localizedDescription)
+        }
+    }
+}
+#endif

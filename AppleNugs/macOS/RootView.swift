@@ -7,6 +7,12 @@ struct RootView: View {
     @Environment(\.theme) private var theme
 
     @State private var offlineShown = false
+    #if DEBUG
+    /// The DEBUG Network Probe sheet (account menu). Starts presented under
+    /// -UITestShowNetworkProbe so it can be screenshotted without a tap.
+    @State private var probeShown =
+        ProcessInfo.processInfo.arguments.contains("-UITestShowNetworkProbe")
+    #endif
 
     var body: some View {
         Group {
@@ -157,6 +163,9 @@ struct RootView: View {
         // the inspector's 250pt minimum, so the window could be dragged narrower
         // than sidebar+detail+inspector, clipping the sidebar off the left edge.
         .background(WindowMinSizeUpdater(inspectorOpen: ui.inspectorOpen))
+        #if DEBUG
+        .sheet(isPresented: $probeShown) { NetworkProbeView() }
+        #endif
         // Replay a deep link that arrived before login/bootstrap finished. This
         // layout only exists once `.loggedIn`, so the task fires exactly when the
         // app is ready. Goes through the serialized channel so it can't interleave
@@ -203,6 +212,10 @@ struct RootView: View {
                 }
             }
             .pickerStyle(.menu)
+            #if DEBUG
+            Divider()
+            Button("Network Probe (Debug)") { probeShown = true }
+            #endif
             Divider()
             Button("Log Out") { app.logout() }
         } label: {

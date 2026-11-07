@@ -30,6 +30,12 @@ struct IOSRootView: View {
     /// The pill's duck on iPhone Duo (see PillDuck.swift). Written by the
     /// scroll roots, read only by `PillDuckOverlay` — never by this body.
     @State private var pillDuck = PillDuck()
+    #if DEBUG
+    /// The DEBUG Network Probe sheet (account menu). Starts presented under
+    /// -UITestShowNetworkProbe so it can be screenshotted without a tap.
+    @State private var probeShown =
+        ProcessInfo.processInfo.arguments.contains("-UITestShowNetworkProbe")
+    #endif
 
     /// The accent the chrome should use right now: the live art color when the
     /// active theme is art-driven, else nil (so static themes are untouched).
@@ -197,6 +203,9 @@ struct IOSRootView: View {
                 .presentationBackground(.thinMaterial)
                 .presentationDragIndicator(.visible)
         }
+        #if DEBUG
+        .sheet(isPresented: $probeShown) { NetworkProbeView() }
+        #endif
         .background(KeyCommandsHost(app: app, ui: ui))
         // A text field in the tab you just left keeps first responder across a
         // tab switch (switching tabs doesn't end its editing), which would
@@ -263,6 +272,10 @@ struct IOSRootView: View {
                 }
             }
             .pickerStyle(.menu)
+            #if DEBUG
+            Divider()
+            Button("Network Probe (Debug)") { probeShown = true }
+            #endif
             Divider()
             Button("Log Out") { app.logout() }
         } label: {

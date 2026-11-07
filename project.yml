@@ -190,6 +190,12 @@ targets:
       - AppleNugs/Core/WebcastRouting.swift
       - AppleNugs/Core/JSON.swift
       - AppleNugs/Core/NugsConstants.swift
+      - path: AppleNugs/Core/NugsIdentity.swift
+        # The one place request identity (User-Agent / Referer) is decided;
+        # pure Foundation, so the honest-UA formatting is covered host-free.
+      - path: AppleNugs/Core/NetworkProbe.swift
+        # The DEBUG Network Probe's pure half (plan, parsing, report text).
+        # DEBUG-only like the screen it serves; tests build Debug.
       - path: AppleNugs/Core/Catalog.swift
         # Foundation-only parsing; compiled in (not @testable) to keep tests host-free.
       - path: AppleNugs/Core/DeepLink.swift

@@ -161,10 +161,7 @@ final class VideoPlayerService {
 
         // Same header contract the audio engine uses for the nugs CDN.
         let asset = AVURLAsset(url: url, options: [
-            "AVURLAssetHTTPHeaderFieldsKey": [
-                "Referer": NugsConstants.playerReferer,
-                "User-Agent": NugsConstants.mobileUserAgent,
-            ],
+            "AVURLAssetHTTPHeaderFieldsKey": NugsIdentity.current.cdnHeaders,
         ])
         let newItem = AVPlayerItem(asset: asset)
         item = newItem

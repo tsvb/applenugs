@@ -69,8 +69,7 @@ final class DownloadManager: NSObject {
     func fetch(trackId: String, from url: URL) {
         activeTasks[trackId]?.cancel()
         var request = URLRequest(url: url)
-        request.setValue(NugsConstants.playerReferer, forHTTPHeaderField: "Referer")
-        request.setValue(NugsConstants.mobileUserAgent, forHTTPHeaderField: "User-Agent")
+        NugsIdentity.current.applyCDN(to: &request)
         let task = session.downloadTask(with: request)
         task.taskDescription = trackId
         activeTasks[trackId] = task
