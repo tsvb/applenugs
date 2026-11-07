@@ -308,13 +308,17 @@ struct NetworkProbeView: View {
                 .disabled(runner.isRunning || runBlockedReason != nil)
 
                 Button {
-                    copy(runner.reportText(platform: platform))
+                    // Memory first, sampled now, so a copy made after a long
+                    // background session carries the numbers that matter even
+                    // without a network run.
+                    let network = runner.reportText(platform: platform)
+                    copy(memoryReportText() + (network.isEmpty ? "" : "\n\n" + network))
                     copied = true
                 } label: {
                     Label(copied ? "Copied" : "Copy results", systemImage: "doc.on.doc")
                 }
                 .buttonStyle(.bordered)
-                .disabled(runner.results.isEmpty || runner.isRunning)
+                .disabled(runner.isRunning)
             }
             if runner.isRunning {
                 ProgressView(value: Double(runner.completed), total: Double(runner.total)) {
@@ -389,6 +393,22 @@ struct NetworkProbeView: View {
         Text(text.uppercased())
             .font(.caption.weight(.semibold))
             .foregroundStyle(.secondary)
+    }
+
+    /// The Memory block as plain text, from a fresh sample.
+    private func memoryReportText() -> String {
+        let v = Vitals(player: app.player)
+        let format = { (bytes: UInt64?) in bytes.map(MemoryFootprint.format(bytes:)) ?? "—" }
+        let headroom = v.memory?.limitRemaining.map {
+            MemoryFootprint.format(bytes: $0) + " before jetsam"
+        } ?? "no limit reported"
+        return """
+        [Memory — \(platform)]
+        Footprint: \(format(v.memory?.current))
+        Peak since launch: \(format(v.memory?.peak))
+        Headroom: \(headroom)
+        BG ticks: \(v.backgroundTicks) in \(v.backgroundEntries) background \(v.backgroundEntries == 1 ? "period" : "periods")
+        """
     }
 
     private func copy(_ text: String) {
