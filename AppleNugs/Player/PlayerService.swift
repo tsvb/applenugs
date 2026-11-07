@@ -311,6 +311,10 @@ final class PlayerService {
                         let playing = status != .paused
                         if playing != self.isPlaying {
                             if !playing { self.externalPauseAt = Date() }
+                            // Listening stats: an external pause ends a span
+                            // (settle what was heard), an external resume starts
+                            // one (see rebaseListening).
+                            if playing { self.rebaseListening() } else { self.settleListening() }
                             self.isPlaying = playing
                             changed = true
                         }
@@ -485,7 +489,7 @@ final class PlayerService {
         if let p = preload, queue[index + 1].id == p.trackUID,
            currentItem != nil, player.currentItem === currentItem {
             // Settle while the head is still this track: once it advances,
-            // livePosition can no longer read where this track got to.
+            // its playhead can no longer be read.
             settleListening()
             player.advanceToNextItem()
             adoptPreload(p)
@@ -539,6 +543,7 @@ final class PlayerService {
             return
         }
         if player.timeControlStatus == .paused {
+            rebaseListening()
             isPlaying = startPlayback()
         } else {
             player.pause()
@@ -554,6 +559,7 @@ final class PlayerService {
             if current != nil { startCurrent() }
             return
         }
+        if !isPlaying { rebaseListening() }
         isPlaying = startPlayback()
         pushNowPlayingInfo()
     }
@@ -856,9 +862,8 @@ final class PlayerService {
     private func itemDidEnd(_ itemID: ObjectIdentifier?) {
         guard let itemID, let currentItem, itemID == ObjectIdentifier(currentItem) else { return }
         // It played to its end. Settle there explicitly: on a gapless hand-off
-        // the player's head is already the successor, so livePosition would
-        // fall back to the tick-fed currentTime — up to a minute stale when
-        // backgrounded.
+        // the player's head is already the successor (and at a queue's end it
+        // has none), so the playhead can no longer be read for this track.
         settleListening(at: duration > 0 ? duration : nil)
         if let p = preload, queue.indices.contains(index + 1),
            queue[index + 1].id == p.trackUID {
@@ -895,9 +900,12 @@ final class PlayerService {
         preload = nil
 
         index += 1
+        // Clear BEFORE rotating: rotateListening anchors the new visit at
+        // pendingSeekPosition, and a restored track's unapplied resume offset
+        // is not where its successor starts.
+        pendingSeekPosition = nil
         rotateListening()
         ended = false
-        pendingSeekPosition = nil
         currentItem = p.item
         picks = p.picks
         pickIndex = p.pickIndex
@@ -1117,6 +1125,8 @@ final class PlayerService {
         if saved.position > 1 {
             pendingSeekPosition = saved.position
             currentTime = saved.position
+            // Anchor listening there too: the offset was heard last session.
+            lastCreditPosition = saved.position
         }
         pushNowPlayingInfo()
     }
@@ -1156,19 +1166,43 @@ final class PlayerService {
     /// Fold the span since the last sample — the tick's job in the foreground,
     /// and the only feed while backgrounded (the tick is off there).
     ///
-    /// `position` overrides `livePosition` for callers that know better (a
+    /// `position` overrides `creditPosition` for callers that know better (a
     /// track that just ended). Credit is capped at the real time since the last
     /// sample, so even a wrong position can never credit more than actually
     /// passed — and a stale one (the usual way to be wrong) only under-counts.
     /// Cheap and idempotent: settling twice in a row folds a ~0 span.
     private func settleListening(at position: Double? = nil) {
+        // No trustworthy position (the player's head isn't our item: a gapless
+        // hand-off in flight, or the queue just ended): skip the sample and
+        // leave the baseline alone. Falling back to the tick-fed currentTime
+        // here — stale while backgrounded — would pull the baseline down and
+        // let the NEXT settle re-credit the gap, up to a whole track.
+        guard let at = position ?? creditPosition else { return }
         let now = ProcessInfo.processInfo.systemUptime
-        let at = position ?? livePosition
         credit.span(delta: at - lastCreditPosition,
                     wallSeconds: now - lastCreditSampleAt,
                     duration: duration)
         lastCreditPosition = at
         lastCreditSampleAt = now
+    }
+
+    /// Where the playhead is, for crediting — or nil when that can't be read.
+    /// Unlike `livePosition` it never falls back to `currentTime`.
+    private var creditPosition: Double? {
+        if let pendingSeekPosition { return pendingSeekPosition }
+        guard let item = currentItem, player.currentItem === item else { return nil }
+        let t = player.currentTime().seconds
+        return t.isFinite ? max(0, t) : nil
+    }
+
+    /// Paused → playing: move the baseline to here and now, crediting nothing.
+    /// Paused time can't have earned anything, and anchoring fresh means a
+    /// settle that read a pre-seek position mid-seek (the player reports the
+    /// old time until a seek lands) can't later credit the skipped distance
+    /// across a paused span the wall-clock cap doesn't see as idle.
+    private func rebaseListening() {
+        if let at = creditPosition { lastCreditPosition = at }
+        lastCreditSampleAt = ProcessInfo.processInfo.systemUptime
     }
 
     /// Hand over what's accumulated, without sampling first.
