@@ -118,8 +118,13 @@ final class PlayerService {
     /// wrong answer by then.
     @ObservationIgnored private var creditedArtist: String?
 
-    /// Playhead position at the previous tick, so the policy gets a delta.
+    /// Playhead position at the previous sample (tick or settle), so the
+    /// policy gets a delta.
     @ObservationIgnored private var lastCreditPosition: Double = 0
+
+    /// When that sample was taken (monotonic `systemUptime`). A settle credits
+    /// at most the real time since — see `ListeningCredit.span`.
+    @ObservationIgnored private var lastCreditSampleAt = ProcessInfo.processInfo.systemUptime
 
     private let player = AVQueuePlayer()
     /// The ~4Hz `tick()` observer. Installed only while the app is in the
@@ -345,7 +350,7 @@ final class PlayerService {
         timeObserver = nil
         backgroundPersistObserver = player.addPeriodicTimeObserver(
             forInterval: CMTime(seconds: 60, preferredTimescale: 1), queue: .main) { [weak self] _ in
-            MainActor.assumeIsolated { self?.persistIfMoved() }
+            MainActor.assumeIsolated { self?.backgroundWake() }
         }
         commitListening()
         persistState()
@@ -359,6 +364,9 @@ final class PlayerService {
         inBackground = false
         if let backgroundPersistObserver { player.removeTimeObserver(backgroundPersistObserver) }
         backgroundPersistObserver = nil
+        // Before the tick returns: its first delta would span the whole
+        // background stretch, and the tick's 1s clamp would discard it.
+        settleListening()
         installTickObserver()
         tick()
     }
@@ -380,6 +388,16 @@ final class PlayerService {
         guard let item = currentItem, player.currentItem === item else { return currentTime }
         let t = player.currentTime().seconds
         return t.isFinite ? max(0, t) : currentTime
+    }
+
+    /// The once-a-minute background wake — the ONLY periodic work while
+    /// backgrounded. Listening stats ride it rather than adding a wake of their
+    /// own: settle the minute just played, commit if due (so a long locked-screen
+    /// listen writes listening.json at most once a minute), then the resume save.
+    private func backgroundWake() {
+        settleListening()
+        if credit.isCommitDue { flushListening() }
+        persistIfMoved()
     }
 
     private func persistIfMoved() {
@@ -466,6 +484,9 @@ final class PlayerService {
         // promote it — manual skips ride the gapless path too.
         if let p = preload, queue[index + 1].id == p.trackUID,
            currentItem != nil, player.currentItem === currentItem {
+            // Settle while the head is still this track: once it advances,
+            // livePosition can no longer read where this track got to.
+            settleListening()
             player.advanceToNextItem()
             adoptPreload(p)
             isPlaying = startPlayback()
@@ -573,6 +594,11 @@ final class PlayerService {
     }
 
     func seek(to seconds: Double) {
+        // Credit what was listened to up to here, then move the baseline with
+        // the playhead — a scrub forward (say from the lock screen, where no
+        // tick clamps it) must earn nothing it skipped.
+        settleListening()
+        lastCreditPosition = max(0, seconds)
         let t = CMTime(seconds: max(0, seconds), preferredTimescale: 600)
         player.seek(to: t, toleranceBefore: .zero, toleranceAfter: .zero)
         currentTime = max(0, seconds)
@@ -829,6 +855,11 @@ final class PlayerService {
     /// Fired whenever any of our items plays to the end.
     private func itemDidEnd(_ itemID: ObjectIdentifier?) {
         guard let itemID, let currentItem, itemID == ObjectIdentifier(currentItem) else { return }
+        // It played to its end. Settle there explicitly: on a gapless hand-off
+        // the player's head is already the successor, so livePosition would
+        // fall back to the tick-fed currentTime — up to a minute stale when
+        // backgrounded.
+        settleListening(at: duration > 0 ? duration : nil)
         if let p = preload, queue.indices.contains(index + 1),
            queue[index + 1].id == p.trackUID {
             // AVQueuePlayer has already advanced into the preloaded item —
@@ -1044,8 +1075,9 @@ final class PlayerService {
         // handed over rather than pre-filtered here.
         let creditDelta = newTime - lastCreditPosition
         lastCreditPosition = newTime
+        lastCreditSampleAt = ProcessInfo.processInfo.systemUptime
         credit.tick(delta: creditDelta, isPlaying: newIsPlaying, duration: newDuration)
-        if credit.isCommitDue { commitListening() }
+        if credit.isCommitDue { flushListening() }  // just sampled — no settle
     }
 
     /// Exact specs from the decoder once the asset is readable — replaces the
@@ -1110,11 +1142,37 @@ final class PlayerService {
 
     // --- listening stats commit boundaries ------------------------------------
 
-    /// Hand the accumulated batch to the store.
+    /// Settle, then hand the accumulated batch to the store.
     ///
     /// Idempotent: a second call with nothing accumulated is a no-op, which is
     /// what makes it safe to call from several boundaries that can overlap.
+    /// The settle is what makes every commit boundary correct while the iOS app
+    /// is backgrounded, where no tick has been accumulating.
     private func commitListening() {
+        settleListening()
+        flushListening()
+    }
+
+    /// Fold the span since the last sample — the tick's job in the foreground,
+    /// and the only feed while backgrounded (the tick is off there).
+    ///
+    /// `position` overrides `livePosition` for callers that know better (a
+    /// track that just ended). Credit is capped at the real time since the last
+    /// sample, so even a wrong position can never credit more than actually
+    /// passed — and a stale one (the usual way to be wrong) only under-counts.
+    /// Cheap and idempotent: settling twice in a row folds a ~0 span.
+    private func settleListening(at position: Double? = nil) {
+        let now = ProcessInfo.processInfo.systemUptime
+        let at = position ?? livePosition
+        credit.span(delta: at - lastCreditPosition,
+                    wallSeconds: now - lastCreditSampleAt,
+                    duration: duration)
+        lastCreditPosition = at
+        lastCreditSampleAt = now
+    }
+
+    /// Hand over what's accumulated, without sampling first.
+    private func flushListening() {
         let batch = credit.flush()
         guard !batch.isEmpty else { return }
         listening?.credit(artistName: creditedArtist,
@@ -1131,7 +1189,9 @@ final class PlayerService {
         commitListening()
         credit.startTrack()
         creditedArtist = current?.artist
-        lastCreditPosition = 0
+        // A restored track resumes mid-way: that offset was never listened to.
+        lastCreditPosition = pendingSeekPosition ?? 0
+        lastCreditSampleAt = ProcessInfo.processInfo.systemUptime
     }
 
     private func persistState() {

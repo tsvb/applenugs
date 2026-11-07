@@ -5,7 +5,9 @@ import Foundation
 ///
 /// This type also HOLDS the per-track accumulator, and that placement is
 /// load-bearing. `PlayerService` keeps one of these as an `@ObservationIgnored`
-/// property and feeds it from the ~4Hz tick; the store is only told about a
+/// property and feeds it from the ~4Hz tick (and, while the iOS app is
+/// backgrounded and the tick is off, from playhead spans settled at commit
+/// boundaries and the once-a-minute background wake); the store is only told about a
 /// batch at a commit boundary — roughly twice a minute, never four times a
 /// second. `@Observable` notifies on every set without comparing values, so if
 /// ticking seconds landed in the store's observed counters the Home ledger
@@ -68,7 +70,26 @@ struct ListeningCredit: Equatable {
     /// contributes nothing because the accumulator only runs while playing.
     mutating func tick(delta: Double, isPlaying: Bool, duration: Double) {
         guard isPlaying, delta.isFinite else { return }
-        let credited = min(max(delta, 0), Self.maxTickSeconds)
+        add(min(max(delta, 0), Self.maxTickSeconds), duration: duration)
+    }
+
+    /// Fold a span with no ticks inside it — the iOS app backgrounded, where
+    /// the tick is off (see `PlayerService.appDidEnterBackground()`).
+    ///
+    /// `delta` is playhead movement since the last sample and `wallSeconds` the
+    /// real time that passed meanwhile. A playhead being listened to can't move
+    /// faster than real time, so the wall clock is the clamp here — what the
+    /// 1s cap is for a tick: a forward seek inside the span earns at most the
+    /// time that actually passed. There is no `isPlaying` gate because none is
+    /// needed: a paused or stalled playhead doesn't move, so its delta is 0.
+    mutating func span(delta: Double, wallSeconds: Double, duration: Double) {
+        guard delta.isFinite, wallSeconds.isFinite else { return }
+        add(min(max(delta, 0), max(wallSeconds, 0)), duration: duration)
+    }
+
+    /// The accumulator and the play latch, shared by both entry points so a
+    /// visit that mixes ticks and spans still earns exactly one play.
+    private mutating func add(_ credited: Double, duration: Double) {
         guard credited > 0 else { return }
 
         trackSeconds += credited

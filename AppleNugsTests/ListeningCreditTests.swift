@@ -156,4 +156,75 @@ final class ListeningCreditTests: XCTestCase {
         earner.tick(delta: 1, isPlaying: true, duration: 2)   // threshold 1s
         XCTAssertTrue(earner.isCommitDue)
     }
+
+    // --- spans: the iOS app backgrounded, no tick running ---------------------
+
+    /// A minute of locked-screen listening is a minute — not the 1s a tick
+    /// would clamp it to.
+    func testASpanCreditsThePlayheadMovement() {
+        var credit = ListeningCredit()
+        credit.span(delta: 60, wallSeconds: 60.2, duration: longDuration)
+
+        XCTAssertEqual(credit.trackSeconds, 60, accuracy: 0.0001)
+        XCTAssertEqual(credit.uncommittedSeconds, 60, accuracy: 0.0001)
+    }
+
+    /// A lock-screen scrub forward inside a span: the playhead jumped ten
+    /// minutes in one minute of real time. Only the minute is credited.
+    func testASpanIsCappedAtTheWallClock() {
+        var credit = ListeningCredit()
+        credit.span(delta: 660, wallSeconds: 60, duration: longDuration)
+
+        XCTAssertEqual(credit.trackSeconds, 60, accuracy: 0.0001)
+    }
+
+    /// Paused (or stalled) for most of the span: the playhead didn't move, so
+    /// the delta is the whole story — no isPlaying flag needed.
+    func testAPausedSpanCreditsOnlyWhatThePlayheadMoved() {
+        var credit = ListeningCredit()
+        credit.span(delta: 0, wallSeconds: 3_600, duration: normalDuration)
+        XCTAssertEqual(credit.trackSeconds, 0)
+
+        credit.span(delta: 10, wallSeconds: 60, duration: normalDuration)
+        XCTAssertEqual(credit.trackSeconds, 10, accuracy: 0.0001)
+    }
+
+    func testANegativeOrNonFiniteSpanContributesNothing() {
+        var credit = ListeningCredit()
+        credit.span(delta: -120, wallSeconds: 60, duration: normalDuration)   // backward seek
+        credit.span(delta: 30, wallSeconds: -5, duration: normalDuration)     // clock went backwards
+        credit.span(delta: .nan, wallSeconds: 60, duration: normalDuration)
+        credit.span(delta: 30, wallSeconds: .infinity, duration: normalDuration)
+
+        XCTAssertEqual(credit.trackSeconds, 0)
+        XCTAssertEqual(credit.uncommittedSeconds, 0)
+        XCTAssertFalse(credit.playCredited)
+    }
+
+    /// One locked-screen stretch can carry a whole track past its threshold.
+    func testASingleSpanCanEarnThePlayAndMakesACommitDue() {
+        var credit = ListeningCredit()
+        credit.span(delta: 125, wallSeconds: 130, duration: normalDuration)   // threshold 120
+
+        XCTAssertTrue(credit.playCredited)
+        XCTAssertTrue(credit.isCommitDue)
+        XCTAssertEqual(credit.flush(), .init(seconds: 125, completedPlay: true))
+    }
+
+    /// Ticks then a span then ticks, all on one visit: the thresholds add up
+    /// across both entry points and the latch still allows exactly one play.
+    func testTicksAndSpansShareOneVisitAndOnePlay() {
+        var credit = ListeningCredit()
+        run(&credit, ticks: 200, duration: normalDuration)                    // 50s
+        credit.span(delta: 60, wallSeconds: 60, duration: normalDuration)     // 110s
+        XCTAssertFalse(credit.playCredited)
+
+        run(&credit, ticks: 40, duration: normalDuration)                     // 120s
+        XCTAssertTrue(credit.playCredited)
+        XCTAssertTrue(credit.flush().completedPlay)
+
+        credit.span(delta: 120, wallSeconds: 120, duration: normalDuration)   // 240s
+        XCTAssertFalse(credit.flush().completedPlay)
+        XCTAssertEqual(credit.trackSeconds, 240, accuracy: 0.0001)
+    }
 }
