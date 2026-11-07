@@ -1,10 +1,17 @@
 import Foundation
 
-/// A parsed `applenugs://` deep link. Pure value type — no I/O — so it unit-tests
-/// cleanly. Contract lives in goose-almanac `docs/integrations/applenugs-deeplink.md`:
-///   applenugs://show/<date>?artist=Goose[&venue=][&song=&set=&pos=][&media=audio|video]
+/// A parsed `yeti://` (or legacy `applenugs://`) deep link. Pure value type — no
+/// I/O — so it unit-tests cleanly. Contract lives in goose-almanac
+/// `docs/integrations/applenugs-deeplink.md`:
+///   yeti://show/<date>?artist=Goose[&venue=][&song=&set=&pos=][&media=audio|video]
 struct DeepLink: Equatable {
     enum Media: String { case audio, video }
+
+    /// Schemes this parser accepts — keep in lockstep with `CFBundleURLSchemes`
+    /// in `project.yml`. `yeti` is the app's own name; `applenugs` stays because
+    /// goosealmanac's live /listen-links page emits it, and existing links must
+    /// keep opening the app.
+    static let schemes: Set<String> = ["yeti", "applenugs"]
 
     var date: String          // "yyyy-MM-dd" — the join key
     var artist: String        // e.g. "Goose"
@@ -14,10 +21,11 @@ struct DeepLink: Equatable {
     var position: Int?        // elgoose position — tie-break only
     var media: Media
 
-    /// Parse `applenugs://show/<date>?artist=…&venue=…&song=…&set=…&pos=…&media=…`.
-    /// Returns nil for anything that isn't a well-formed `show` link.
+    /// Parse `yeti://show/<date>?artist=…&venue=…&song=…&set=…&pos=…&media=…`
+    /// (identically under `applenugs://`). Returns nil for anything that isn't a
+    /// well-formed `show` link in one of `schemes`.
     static func parse(_ url: URL) -> DeepLink? {
-        guard url.scheme == "applenugs",
+        guard let scheme = url.scheme?.lowercased(), schemes.contains(scheme),
               let comps = URLComponents(url: url, resolvingAgainstBaseURL: false),
               comps.host == "show"
         else { return nil }

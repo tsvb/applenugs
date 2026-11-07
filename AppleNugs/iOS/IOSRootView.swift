@@ -278,9 +278,23 @@ struct IOSRootView: View {
             #endif
             Divider()
             Button("Log Out") { app.logout() }
+            // iOS has no About panel, so the disclaimer the Mac carries in
+            // Credits.rtf lives here: non-interactive rows, like the plan above.
+            // Two short lines rather than one long one — menu rows truncate.
+            Divider()
+            Text(Self.aboutLine)
+            Text("Unofficial. Not affiliated with nugs.net or Apple.")
         } label: {
             Label("Account", systemImage: "person.circle")
         }
+    }
+
+    /// "Yeti 1.5 (6)", from the bundle so it can't drift from project.yml.
+    private static var aboutLine: String {
+        let info = Bundle.main.infoDictionary
+        let version = info?["CFBundleShortVersionString"] as? String ?? "?"
+        let build = info?["CFBundleVersion"] as? String ?? "?"
+        return "Yeti \(version) (\(build))"
     }
 
     @ViewBuilder

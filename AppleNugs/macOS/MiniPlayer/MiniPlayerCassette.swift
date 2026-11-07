@@ -198,7 +198,7 @@ struct MiniPlayerCassette: View {
         // 62, not 54: "POSITION HIGH" at numeric(6)/tracking(0.75) measures
         // 57.97 pt (NSFont.monospacedSystemFont equivalent); 54 clipped it to
         // "POSITION HIG…" in every session. Keep in lockstep with rightShoulder
-        // so the window stays centred.
+        // so the window stays centered.
         .frame(width: 62, alignment: .leading)
         .accessibilityHidden(true)
     }
@@ -228,7 +228,7 @@ struct MiniPlayerCassette: View {
             .accessibilityLabel("Save show to Favorites")
             .accessibilityAddTraits(saved ? .isSelected : [])
 
-            Text("applenugs")
+            Text("yeti")
                 .font(theme.type.numeric(6).weight(.bold))
                 .tracking(0.9)
                 .foregroundStyle(theme.palette.accent.opacity(0.85))

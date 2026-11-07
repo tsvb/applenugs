@@ -131,7 +131,7 @@ struct AppleNugsApp: App {
             // The default Help item only says "Help isn't available"; point it
             // at the project page instead.
             CommandGroup(replacing: .help) {
-                Button("AppleNugs Website") {
+                Button("Yeti Website") {
                     NSWorkspace.shared.open(URL(string: "https://timvanbenschoten.com/code/applenugs")!)
                 }
             }

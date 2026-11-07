@@ -16,7 +16,8 @@ TOOLS="${SPARKLE_TOOLS:-build/sparkle-tools/bin}"
 
 # --link adds a <link> to the new item: the project page, which Sparkle offers
 # when it cannot install an update itself. A release-notes file named like the
-# DMG (AppleNugs-X.Y.html) in the enclosure dir is embedded as the description.
+# DMG (Yeti-X.Y.html for Yeti-X.Y.dmg; generate_appcast pairs them by basename)
+# in the enclosure dir is embedded as the description.
 "$TOOLS/generate_appcast" \
   --download-url-prefix "https://github.com/tsvb/applenugs/releases/download/${TAG}/" \
   --link "https://timvanbenschoten.com/code/applenugs" \

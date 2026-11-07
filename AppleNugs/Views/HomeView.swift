@@ -67,7 +67,7 @@ struct HomeView: View {
 
     private var greeting: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("APPLENUGS")
+            Text("YETI")
                 .font(theme.type.numeric(11))
                 .tracking(3)
                 .foregroundStyle(theme.palette.accent)

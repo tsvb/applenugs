@@ -72,6 +72,74 @@ final class DeepLinkParseTests: XCTestCase {
     }
 }
 
+/// `yeti://` is the app's own scheme; `applenugs://` (above) stays as an alias
+/// because goosealmanac emits it. The two must parse identically.
+final class DeepLinkYetiSchemeTests: XCTestCase {
+
+    func testYetiShowAudioDefaults() {
+        let link = DeepLink.parse(URL(string: "yeti://show/2024-04-20?artist=Goose")!)
+        XCTAssertEqual(link, DeepLink(date: "2024-04-20", artist: "Goose", venue: nil,
+                                      song: nil, setNumber: nil, position: nil, media: .audio))
+    }
+
+    func testYetiTrackWithVenueAndPercentDecoding() {
+        let link = DeepLink.parse(URL(string:
+            "yeti://show/2024-04-20?artist=Goose&song=Hot%20Tea&set=1&pos=2&venue=The%20Salt%20Shed")!)
+        XCTAssertEqual(link?.song, "Hot Tea")
+        XCTAssertEqual(link?.venue, "The Salt Shed")
+        XCTAssertEqual(link?.setNumber, "1")
+        XCTAssertEqual(link?.position, 2)
+        XCTAssertEqual(link?.media, .audio)
+    }
+
+    func testYetiVideoMedia() {
+        let link = DeepLink.parse(URL(string: "yeti://show/2026-05-30?artist=Goose&media=video")!)
+        XCTAssertEqual(link?.media, .video)
+    }
+
+    func testYetiRejectsWrongHost() {
+        XCTAssertNil(DeepLink.parse(URL(string: "yeti://artist/2024-04-20?artist=Goose")!))
+    }
+
+    func testYetiRejectsMissingDate() {
+        XCTAssertNil(DeepLink.parse(URL(string: "yeti://show?artist=Goose")!))
+        XCTAssertNil(DeepLink.parse(URL(string: "yeti://show/?artist=Goose")!))
+    }
+
+    func testYetiRejectsMissingOrEmptyArtist() {
+        XCTAssertNil(DeepLink.parse(URL(string: "yeti://show/2024-04-20")!))
+        XCTAssertNil(DeepLink.parse(URL(string: "yeti://show/2024-04-20?artist=")!))
+    }
+
+    func testYetiNonPaddedDateIsZeroPadded() {
+        let link = DeepLink.parse(URL(string: "yeti://show/2024-4-20?artist=Goose")!)
+        XCTAssertEqual(link?.date, "2024-04-20")
+    }
+
+    func testBothSchemesParseIdentically() {
+        let query = "show/2024-04-20?artist=Goose&song=Hot%20Tea&venue=Salt%20Shed&media=video"
+        let yeti = DeepLink.parse(URL(string: "yeti://" + query)!)
+        let legacy = DeepLink.parse(URL(string: "applenugs://" + query)!)
+        XCTAssertNotNil(yeti)
+        XCTAssertEqual(yeti, legacy)
+    }
+
+    func testSchemeMatchIsCaseInsensitive() {
+        // RFC 3986 schemes are case-insensitive, and URL preserves the case it
+        // was given.
+        XCTAssertNotNil(DeepLink.parse(URL(string: "YETI://show/2024-04-20?artist=Goose")!))
+        XCTAssertNotNil(DeepLink.parse(URL(string: "AppleNugs://show/2024-04-20?artist=Goose")!))
+    }
+
+    func testOnlyTheTwoRegisteredSchemesAreAccepted() {
+        // Pins the allow-list: a near-miss or a foreign scheme stays inert.
+        XCTAssertEqual(DeepLink.schemes, ["yeti", "applenugs"])
+        XCTAssertNil(DeepLink.parse(URL(string: "yeti-local://show/2024-04-20?artist=Goose")!))
+        XCTAssertNil(DeepLink.parse(URL(string: "x-applenugs-meta://show/2024-04-20?artist=Goose")!))
+        XCTAssertNil(DeepLink.parse(URL(string: "nugsnet://show/2024-04-20?artist=Goose")!))
+    }
+}
+
 final class DeepLinkMatchTests: XCTestCase {
 
     func testNormalizeLowercasesFoldsAndSpacesPunctuation() {

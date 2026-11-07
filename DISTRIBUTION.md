@@ -1,21 +1,51 @@
 # Distribution
 
-This document covers signing and shipping AppleNugs two ways: the **Mac App
+This document covers signing and shipping Yeti two ways: the **Mac App
 Store** and **Developer ID** (a notarized build for direct download, e.g. a
 GitHub release). The repo's committed project is ad-hoc signed so it builds
 anywhere; the steps below are what *you* do with your own Apple Developer
 account when you're ready to ship.
 
+## Naming: "Yeti" outside, "AppleNugs" inside
+
+The app was renamed from AppleNugs to **Yeti** as a display-only change.
+What users see — `CFBundleName` / `CFBundleDisplayName` (menu bar, About
+panel, iOS home screen), the appcast `<title>`, DMG names, the login screen —
+says Yeti. Everything that existing installs, sessions or the update chain
+key off stays as it was, on purpose:
+
+- bundle IDs `com.timvbs.applenugs` / `com.timvbs.applenugs.ios`;
+- `Application Support/AppleNugs/` and the Keychain service/account (the
+  Keychain item's *label* is now "Yeti login" — labels are not part of the
+  lookup, and the next token write relabels an existing item);
+- the Sparkle feed URL (`raw.githubusercontent.com/tsvb/applenugs/main/appcast.xml`)
+  and `SUPublicEDKey`; the `tsvb/applenugs` repo and its release URLs;
+- the Xcode project, target and scheme names, and `PRODUCT_NAME` — so the
+  built bundle is still `AppleNugs.app` and every `build/export/AppleNugs.app`
+  path below is still correct;
+- the `applenugs://` URL scheme, registered alongside the new `yeti://`
+  (goosealmanac's live /listen-links page emits `applenugs://`).
+
+**Sparkle-updated installs keep the `AppleNugs.app` file name.** Sparkle
+replaces the bundle in place at its existing path and does not rename it, so
+an install that updates from 1.5 stays `/Applications/AppleNugs.app` even
+after the rename ships. That is expected; don't try to rename an installed
+bundle from the app or an updater hook. Finder shows the file name (and the
+Dock and Spotlight generally do too for a non-localized bundle), so those read
+"AppleNugs" until the `.app` itself is renamed; the menu bar and About panel
+read Yeti from `CFBundleName`. Renaming the
+product (`PRODUCT_NAME`) is a separate, later decision.
+
 ## ⚠️ Read first: App Store review risk
 
-AppleNugs is an unofficial client for a third-party subscription service whose
+Yeti is an unofficial client for a third-party subscription service whose
 **unofficial/reverse-engineered API** it talks to directly. That collides with
 several App Store Review Guidelines, most pointedly:
 
 - **5.2.2 (Intellectual Property — third-party services):** an app that
   "accesses, monetizes access to, or displays content from a third-party
   service" must be "specifically permitted to do so under the service's terms."
-  AppleNugs is not. nugs.net has not authorized this client.
+  Yeti is not. nugs.net has not authorized this client.
 - **2.3 / 4.0:** using a private/undocumented API of someone else's service and
   the "nugs" name/marks invites rejection on metadata and design grounds too.
 
@@ -156,7 +186,7 @@ Standing notes:
 
 ## Sparkle auto-update releases
 
-AppleNugs uses [Sparkle](https://sparkle-project.org) for in-app updates. The
+Yeti uses [Sparkle](https://sparkle-project.org) for in-app updates. The
 `scripts/sparkle-appcast.sh` helper signs the release artifact and writes
 `appcast.xml`. Every release must follow these steps in order:
 
@@ -168,15 +198,18 @@ AppleNugs uses [Sparkle](https://sparkle-project.org) for in-app updates. The
 
 2. **Build → notarize → staple the DMG.** The DMG is the release artifact that
    Sparkle downloads and mounts. Follow Path B above to produce the notarized
-   `.app`, then package it as a DMG rather than a zip:
+   `.app`, then package it as a DMG rather than a zip. From the rename on,
+   the DMG and its volume are named **`Yeti-X.Y.dmg`** / `Yeti` (releases up
+   to v1.5 shipped as `AppleNugs-X.Y.dmg`); the `.app` inside is still
+   `AppleNugs.app` — see "Naming" above:
 
    ```sh
-   hdiutil create -volname AppleNugs -srcfolder build/export/AppleNugs.app \
-     -ov -format UDZO build/AppleNugs-vX.Y.dmg
-   xcrun notarytool submit build/AppleNugs-vX.Y.dmg \
+   hdiutil create -volname Yeti -srcfolder build/export/AppleNugs.app \
+     -ov -format UDZO build/Yeti-X.Y.dmg
+   xcrun notarytool submit build/Yeti-X.Y.dmg \
      --apple-id "you@example.com" --team-id TEAMID \
      --password "abcd-efgh-ijkl-mnop" --wait
-   xcrun stapler staple build/AppleNugs-vX.Y.dmg
+   xcrun stapler staple build/Yeti-X.Y.dmg
    ```
 
 3. **Let `xcodebuild` sign the nested Sparkle framework and XPC services.**
@@ -190,7 +223,7 @@ AppleNugs uses [Sparkle](https://sparkle-project.org) for in-app updates. The
    ```sh
    # Upload the stapled DMG as the GitHub Release asset, then:
    mkdir -p build/sparkle-enclosure
-   cp build/AppleNugs-vX.Y.dmg build/sparkle-enclosure/
+   cp build/Yeti-X.Y.dmg build/sparkle-enclosure/
    scripts/sparkle-appcast.sh build/sparkle-enclosure vX.Y
    git add appcast.xml && git commit -m "release: vX.Y appcast"
    git push
@@ -198,6 +231,12 @@ AppleNugs uses [Sparkle](https://sparkle-project.org) for in-app updates. The
 
    The feed must never point at a 404 — uploading the asset before pushing
    `appcast.xml` guarantees that.
+
+   The feed URL never changes with the rename. The appcast's channel
+   `<title>` reads `Yeti` (hand-edited for the rename); `generate_appcast`
+   derives it from the app bundle's name when it writes a fresh feed, which
+   should now also come out as Yeti — check the generated `appcast.xml`
+   before committing the first post-rename release rather than assuming.
 
    End the GitHub Release notes with the project page line:
 
@@ -207,7 +246,8 @@ AppleNugs uses [Sparkle](https://sparkle-project.org) for in-app updates. The
 
    The script passes `--link` with the same URL, so each new appcast item
    carries it too. To show notes in Sparkle's update window, put an
-   `AppleNugs-X.Y.html` file (an HTML fragment, no `<body>`) next to the DMG in
+   `Yeti-X.Y.html` file (an HTML fragment, no `<body>`; `generate_appcast`
+   pairs it with the DMG by basename, so it renames in lockstep) next to the DMG in
    `build/sparkle-enclosure/` and end it with
    `<p>Project page: <a href="https://timvanbenschoten.com/code/applenugs">timvanbenschoten.com/code/applenugs</a></p>`.
 

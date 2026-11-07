@@ -11,9 +11,9 @@ struct LoginView: View {
                 Image(systemName: "waveform.circle.fill")
                     .font(.system(size: 44))
                     .foregroundStyle(.tint)
-                Text("AppleNugs")
+                Text("Yeti")
                     .font(.largeTitle.weight(.semibold))
-                Text("A personal native client for nugs.net")
+                Text("An unofficial player for nugs.net")
                     .foregroundStyle(.secondary)
             }
 
@@ -39,11 +39,14 @@ struct LoginView: View {
             .disabled(app.isLoggingIn)
             .accessibilityIdentifier("login.signIn")
 
-            Text("You sign in on nugs.net’s own page; this app never sees your password.")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                .frame(maxWidth: 380)
-                .multilineTextAlignment(.center)
+            VStack(spacing: 4) {
+                Text("You sign in on nugs.net’s own page; this app never sees your password.")
+                Text("Unofficial. Not affiliated with nugs.net or Apple.")
+            }
+            .font(.caption)
+            .foregroundStyle(.secondary)
+            .frame(maxWidth: 380)
+            .multilineTextAlignment(.center)
         }
         .padding()
         .frame(maxWidth: .infinity, maxHeight: .infinity)

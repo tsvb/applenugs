@@ -1,7 +1,7 @@
 import Foundation
 
-/// Constants from the unofficial nugs.net mobile/web clients.
-/// Sourced from Sorrow446/Nugs-Downloader and Dniel97/orpheusdl-nugs.
+/// Constants for nugs.net's public endpoints and the OAuth client used by its
+/// own apps (see NOTICE).
 enum NugsConstants {
     static let clientId = "Eg7HuH873H65r5rt325UytR5429"
 

@@ -128,8 +128,8 @@ enum NowPlayingMetaLine {
 /// to survive a round trip through one.
 extension NowPlayingMetaLine.Target {
 
-    /// Deliberately NOT `applenugs://`. That scheme is registered in both
-    /// Info.plists and is the public deep-link contract; routing internal taps
+    /// Deliberately NOT `yeti://` or `applenugs://`. Those schemes are registered
+    /// in both Info.plists and are the public deep-link contract; routing internal taps
     /// through it would invite LaunchServices and any future `onOpenURL`
     /// handler into a purely in-process hop. Unregistered means the worst case
     /// if an interceptor is ever missing is a silent no-op, not a relaunch.
