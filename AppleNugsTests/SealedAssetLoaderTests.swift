@@ -28,7 +28,10 @@ final class SealedAssetLoaderTests: XCTestCase {
         var formatID: AudioFormatID { self == .flac ? kAudioFormatFLAC : kAudioFormatAppleLossless }
     }
 
-    private func makeAudio(_ container: Container, seconds: Double = 3) throws -> URL {
+    /// `noisy` mixes in pseudo-random noise so the file compresses like real
+    /// music (megabytes, many loader requests) instead of a few KiB of tone.
+    private func makeAudio(_ container: Container, seconds: Double = 3,
+                           noisy: Bool = false) throws -> URL {
         let url = dir.appendingPathComponent("tone.\(container.rawValue)")
         let rate = 44_100.0
         let settings: [String: Any] = [
@@ -43,10 +46,16 @@ final class SealedAssetLoaderTests: XCTestCase {
         let format = try XCTUnwrap(AVAudioFormat(standardFormatWithSampleRate: rate, channels: 2))
         let buffer = try XCTUnwrap(AVAudioPCMBuffer(pcmFormat: format, frameCapacity: frames))
         buffer.frameLength = frames
+        var seed: UInt32 = 1
         for channel in 0..<2 {
             let samples = try XCTUnwrap(buffer.floatChannelData)[channel]
             for i in 0..<Int(frames) {
-                samples[i] = sinf(Float(i) * 2 * .pi * 440 / Float(rate)) * 0.3
+                var noise: Float = 0
+                if noisy {
+                    seed = seed &* 1_664_525 &+ 1_013_904_223
+                    noise = (Float(seed >> 8) / Float(1 << 24) - 0.5) * 0.1
+                }
+                samples[i] = sinf(Float(i) * 2 * .pi * 440 / Float(rate)) * 0.3 + noise
             }
         }
         try file.write(from: buffer)
@@ -120,11 +129,55 @@ final class SealedAssetLoaderTests: XCTestCase {
         }
     }
 
+    /// The whole of a multi-megabyte file — many loader requests — must decode
+    /// bit-identically to the plaintext.
+    func testWholeNoisyFileDecodesIdenticallyToThePlaintext() async throws {
+        for container in Container.allCases {
+            let label = container.rawValue
+            let plain = try makeAudio(container, seconds: 20, noisy: true)
+            let size = try XCTUnwrap(try FileManager.default
+                .attributesOfItem(atPath: plain.path)[.size] as? Int)
+            XCTAssertGreaterThan(size, 1 << 20, "\(label): fixture too small to need many requests")
+            let range = CMTimeRange(start: .zero, duration: seconds(20))
+            let fromPlain = try await decodePCM(AVURLAsset(url: plain), range: range)
+            let fromSealed = try await decodePCM(try sealedAsset(for: plain), range: range)
+            XCTAssertEqual(fromSealed.count, fromPlain.count, label)
+            XCTAssertTrue(fromSealed == fromPlain, "\(label): PCM differs")
+        }
+    }
+
+    /// With `isEntireLengthAvailableOnDemand` set, a PLAYING item asks for
+    /// small ranges as it needs them. Without it AVPlayer opens with
+    /// "everything to the end" and buffers what it's fed — a 10-minute sealed
+    /// track then cost ~5x a plain file's memory.
+    @MainActor
+    func testPlaybackAsksForSmallRangesNotTheWholeFile() async throws {
+        for container in Container.allCases {
+            let label = container.rawValue
+            let asset = try sealedAsset(for: try makeAudio(container, seconds: 20, noisy: true))
+            let item = AVPlayerItem(asset: asset)
+            let player = AVPlayer(playerItem: item)
+            player.volume = 0
+            player.play()
+            let deadline = Date().addingTimeInterval(10)
+            while item.status == .unknown, Date() < deadline {
+                try await Task.sleep(for: .milliseconds(50))
+            }
+            XCTAssertEqual(item.status, .readyToPlay, "\(label): \(String(describing: item.error))")
+            try await Task.sleep(for: .seconds(1))
+            player.pause()
+            let largest = asset.loader.queue.sync { asset.loader.largestRequestedLength }
+            XCTAssertGreaterThan(largest, 0, label)
+            XCTAssertLessThanOrEqual(largest, 1 << 20, "\(label): largest request \(largest) bytes")
+        }
+    }
+
     @MainActor
     func testPlayerItemBecomesReadySeeksAndPlaysToTheEnd() async throws {
         for container in Container.allCases {
             let label = container.rawValue
-            let item = AVPlayerItem(asset: try sealedAsset(for: try makeAudio(container)))
+            let plainURL = try makeAudio(container)
+            let item = AVPlayerItem(asset: try sealedAsset(for: plainURL))
             let player = AVPlayer(playerItem: item)
             player.volume = 0
             let deadline = Date().addingTimeInterval(10)
@@ -141,15 +194,30 @@ final class SealedAssetLoaderTests: XCTestCase {
 
             // Play the last stretch: the final chunk must decode and the item
             // must reach the end — not stall short of it, not run past it.
+            //
+            // "Past it" is judged against the PLAIN file's player item, not a
+            // fixed 3.0: AVPlayer gives a 3.0s FLAC an item duration of
+            // ~3.03s and keeps advancing currentTime for a moment after the
+            // end, for a plain file URL just the same (measured, 2026-11-07).
+            // Polling currentTime against 3.0 ± 0.02 was timing-flaky for
+            // exactly that reason; the end notification and the item duration
+            // are deterministic.
+            let ended = expectation(forNotification: AVPlayerItem.didPlayToEndTimeNotification,
+                                    object: item)
             _ = await player.seek(to: seconds(2.7), toleranceBefore: .zero, toleranceAfter: .zero)
             player.play()
-            let endDeadline = Date().addingTimeInterval(5)
-            while player.currentTime().seconds < 2.99, item.error == nil, Date() < endDeadline {
+            await fulfillment(of: [ended], timeout: 5)
+            XCTAssertNil(item.error, label)
+            XCTAssertGreaterThanOrEqual(player.currentTime().seconds, 2.98, label)
+            player.pause()
+            let plainItem = AVPlayerItem(asset: AVURLAsset(url: plainURL))
+            let plainPlayer = AVPlayer(playerItem: plainItem)
+            plainPlayer.volume = 0
+            let plainDeadline = Date().addingTimeInterval(10)
+            while plainItem.status == .unknown, Date() < plainDeadline {
                 try await Task.sleep(for: .milliseconds(50))
             }
-            XCTAssertEqual(player.currentTime().seconds, 3, accuracy: 0.02,
-                           "\(label): \(String(describing: item.error))")
-            player.pause()
+            XCTAssertEqual(item.duration.seconds, plainItem.duration.seconds, accuracy: 0.001, label)
         }
     }
 

@@ -17,20 +17,42 @@ import Foundation
 /// makes the `@unchecked Sendable` sound.
 final class SealedAssetLoader: NSObject, AVAssetResourceLoaderDelegate, @unchecked Sendable {
 
-    /// Bytes handed to AVFoundation per `respond(with:)`. Large requests (it
-    /// routinely asks for "everything to the end") are served piece by piece,
-    /// re-enqueued between pieces so a cancellation can land in between.
+    /// Bytes handed to AVFoundation per `respond(with:)`. Large requests are
+    /// served piece by piece, re-enqueued between pieces so a cancellation can
+    /// land in between. Rarely exercised since `isEntireLengthAvailableOnDemand`
+    /// (below): AVFoundation then asks for ≤ 64 KiB at a time on its own.
     static let pieceSize = 4 * SealedFile.defaultChunkSize
 
-    // Requests are always served IN FULL, never finished early. AVFoundation
-    // opens with "everything to the end" and, served eagerly, pulls ~34 MB of
-    // a 74 MB FLAC in the first second before cancelling (resident memory
-    // ~101 MB vs ~36 MB for a plain file URL, scratch harness, macOS). Capping
-    // each request and finishing it early was tried: ALAC was fine, but FLAC
-    // then decoded to DIFFERENT PCM and a 3.0s file played to 3.04s — the FLAC
-    // parser treats an early finish as real data boundaries. Don't add a cap
-    // back without the bit-identical-PCM test in SealedAssetLoaderTests
-    // passing for FLAC under it.
+    // MEMORY: the content-information answer sets
+    // `isEntireLengthAvailableOnDemand = true` — "this is local, ask for what
+    // you need when you need it". Without it AVFoundation treats the resource
+    // like a network download: it opens with "everything to the end" and
+    // buffers whatever it's given, so a 10-minute track (136 MB FLAC / 186 MB
+    // ALAC fixture, A playing + B preloaded) peaked at 134 MB / 105 MB of
+    // phys_footprint against 19 MB for the same files as plain file URLs.
+    // With the flag: 19.5 MB / 20.8 MB — plain-file level. Measured with
+    // `scripts/sealed-footprint/main.swift` (macOS, 2026-11-07); a request
+    // log showed every request ≤ 64 KiB (a few tiny header/moov reads, then
+    // 65,536-byte reads). After a seek the 64 KiB requests aren't
+    // chunk-aligned, so each one straddles two sealed chunks: one decrypt plus
+    // one hit on the reader's one-chunk cache, i.e. every chunk is still
+    // decrypted once while streaming — a bigger cache would buy nothing.
+    //
+    // Requests are still always served IN FULL, never finished early. That was
+    // tried before the flag existed (capping the eager "to the end" request):
+    // ALAC was fine, but FLAC reportedly decoded to DIFFERENT PCM. (The other
+    // symptom reported then, "a 3.0s file played to 3.04s", is NOT evidence:
+    // AVPlayer gives a PLAIN 3.0s FLAC file an item duration of ~3.03s and
+    // lets currentTime run past it after the end — measured 2026-11-07.) The
+    // flag made the question moot; don't add a cap back without the
+    // bit-identical-PCM tests in SealedAssetLoaderTests passing for FLAC.
+
+    #if DEBUG
+    /// Largest `requestedLength` seen (or `Int.max` for a "to the end"
+    /// request). Queue-confined; read via `queue.sync` — a test asserts the
+    /// on-demand flag keeps requests small.
+    private(set) var largestRequestedLength = 0
+    #endif
 
     let queue = DispatchQueue(label: "com.timvbs.applenugs.sealed-loader", qos: .userInitiated)
     private let fileURL: URL
@@ -80,11 +102,16 @@ final class SealedAssetLoader: NSObject, AVAssetResourceLoaderDelegate, @uncheck
                 info.contentType = reader.contentType
                 info.contentLength = reader.plaintextLength
                 info.isByteRangeAccessSupported = true
+                info.isEntireLengthAvailableOnDemand = true
             }
             guard let data = request.dataRequest else {
                 request.finishLoading()
                 return
             }
+            #if DEBUG
+            largestRequestedLength = max(largestRequestedLength,
+                                         data.requestsAllDataToEndOfResource ? .max : data.requestedLength)
+            #endif
             let span = Self.span(requestedOffset: data.requestedOffset,
                                  requestedLength: data.requestedLength,
                                  toEnd: data.requestsAllDataToEndOfResource,

@@ -141,6 +141,22 @@ struct NetworkProbeView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var runner = NetworkProbeRunner()
     @State private var copied = false
+    @State private var vitals: Vitals?
+    @Environment(\.scenePhase) private var scenePhase
+
+    /// One reading of the memory block: kernel footprint numbers plus the
+    /// player's background-tick counters.
+    private struct Vitals {
+        var memory: MemoryFootprint?
+        var backgroundTicks: Int
+        var backgroundEntries: Int
+
+        @MainActor init(player: PlayerService) {
+            memory = MemoryFootprint.sample()
+            backgroundTicks = player.debugBackgroundTicks
+            backgroundEntries = player.debugBackgroundEntries
+        }
+    }
 
     private var platform: String {
         #if os(iOS)
@@ -171,6 +187,7 @@ struct NetworkProbeView: View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 18) {
+                    memoryBlock
                     trackBlock
                     identityBlock
                     controls
@@ -196,9 +213,48 @@ struct NetworkProbeView: View {
         .frame(minWidth: 600, minHeight: 680)
         #endif
         .onDisappear { runner.cancel() }
+        // Every 2 s while the sheet is up — and not while the app is in the
+        // background, so the readout never becomes a background wake-up itself.
+        // The peak needs no polling: it's the kernel's own high-water mark.
+        .task(id: scenePhase) {
+            guard scenePhase != .background else { return }
+            while !Task.isCancelled {
+                vitals = Vitals(player: app.player)
+                try? await Task.sleep(for: .seconds(2))
+            }
+        }
     }
 
     // MARK: - Blocks
+
+    private var memoryBlock: some View {
+        let memory = vitals?.memory
+        let format = { (bytes: UInt64?) in bytes.map(MemoryFootprint.format(bytes:)) ?? "—" }
+        return VStack(alignment: .leading, spacing: 6) {
+            caption("Memory")
+            memoryLine("Footprint", format(memory?.current))
+            memoryLine("Peak", format(memory?.peak) + "  since launch")
+            memoryLine("Headroom", memory?.limitRemaining.map {
+                MemoryFootprint.format(bytes: $0) + "  before jetsam"
+            } ?? "no limit reported")
+            memoryLine("BG ticks", vitals.map {
+                "\($0.backgroundTicks) in \($0.backgroundEntries) background "
+                    + ($0.backgroundEntries == 1 ? "period" : "periods")
+            } ?? "—")
+        }
+    }
+
+    private func memoryLine(_ name: String, _ value: String) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: 8) {
+            Text(name)
+                .font(.caption.weight(.semibold))
+                .frame(width: 72, alignment: .leading)
+            Text(value)
+                .font(.system(.caption, design: .monospaced))
+                .foregroundStyle(.secondary)
+                .textSelection(.enabled)
+        }
+    }
 
     private var trackBlock: some View {
         VStack(alignment: .leading, spacing: 4) {

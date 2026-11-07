@@ -216,6 +216,10 @@ targets:
       - path: AppleNugs/Core/NetworkProbe.swift
         # The DEBUG Network Probe's pure half (plan, parsing, report text).
         # DEBUG-only like the screen it serves; tests build Debug.
+      - path: AppleNugs/Core/MemoryFootprint.swift
+        # The probe's memory readout: task_info(TASK_VM_INFO) footprint, the
+        # kernel's lifetime peak, jetsam headroom, and their formatting.
+        # Darwin + Foundation only.
       - path: AppleNugs/Core/Catalog.swift
         # Foundation-only parsing; compiled in (not @testable) to keep tests host-free.
       - path: AppleNugs/Core/DeepLink.swift

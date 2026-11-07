@@ -96,7 +96,19 @@ final class PlayerService {
     /// stream fallback never hands playback back to the same broken file.
     private var localPickFailed = false
     private let player = AVQueuePlayer()
+    /// The ~4Hz `tick()` observer. Installed only while the app is in the
+    /// foreground — see `appDidEnterBackground()`.
     private var timeObserver: Any?
+    /// While backgrounded, instead: a once-a-minute observer that only keeps
+    /// the saved resume position roughly current.
+    private var backgroundPersistObserver: Any?
+    private var inBackground = false
+    #if DEBUG
+    /// Shown in the DEBUG Network Probe: `tick()` calls made while backgrounded
+    /// (should stay 0), and how many background periods that covers.
+    @ObservationIgnored private(set) var debugBackgroundTicks = 0
+    @ObservationIgnored private(set) var debugBackgroundEntries = 0
+    #endif
     private var statusObservation: NSKeyValueObservation?
     private var endObserver: NSObjectProtocol?
     private var terminationObserver: NSObjectProtocol?
@@ -136,6 +148,10 @@ final class PlayerService {
     /// that interruption ending — the gate that keeps `.shouldResume` from
     /// restarting audio the user paused themselves (iOS only; inert on macOS).
     private var pausedByInterruption = false
+    /// When the `timeControlStatus` KVO last saw playback stop on its own
+    /// (not via pause()) — lets an interruption that the KVO beat to the main
+    /// queue still count as having paused us.
+    @ObservationIgnored private var externalPauseAt: Date?
 
     /// Cover art for the system Now Playing widget, keyed by image path.
     private var artworkCache: [String: PlatformImage] = [:]
@@ -165,11 +181,7 @@ final class PlayerService {
         volume = saved ?? 1.0
         player.volume = volume
 
-        let interval = CMTime(seconds: 0.25, preferredTimescale: 600)
-        timeObserver = player.addPeriodicTimeObserver(
-            forInterval: interval, queue: .main) { [weak self] _ in
-            MainActor.assumeIsolated { self?.tick() }
-        }
+        installTickObserver()
         registerRemoteCommands()
         restorePersistedState()
         // One observer for every item we ever enqueue (only ours exist in
@@ -220,7 +232,15 @@ final class PlayerService {
                     // Best-effort "were we playing": the system pauses the
                     // player before delivering the notification, and tick()
                     // may already have observed that — check both signals.
-                    let wasPlaying = self.isPlaying || self.player.rate != 0
+                    // The timeControlStatus KVO sees that system pause too,
+                    // and usually lands FIRST (it flips isPlaying off), so a
+                    // flip in the last 2 s counts as "was playing". A
+                    // timestamp, not a flag: an old headphone-unplug pause
+                    // must not make a later call resume audio the user left
+                    // stopped.
+                    let flippedJustNow = self.externalPauseAt
+                        .map { Date().timeIntervalSince($0) < 2 } ?? false
+                    let wasPlaying = self.isPlaying || self.player.rate != 0 || flippedJustNow
                     if wasPlaying && !self.suspendedForVideo {
                         self.pausedByInterruption = true
                         self.pause()
@@ -245,13 +265,98 @@ final class PlayerService {
             DispatchQueue.main.async { [weak self] in
                 MainActor.assumeIsolated {
                     guard let self else { return }
-                    let buffering = player.timeControlStatus == .waitingToPlayAtSpecifiedRate
-                    guard buffering != self.isBuffering else { return }
-                    self.isBuffering = buffering
-                    self.pushNowPlayingInfo()
+                    let status = player.timeControlStatus
+                    var changed = false
+                    let buffering = status == .waitingToPlayAtSpecifiedRate
+                    if buffering != self.isBuffering {
+                        self.isBuffering = buffering
+                        changed = true
+                    }
+                    // tick()'s play/pause rule, with tick()'s head-item guard.
+                    // This is what notices an external flip (a headphone
+                    // unplug, a route change) while backgrounded, when no tick
+                    // runs — and pushes it to the lock screen.
+                    if let item = player.currentItem, item === self.currentItem {
+                        let playing = status != .paused
+                        if playing != self.isPlaying {
+                            if !playing { self.externalPauseAt = Date() }
+                            self.isPlaying = playing
+                            changed = true
+                        }
+                    }
+                    if changed { self.pushNowPlayingInfo() }
                 }
             }
         }
+    }
+
+    // --- foreground / background --------------------------------------------------
+
+    /// The app went to the background (iOS scene phase; screen locked, or
+    /// another app in front). Nothing on screen reads the ~4Hz snapshot there,
+    /// so the tick observer comes off — music playing behind a locked screen
+    /// costs no main-thread wake-ups beyond what playback itself needs:
+    ///   - lock screen / Control Center extrapolate from one (elapsed, rate)
+    ///     sample; every push reads the elapsed time LIVE from the player
+    ///     (`livePosition`) and duration is discovered at `.readyToPlay`, so
+    ///     neither depends on the tick;
+    ///   - track ends arrive as `didPlayToEndTime`, and AVQueuePlayer prepares
+    ///     the parked successor on its own timebase (~6–9 s before the end,
+    ///     measured — `scripts/sealed-footprint`), so gapless auto-advance
+    ///     needs nothing from us between the notifications;
+    ///   - external play/pause flips arrive via the `timeControlStatus` KVO;
+    ///   - remote commands are callbacks.
+    /// What the tick also did — keep the saved resume position current — moves
+    /// to a once-a-minute observer, plus a save on every pause and track change.
+    /// Idempotent.
+    func appDidEnterBackground() {
+        guard !inBackground else { return }
+        inBackground = true
+        #if DEBUG
+        debugBackgroundEntries += 1
+        #endif
+        if let timeObserver { player.removeTimeObserver(timeObserver) }
+        timeObserver = nil
+        backgroundPersistObserver = player.addPeriodicTimeObserver(
+            forInterval: CMTime(seconds: 60, preferredTimescale: 1), queue: .main) { [weak self] _ in
+            MainActor.assumeIsolated { self?.persistIfMoved() }
+        }
+        persistState()
+    }
+
+    /// Back in front (scene phase `.active`): reinstate the tick and refresh
+    /// the snapshot at once so nothing shows the position from when the app
+    /// left. Idempotent — `.active` also arrives at launch.
+    func appWillEnterForeground() {
+        guard inBackground else { return }
+        inBackground = false
+        if let backgroundPersistObserver { player.removeTimeObserver(backgroundPersistObserver) }
+        backgroundPersistObserver = nil
+        installTickObserver()
+        tick()
+    }
+
+    private func installTickObserver() {
+        guard timeObserver == nil else { return }
+        let interval = CMTime(seconds: 0.25, preferredTimescale: 600)
+        timeObserver = player.addPeriodicTimeObserver(
+            forInterval: interval, queue: .main) { [weak self] _ in
+            MainActor.assumeIsolated { self?.tick() }
+        }
+    }
+
+    /// Where playback actually is, read from the player rather than the
+    /// tick-fed `currentTime` (stale while backgrounded). A pending resume
+    /// seek wins: until the item is ready the player still reports 0.
+    private var livePosition: Double {
+        if let pendingSeekPosition { return pendingSeekPosition }
+        guard let item = currentItem, player.currentItem === item else { return currentTime }
+        let t = player.currentTime().seconds
+        return t.isFinite ? max(0, t) : currentTime
+    }
+
+    private func persistIfMoved() {
+        if abs(livePosition - lastSavedPosition) >= 5 { persistState() }
     }
 
     // --- queue operations -------------------------------------------------------
@@ -390,6 +495,7 @@ final class PlayerService {
         } else {
             player.pause()
             isPlaying = false
+            persistState()  // as in pause()
         }
         pushNowPlayingInfo()
     }
@@ -407,6 +513,9 @@ final class PlayerService {
         player.pause()
         isPlaying = false
         pushNowPlayingInfo()
+        // A paused position is the one to resume from — and while backgrounded
+        // no tick is around to save it.
+        persistState()
     }
 
     /// Arbiter hook for the video player: pause audio if it is playing and
@@ -438,7 +547,9 @@ final class PlayerService {
         let t = CMTime(seconds: max(0, seconds), preferredTimescale: 600)
         player.seek(to: t, toleranceBefore: .zero, toleranceAfter: .zero)
         currentTime = max(0, seconds)
-        pushNowPlayingInfo()
+        // The target, not `livePosition`: the player may still report the
+        // pre-seek time until the seek lands.
+        pushNowPlayingInfo(elapsed: currentTime)
     }
 
     /// Relative seek, shared by the skip buttons, keyboard, and Control Center.
@@ -614,6 +725,7 @@ final class PlayerService {
                     case .failed:
                         self.currentItemFailed()
                     case .readyToPlay:
+                        self.discoverDuration(of: item)
                         self.applyPendingSeek()
                     default:
                         break
@@ -663,6 +775,17 @@ final class PlayerService {
         }
     }
 
+    /// Duration as soon as the item knows it, for the lock screen's scrubber —
+    /// not left to tick(), which doesn't run in the background. Same source
+    /// (`item.duration`) as tick, so the two never disagree.
+    private func discoverDuration(of item: AVPlayerItem) {
+        let d = item.duration.seconds
+        let known = d.isFinite ? d : 0
+        guard known != duration else { return }
+        duration = known
+        pushNowPlayingInfo()
+    }
+
     /// Apply a deferred resume seek once the item is ready. A seek issued before
     /// `.readyToPlay` is dropped, so the restore path stashes the saved position
     /// in `pendingSeekPosition` and lands it here (precise, zero-tolerance).
@@ -688,6 +811,9 @@ final class PlayerService {
         } else {
             ended = true  // queue finished — next enqueue/play-next restarts playback
             isPlaying = false
+            // The player has dropped the item, so livePosition falls back to
+            // currentTime — stale if this happened while backgrounded.
+            if duration > 0 { currentTime = duration }
             pushNowPlayingInfo()
             persistState()
         }
@@ -719,10 +845,16 @@ final class PlayerService {
         localPickFailed = false
         playbackError = nil
         currentTime = 0
-        duration = 0
         specs = nil
 
         observeCurrent(p.item)  // re-observe with current-track semantics
+        // Usually already known: AVQueuePlayer readied the item before handing
+        // over. Read it here because the status KVO only reports CHANGES — an
+        // item that's already ready never fires it — and in the background no
+        // tick would discover it either. Read AFTER observing, so an item that
+        // turns ready in between is caught by one or the other.
+        let adoptedDuration = p.item.duration.seconds
+        duration = adoptedDuration.isFinite ? adoptedDuration : 0
         isPlaying = player.timeControlStatus != .paused
         loadSpecs(from: p.item.asset, format: p.pick.format)
         loadArtwork(for: current)
@@ -834,6 +966,9 @@ final class PlayerService {
     /// ~4x/sec runtime snapshot, the AVFoundation analog of the web port's
     /// JS-pushed PlaybackStatus.
     private func tick() {
+        #if DEBUG
+        if inBackground { debugBackgroundTicks += 1 }
+        #endif
         // Between an auto-advance and its end-notification the player's head
         // is briefly the preloaded item; skip until bookkeeping catches up.
         guard let item = player.currentItem, item === currentItem else { return }
@@ -911,10 +1046,6 @@ final class PlayerService {
         pushNowPlayingInfo()
     }
 
-    /// External persistence hook: the iOS scene-phase observer calls this on
-    /// backgrounding, where willTerminate is not guaranteed to fire.
-    func persistNow() { persistState() }
-
     #if DEBUG
     /// UITest-only: park a queue without resolving streams or starting
     /// playback, so transport UI renders under the `-UITestSeedQueue` flag.
@@ -932,7 +1063,8 @@ final class PlayerService {
             lastSavedPosition = 0
             return
         }
-        lastSavedPosition = currentTime
+        let position = livePosition
+        lastSavedPosition = position
         stateStore.save(PersistedPlayback(
             tracks: queue.map {
                 PersistedPlayback.Track(trackId: $0.trackId, title: $0.title,
@@ -940,7 +1072,7 @@ final class PlayerService {
                                         artworkPath: $0.artworkPath, showId: $0.showId)
             },
             index: index,
-            position: currentTime))
+            position: position))
     }
 
     // --- artwork --------------------------------------------------------------
@@ -1036,7 +1168,10 @@ final class PlayerService {
         }
     }
 
-    private func pushNowPlayingInfo() {
+    /// `elapsed` defaults to where the player actually is (`livePosition`), not
+    /// the tick-fed `currentTime` — while backgrounded there is no tick, and
+    /// the system extrapolates from whatever this sample says.
+    private func pushNowPlayingInfo(elapsed: Double? = nil) {
         // Video owns the system playback UI right now — don't clobber it.
         guard !suspendedForVideo else { return }
         let center = MPNowPlayingInfoCenter.default()
@@ -1054,7 +1189,7 @@ final class PlayerService {
             MPMediaItemPropertyArtist: track.artist ?? "",
             MPMediaItemPropertyAlbumTitle: track.show ?? "",
             MPMediaItemPropertyPlaybackDuration: duration,
-            MPNowPlayingInfoPropertyElapsedPlaybackTime: currentTime,
+            MPNowPlayingInfoPropertyElapsedPlaybackTime: elapsed ?? livePosition,
             MPNowPlayingInfoPropertyPlaybackRate: actuallyPlaying ? 1.0 : 0.0,
         ]
         if let nowPlayingArtwork {

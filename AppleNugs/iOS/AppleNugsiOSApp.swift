@@ -54,8 +54,19 @@ struct AppleNugsiOSApp: App {
                 .environment(\.theme, themes.theme)
         }
         .onChange(of: scenePhase) { _, phase in
-            // iOS has no reliable willTerminate; persist on every backgrounding.
-            if phase == .background { app.player.persistNow() }
+            switch phase {
+            case .background:
+                // iOS has no reliable willTerminate: this also persists. And
+                // with nothing on screen the ~4Hz playback tick comes off, so
+                // background music wakes the main thread only on real events.
+                app.player.appDidEnterBackground()
+            case .active:
+                app.player.appWillEnterForeground()
+            default:
+                // .inactive (Control Center pulled down, app switcher) keeps
+                // the tick: the app is still on screen.
+                break
+            }
         }
     }
 }
