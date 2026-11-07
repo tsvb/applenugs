@@ -55,6 +55,33 @@ label resolves and Xcode 27.1 builds both schemes + tests), and `origin/main` wa
 rebase commit, so every hash below is on `main`. `listening-stats` is still unmerged and based on the OLD
 `main`; it now needs a rebase onto `805d766`, resolving this CLAUDE.md section against its own.
 
+### Yeti — compliance pass (2026-11-06/07), branch `yeti` stacked on `pill-duck`, NOT pushed
+
+The app is now **Yeti** ("an unofficial player for nugs.net", named for the Goose song) and follows nugs.net's
+Terms (https://www.nugs.net/terms.html) where it matters. Spec (local): `docs/superpowers/specs/2026-11-06-yeti-compliance-design.md`.
+Commits: `f7378f7` personal IDs out of CLAUDE.md · `a9dd016` `NugsIdentity` seam + DEBUG Network Probe ·
+`cc8d54a` honest identity / tier 7 / browser-only sign-in / polite networking · `993ce03` Yeti rename +
+disclaimers · `2db580f` encrypted downloads. **302 tests.** Rules that fail silently if broken:
+- **Identity is honest everywhere:** `NugsIdentity.current` = `Yeti/<ver> (unofficial; +github; <OS>)`, NO
+  Referer. The old Android UA strings exist ONLY as the DEBUG probe's control (`legacyAndroidForProbe`) — never
+  reintroduce them in production. Live probe (Tim's Duo, 2026-11-07) proved nugs accepts the honest UA on
+  subscriptions, api.aspx, subPlayer (all tiers), the CDN, and id.nugs.net refresh. The OAuth client ID +
+  `nugsnet://oauth2/callback` are still the official app's — unavoidable without a nugs-issued client (NOTICE says so).
+- **Streams: tier 7 (ALAC 16) first, other tiers ONE AT A TIME** (`StreamTierPlan`); never re-parallelize.
+  Tier map: 1 FLAC16, 4 MQA24, 7 ALAC16, 10 MQA24. Token bucket 4 req/s (burst 8) on API/resolver calls.
+- **Browser sign-in only** — the ROPC password screen is gone; don't bring it back.
+- **Downloads are sealed `.yeti` files** (64 KiB AES-GCM chunks, per-install Keychain key `download-key`,
+  `yeti-local://` + `SealedAssetLoader`). Never write or keep plaintext; logout deletes all downloads + the key;
+  offline play needs `downloads.lastVerifiedAt` ≤ 30 days, renewed ONLY by a fresh subscription answer
+  (re-fetched on each token refresh). No Reveal in Finder / export.
+- **Display-only rename:** bundle ids `com.timvbs.applenugs*`, `Application Support/AppleNugs/`, Keychain
+  service, Sparkle feed + EdDSA key, the repo, and `PRODUCT_NAME` (`AppleNugs.app`) are DELIBERATELY unchanged;
+  `yeti://` added, `applenugs://` kept (goosealmanac). Follow-ups: regenerate the banner SVGs
+  (`scripts/generate-banner.swift`), re-shoot `docs/images`, decide the `.app` rename, update goosealmanac's
+  deep-link doc.
+- **Verified on Tim's Duo:** honest identity (signed in, plays), Yeti name, encrypted download → seek + gapless
+  ("even better than streaming"). Unverified: lock-screen download playback, logout wipe, the Mac migration.
+
 **NEXT (queued, specced locally):** (1) the pill ducks out of the way on scroll on the Duo — **BUILT
 `ed6770d` and VERIFIED by Tim on the real Duo 2026-11-06 ("nailed it"), 197 tests; not yet pushed** — branch
 `pill-duck` in the same worktree; spec `docs/superpowers/specs/2026-11-05-pill-duck-on-scroll-design.md`;
