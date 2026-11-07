@@ -61,7 +61,10 @@ Native **macOS + iOS SwiftUI** player for nugs.net, shipped to users as **Yeti �
   playhead delta capped at wall-clock time since the last sample). `PlayerService.settleListening` runs
   at every commit, on the existing 60s background wake, before the tick returns on foregrounding, at a
   track's end (at `duration` — a gapless head has already moved on), before a gapless `next()`, and
-  before a seek, which then rebases the baseline. Don't add a wake or a background tick for stats.
+  before a seek, which then rebases the baseline. Settles read `creditPosition`, which is **nil — never the
+  stale `currentTime`** — when the player's head isn't our item, and a nil sample leaves the baseline alone
+  (falling back once re-credited a whole closing track at a background queue end). Paused → playing
+  re-anchors the baseline without crediting (`rebaseListening`). Don't add a wake or a background tick for stats.
   Scope cuts are deliberate — don't "restore" them: artists only (no shows/tracks/venues/months),
   all-time only, Home only (no sidebar row or tab), typographic ledger (cards/tiles rejected), audio only
   (the store seam is neutral so `VideoPlayerService` could become a second caller). Reset lives in the
