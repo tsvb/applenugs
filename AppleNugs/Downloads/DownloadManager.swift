@@ -49,6 +49,9 @@ final class DownloadManager: NSObject {
 
         let config = URLSessionConfiguration.background(withIdentifier: identifier)
         config.isDiscretionary = false
+        // A show queues 10–30 tracks at once; at most two transfer from the
+        // CDN at a time instead of the system default of six.
+        config.httpMaximumConnectionsPerHost = DownloadPacing.maxConnectionsPerHost
         // Off until the app implements handleEventsForBackgroundURLSession —
         // being relaunched for events nobody handles helps no one. In-flight
         // state doesn't survive relaunch either (see sweep below), so

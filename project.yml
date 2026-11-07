@@ -193,6 +193,13 @@ targets:
       - path: AppleNugs/Core/NugsIdentity.swift
         # The one place request identity (User-Agent / Referer) is decided;
         # pure Foundation, so the honest-UA formatting is covered host-free.
+      - path: AppleNugs/Core/StreamTierPlan.swift
+        # Which stream-resolver tier is asked, in what order, and when to stop
+        # (tier 7 first, the rest one at a time). Pure Foundation, so the
+        # "one request per track, never parallel" walk is covered host-free.
+      - path: AppleNugs/Core/PoliteNetworking.swift
+        # Pure request-pacing policies: the API token bucket, playback retry
+        # backoff, the artist-catalog TTL cache and page cap. Clocks injected.
       - path: AppleNugs/Core/NetworkProbe.swift
         # The DEBUG Network Probe's pure half (plan, parsing, report text).
         # DEBUG-only like the screen it serves; tests build Debug.

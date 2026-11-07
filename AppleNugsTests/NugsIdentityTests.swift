@@ -2,39 +2,54 @@ import XCTest
 
 final class NugsIdentityTests: XCTestCase {
 
-    /// The seam must not change a byte of what goes out today.
-    func testCurrentIsTodaysIdentity() {
+    /// What every production request says: the honest UA on all three
+    /// surfaces and no Referer. The version is not pinned — in the host-free
+    /// test bundle `Bundle.main` is xctest, not the app.
+    func testCurrentIsTheHonestIdentity() {
         let current = NugsIdentity.current
-        XCTAssertEqual(current.userAgentAPI,
-                       "NugsNet/3.26.724 (Android; 7.1.2; Asus; ASUS_Z01QD; Scale/2.0; en)")
-        XCTAssertEqual(current.userAgentLegacy, "nugsnetAndroid")
+        XCTAssertTrue(current.userAgentAPI.hasPrefix("Yeti/"), current.userAgentAPI)
+        XCTAssertTrue(current.userAgentAPI.contains(
+            " (unofficial; +https://github.com/tsvb/applenugs; macOS "), current.userAgentAPI)
+        XCTAssertTrue(current.userAgentAPI.hasSuffix(")"), current.userAgentAPI)
+        XCTAssertEqual(current.userAgentLegacy, current.userAgentAPI)
         XCTAssertEqual(current.userAgentCDN, current.userAgentAPI)
-        XCTAssertEqual(current.refererCDN, "https://play.nugs.net/")
+        XCTAssertNil(current.refererCDN)
+        XCTAssertFalse(current.userAgentAPI.contains("Android"))
+        XCTAssertFalse(current.userAgentAPI.contains("NugsNet"))
     }
 
-    func testCurrentCDNHeadersMatchTheOldLiteral() {
-        XCTAssertEqual(NugsIdentity.current.cdnHeaders, [
-            "Referer": NugsConstants.playerReferer,
-            "User-Agent": NugsConstants.mobileUserAgent,
-        ])
+    /// The CDN gets the UA and nothing else — no Referer header at all.
+    func testCurrentCDNHeadersAreJustTheUA() {
+        XCTAssertEqual(NugsIdentity.current.cdnHeaders,
+                       ["User-Agent": NugsIdentity.current.userAgentCDN])
     }
 
     /// No Referer means no header at all, not an empty one.
     func testNilRefererOmitsTheHeader() {
-        var identity = NugsIdentity.current
-        identity.refererCDN = nil
-        XCTAssertEqual(identity.cdnHeaders, ["User-Agent": NugsConstants.mobileUserAgent])
-        var request = URLRequest(url: URL(string: "https://example.com/a.flac")!)
-        identity.applyCDN(to: &request)
-        XCTAssertNil(request.value(forHTTPHeaderField: "Referer"))
-        XCTAssertEqual(request.value(forHTTPHeaderField: "User-Agent"), NugsConstants.mobileUserAgent)
-    }
-
-    func testApplyCDNSetsBothHeadersForCurrent() {
         var request = URLRequest(url: URL(string: "https://example.com/a.flac")!)
         NugsIdentity.current.applyCDN(to: &request)
+        XCTAssertNil(request.value(forHTTPHeaderField: "Referer"))
+        XCTAssertEqual(request.value(forHTTPHeaderField: "User-Agent"),
+                       NugsIdentity.current.userAgentCDN)
+    }
+
+    func testApplyCDNSetsTheRefererWhenAnIdentityHasOne() {
+        var request = URLRequest(url: URL(string: "https://example.com/a.flac")!)
+        NugsIdentity.legacyAndroidForProbe.applyCDN(to: &request)
         XCTAssertEqual(request.value(forHTTPHeaderField: "Referer"), "https://play.nugs.net/")
-        XCTAssertEqual(request.value(forHTTPHeaderField: "User-Agent"), NugsConstants.mobileUserAgent)
+        XCTAssertEqual(request.value(forHTTPHeaderField: "User-Agent"),
+                       NugsIdentity.legacyAndroidForProbe.userAgentCDN)
+    }
+
+    /// The probe's control keeps the old strings byte for byte, so its rows
+    /// stay comparable with the run that decided Phase B.
+    func testLegacyProbeIdentityIsTheOldAndroidOne() {
+        let legacy = NugsIdentity.legacyAndroidForProbe
+        XCTAssertEqual(legacy.userAgentAPI,
+                       "NugsNet/3.26.724 (Android; 7.1.2; Asus; ASUS_Z01QD; Scale/2.0; en)")
+        XCTAssertEqual(legacy.userAgentLegacy, "nugsnetAndroid")
+        XCTAssertEqual(legacy.userAgentCDN, legacy.userAgentAPI)
+        XCTAssertEqual(legacy.refererCDN, "https://play.nugs.net/")
     }
 
     func testHonestUserAgentShape() {

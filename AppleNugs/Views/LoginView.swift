@@ -1,13 +1,9 @@
 import SwiftUI
 
+/// Sign-in is nugs.net's own page in a system browser sheet (authorization
+/// code + PKCE); the app never asks for, sees or stores a password.
 struct LoginView: View {
     @Environment(AppModel.self) private var app
-
-    @State private var email = ""
-    @State private var password = ""
-    @FocusState private var focusedField: Field?
-
-    private enum Field { case email, password }
 
     var body: some View {
         VStack(spacing: 18) {
@@ -21,18 +17,6 @@ struct LoginView: View {
                     .foregroundStyle(.secondary)
             }
 
-            VStack(spacing: 10) {
-                TextField("Email", text: $email)
-                    .textContentType(.username)
-                    .focused($focusedField, equals: .email)
-                SecureField("Password", text: $password)
-                    .textContentType(.password)
-                    .focused($focusedField, equals: .password)
-                    .onSubmit { submit() }
-            }
-            .textFieldStyle(.roundedBorder)
-            .frame(width: 300)
-
             if let error = app.loginError {
                 Text(error)
                     .font(.callout)
@@ -42,41 +26,26 @@ struct LoginView: View {
             }
 
             Button {
-                submit()
+                Task { await app.loginWithBrowser() }
             } label: {
                 if app.isLoggingIn {
-                    ProgressView().controlSize(.small).frame(width: 60)
+                    ProgressView().controlSize(.small).frame(minWidth: 160)
                 } else {
-                    Text("Sign In").frame(width: 60)
+                    Label("Sign in with nugs.net", systemImage: "globe")
+                        .frame(minWidth: 160)
                 }
             }
             .buttonStyle(.borderedProminent)
-            .disabled(app.isLoggingIn || email.isEmpty || password.isEmpty)
-
-            Button {
-                Task { await app.loginWithBrowser() }
-            } label: {
-                Label("Sign in with browser", systemImage: "globe")
-            }
-            .buttonStyle(.bordered)
             .disabled(app.isLoggingIn)
+            .accessibilityIdentifier("login.signIn")
 
-            Text("""
-                Sign in with your nugs.net email and password, or use \
-                “Sign in with browser” for Apple, Google, or other SSO/MFA accounts. \
-                Personal use against your own subscription only.
-                """)
+            Text("You sign in on nugs.net’s own page; this app never sees your password.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 .frame(maxWidth: 380)
                 .multilineTextAlignment(.center)
         }
+        .padding()
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .onAppear { focusedField = .email }
-    }
-
-    private func submit() {
-        guard !email.isEmpty, !password.isEmpty, !app.isLoggingIn else { return }
-        Task { await app.login(email: email, password: password) }
     }
 }

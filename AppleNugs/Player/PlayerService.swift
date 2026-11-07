@@ -139,11 +139,19 @@ final class PlayerService {
     private var artworkTask: Task<Void, Never>?
     private var nowPlayingArtwork: MPMediaItemArtwork?
 
-    /// Streams resolved for the current track, best-first. On AVPlayerItem
-    /// failure we advance to the next pick — e.g. if a FLAC stream won't
-    /// play, retry with AAC or HLS.
+    /// Streams resolved for the current track. Normally ONE pick (the client
+    /// resolves a tier at a time and stops at the first usable one); a list
+    /// only when no tier had a format the player trusts. On AVPlayerItem
+    /// failure `currentItemFailed` backs off and moves on — the next pick, or
+    /// a fresh resolve that skips every tier seen failing (`failedTiers`).
     private var picks: [StreamPick] = []
     private var pickIndex = 0
+    /// Tiers whose stream failed in AVPlayer for the current track, and how
+    /// many network failures it has had — both reset on every track change.
+    private var failedTiers: Set<Int> = []
+    private var streamFailures = 0
+    /// The pending backed-off retry, if any.
+    private var retryTask: Task<Void, Never>?
 
     /// Bumped on every track change so stale async loads can no-op.
     private var loadGeneration = 0
@@ -457,6 +465,8 @@ final class PlayerService {
         nowPick = nil
         specs = nil
         playbackError = nil
+        failedTiers = []
+        streamFailures = 0
 
         guard let track = current else {
             loadArtwork(for: nil)
@@ -481,13 +491,20 @@ final class PlayerService {
         resolveNetworkStreams(for: track, generation: generation)
     }
 
-    private func resolveNetworkStreams(for track: QueueTrack, generation: Int) {
+    private func resolveNetworkStreams(for track: QueueTrack, generation: Int,
+                                       skipping: Set<Int> = []) {
         Task {
             do {
-                let resolved = try await client.resolveStreams(trackId: track.trackId)
+                let resolved = try await client.resolveStreams(trackId: track.trackId,
+                                                               skipping: skipping)
                 guard generation == loadGeneration else { return }
                 guard !resolved.isEmpty else {
-                    playbackError = "nugs has no stream for this track."
+                    if skipping.isEmpty {
+                        playbackError = "nugs has no stream for this track."
+                    } else {
+                        playbackError = "Every available stream format failed to play."
+                        isPlaying = false
+                    }
                     return
                 }
                 picks = resolved
@@ -539,9 +556,9 @@ final class PlayerService {
         pushNowPlayingInfo()
     }
 
-    /// The nugs CDN requires the play.nugs.net Referer and a mobile UA —
-    /// the whole reason the web port needed a proxy. Natively the asset
-    /// just carries them.
+    /// The asset carries the app's CDN headers (`NugsIdentity.current`: the
+    /// honest UA, no Referer — the Phase B probe showed the CDN serves
+    /// without one).
     private func makeItem(url: URL) -> AVPlayerItem {
         let asset = AVURLAsset(url: url, options: [
             "AVURLAssetHTTPHeaderFieldsKey": NugsIdentity.current.cdnHeaders,
@@ -560,20 +577,53 @@ final class PlayerService {
                     guard let self, item === self.currentItem else { return }
                     switch item.status {
                     case .failed:
-                        // Signed URL rejected or format undecodable here — fall
-                        // through to the next available format for this track,
-                        // and drop the cached picks so a retry re-probes.
-                        if let track = self.current {
-                            Task { await self.client.invalidateStreams(for: track.trackId) }
-                        }
-                        self.pickIndex += 1
-                        self.loadCurrentPick()
+                        self.currentItemFailed()
                     case .readyToPlay:
                         self.applyPendingSeek()
                     default:
                         break
                     }
                 }
+            }
+        }
+    }
+
+    /// The head item failed: a signed URL rejected, or a format AVPlayer can't
+    /// decode here — the two look the same, so the track's cached tier answers
+    /// are dropped either way. A local file falls straight back to streaming
+    /// (no network was involved). Otherwise wait per `PlaybackRetryPolicy`
+    /// (0.5s, 1s, 2s, then give up), and move on: the next pick if a
+    /// last-resort list still has one, else a fresh resolve that skips every
+    /// tier that has failed for this track — re-asking it would hand back the
+    /// same failing stream.
+    private func currentItemFailed() {
+        guard let track = current else { return }
+        if usingLocalPick {
+            pickIndex += 1
+            loadCurrentPick()
+            return
+        }
+        if picks.indices.contains(pickIndex) { failedTiers.insert(picks[pickIndex].platformId) }
+        streamFailures += 1
+        guard let delay = PlaybackRetryPolicy.delay(afterFailure: streamFailures) else {
+            Task { await client.invalidateStreams(for: track.trackId) }
+            playbackError = "Every available stream format failed to play."
+            isPlaying = false
+            return
+        }
+        let generation = loadGeneration
+        let skipping = failedTiers
+        let nextIndex = pickIndex + 1
+        retryTask?.cancel()
+        retryTask = Task {
+            await client.invalidateStreams(for: track.trackId)
+            try? await Task.sleep(for: .seconds(delay))
+            guard !Task.isCancelled, generation == loadGeneration else { return }
+            if nextIndex < picks.count {
+                pickIndex = nextIndex
+                loadCurrentPick()
+            } else {
+                resolveNetworkStreams(for: track, generation: generation, skipping: skipping)
             }
         }
     }
@@ -613,6 +663,10 @@ final class PlayerService {
     /// have set up.
     private func adoptPreload(_ p: Preload) {
         loadGeneration += 1   // invalidate in-flight loads for the old track
+        retryTask?.cancel()
+        retryTask = nil
+        failedTiers = []
+        streamFailures = 0
         p.statusObservation.invalidate()
         statusObservation?.invalidate()
         preload = nil
@@ -715,6 +769,8 @@ final class PlayerService {
         statusObservation?.invalidate()
         statusObservation = nil
         preloadTask?.cancel()
+        retryTask?.cancel()
+        retryTask = nil
         discardPreload()
         currentItem = nil
         player.removeAllItems()

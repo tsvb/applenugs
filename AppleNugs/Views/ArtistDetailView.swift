@@ -13,7 +13,7 @@ struct ArtistDetailView: View {
     @State private var error: String?
     @State private var videos: [VideoSummary] = []
 
-    private static let pageSize = 100
+    private static let pageSize = ArtistCatalogPaging.pageSize
 
     // Mapped once per data load, not per body evaluation: CrateItem
     // construction parses each container's date (ContainerSummary.date is
@@ -55,10 +55,14 @@ struct ArtistDetailView: View {
     }
 
     /// Fetch every page up front. The catalog pages 100 at a time, so a deep
-    /// artist is ~5 requests; the list renders what has arrived and the footer
+    /// artist is ~5 requests (capped at `ArtistCatalogPaging.maxPages`, and a
+    /// short page ends it); the list renders what has arrived and the footer
     /// says more is coming. Paging is deliberately NOT driven from inside the
     /// list: the old outline triggered it from an `onAppear` on a 1pt spacer
     /// nested in the very LazyVStack that each page then mutated.
+    ///
+    /// A complete load is kept on `AppModel` for 30 minutes, so coming back
+    /// to the artist (the usual back-and-forth from a show) makes no requests.
     private func load() async {
         containers = []
         albumItems = []
@@ -70,19 +74,32 @@ struct ArtistDetailView: View {
         // shows. `Task {}` rather than `async let` — the View isn't Sendable.
         Task { await loadVideos() }
 
+        if let cached = app.cachedArtistShows(id: artist.id) {
+            containers = cached
+            rebuildItems()
+            return
+        }
+
         loading = true
         defer { loading = false }
         do {
             var lastPageCount = Self.pageSize
-            while lastPageCount == Self.pageSize {
+            var pagesFetched = 0
+            while ArtistCatalogPaging.shouldFetchAnother(lastPageCount: lastPageCount,
+                                                         pagesFetched: pagesFetched,
+                                                         pageSize: Self.pageSize) {
                 let json = try await app.client.artistShows(
                     id: artist.id, offset: containers.count + 1, limit: Self.pageSize)
                 let page = Catalog.containers(from: json)
+                pagesFetched += 1
                 lastPageCount = page.count
                 containers += page
                 rebuildItems()
                 if Task.isCancelled { return }
             }
+            // Only a load that ran to its end is reused: an error or a
+            // navigation away mid-paging leaves nothing behind.
+            app.storeArtistShows(containers, id: artist.id)
         } catch {
             self.error = error.localizedDescription
         }
@@ -97,10 +114,16 @@ struct ArtistDetailView: View {
     /// videoReleaseType=6 call. A video failure is swallowed (the section just
     /// stays empty) so it never blocks the shows/releases the user came for.
     private func loadVideos() async {
-        do {
-            videos = try await app.client.artistVideos(id: artist.id)
-        } catch {
-            videos = []
+        if let cached = app.cachedArtistVideos(id: artist.id) {
+            videos = cached
+        } else {
+            do {
+                let fetched = try await app.client.artistVideos(id: artist.id)
+                videos = fetched
+                app.storeArtistVideos(fetched, id: artist.id)
+            } catch {
+                videos = []
+            }
         }
         videoItems = videos.map { CrateItem.video($0, artist: artist.name) }
     }

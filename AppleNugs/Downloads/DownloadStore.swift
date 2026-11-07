@@ -172,14 +172,17 @@ final class DownloadStore {
             trackProgress[track.trackId] = 0
         }
 
-        // Resolve picks sequentially (cheap API calls), then hand transfers
-        // to the background session, which parallelizes on its own.
+        // Resolve picks sequentially, a short pause apart, then hand each
+        // transfer to the background session (at most two per host at once).
+        // `.download` makes an HLS-only tier fall through to one with a file.
         Task { [weak self] in
-            for track in request.tracks {
+            for (i, track) in request.tracks.enumerated() {
+                if i > 0 { try? await Task.sleep(for: DownloadPacing.resolveGap) }
                 guard let self,
                       self.inFlight[request.containerID]?.generation == generation else { return }
                 do {
-                    let picks = try await self.client.resolveStreams(trackId: track.trackId)
+                    let picks = try await self.client.resolveStreams(
+                        trackId: track.trackId, purpose: .download)
                     // Re-check after the await: the attempt may have been
                     // cancelled/failed while resolution was in flight.
                     guard self.inFlight[request.containerID]?.generation == generation else { return }

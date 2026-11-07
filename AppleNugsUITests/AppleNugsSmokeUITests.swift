@@ -58,7 +58,7 @@ final class AppleNugsSmokeUITests: XCTestCase {
         XCTAssertTrue(home.waitForExistence(timeout: 12),
                       "Sidebar 'Home' missing — did not render mainLayout")
 
-        XCTAssertFalse(app.buttons["Sign In"].exists,
+        XCTAssertFalse(app.buttons["login.signIn"].exists,
                        "LoginView was shown instead of the logged-in layout")
     }
 

@@ -29,18 +29,22 @@ final class NetworkProbeTests: XCTestCase {
         XCTAssertEqual(ProbePlan.cdnSteps.first, .cdn(.spoofed, referer: true))
     }
 
-    /// The control CDN step must be exactly today's playback request.
-    func testControlCDNStepSendsTodaysHeaders() {
+    /// The control CDN step must be exactly the old playback request.
+    func testControlCDNStepSendsTheLegacyHeaders() {
         let identity = ProbeStep.cdn(.spoofed, referer: true).identity(honest: honest)
-        XCTAssertEqual(identity.cdnHeaders, NugsIdentity.current.cdnHeaders)
+        XCTAssertEqual(identity.cdnHeaders, [
+            "User-Agent": "NugsNet/3.26.724 (Android; 7.1.2; Asus; ASUS_Z01QD; Scale/2.0; en)",
+            "Referer": "https://play.nugs.net/",
+        ])
     }
 
     func testRefererIsIndependentOfTheUA() {
         let spoofedBare = ProbeStep.cdn(.spoofed, referer: false).identity(honest: honest)
-        XCTAssertEqual(spoofedBare.cdnHeaders, ["User-Agent": NugsConstants.mobileUserAgent])
+        XCTAssertEqual(spoofedBare.cdnHeaders,
+                       ["User-Agent": NugsIdentity.legacyAndroidForProbe.userAgentCDN])
         let honestReferer = ProbeStep.cdn(.honest, referer: true).identity(honest: honest)
         XCTAssertEqual(honestReferer.cdnHeaders, [
-            "User-Agent": honest.userAgentCDN, "Referer": NugsConstants.playerReferer,
+            "User-Agent": honest.userAgentCDN, "Referer": "https://play.nugs.net/",
         ])
     }
 
@@ -149,7 +153,7 @@ final class NetworkProbeTests: XCTestCase {
 
     func testCatalogStepsUseTheAPIUA() {
         XCTAssertEqual(ProbeStep.catalog(.spoofed).identity(honest: honest).userAgentAPI,
-                       NugsConstants.mobileUserAgent)
+                       NugsIdentity.legacyAndroidForProbe.userAgentAPI)
         XCTAssertEqual(ProbeStep.catalog(.honest).identity(honest: honest).userAgentAPI,
                        honest.userAgentAPI)
         XCTAssertEqual(ProbeStep.catalog(.honest).group, .api)

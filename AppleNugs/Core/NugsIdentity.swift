@@ -4,11 +4,14 @@ import Foundation
 /// headers that carry identity are decided. Every request site reads
 /// `NugsIdentity.current`; nothing sets a `User-Agent` or `Referer` by hand.
 ///
-/// `.current` is today's identity, byte for byte: the official Android app's
-/// user agents and the web player's Referer on the CDN. Phase B of the
-/// compliance spec (docs/superpowers/specs/2026-11-06-yeti-compliance-design.md)
-/// probes what nugs accepts from an honest identity before anything here
-/// changes; the DEBUG Network Probe screen builds alternatives from `.honest`.
+/// `.current` is the honest identity — `Yeti/<version> (unofficial; +<repo>;
+/// <platform>)` on the API, the stream resolver and the CDN alike, and no
+/// Referer. Phase B of the compliance spec
+/// (docs/superpowers/specs/2026-11-06-yeti-compliance-design.md) proved nugs
+/// accepts it everywhere (Tim's Duo, 2026-11-07) and that the CDN serves
+/// without a Referer. The app used to borrow the official Android app's user
+/// agents and the web player's Referer; those strings now exist only in DEBUG
+/// builds, as the Network Probe's control (`legacyAndroidForProbe`).
 ///
 /// Pure Foundation, compiled into AppleNugsTests.
 struct NugsIdentity: Sendable, Equatable {
@@ -23,12 +26,20 @@ struct NugsIdentity: Sendable, Equatable {
     /// entirely rather than sending an empty one — those are different requests.
     var refererCDN: String?
 
-    /// Today's identity. Changing this changes what every request says.
-    static let current = NugsIdentity(
-        userAgentAPI: NugsConstants.mobileUserAgent,
-        userAgentLegacy: NugsConstants.legacyUserAgent,
-        userAgentCDN: NugsConstants.mobileUserAgent,
-        refererCDN: NugsConstants.playerReferer)
+    /// What every request says: the honest identity for this build.
+    static let current = honestForThisBuild
+
+    #if DEBUG
+    /// The identity the app used to send (the official Android app's user
+    /// agents, the web player's Referer on the CDN). DEBUG-only: the Network
+    /// Probe sends it as the control its honest rows are compared against.
+    /// Release builds contain none of these strings.
+    static let legacyAndroidForProbe = NugsIdentity(
+        userAgentAPI: "NugsNet/3.26.724 (Android; 7.1.2; Asus; ASUS_Z01QD; Scale/2.0; en)",
+        userAgentLegacy: "nugsnetAndroid",
+        userAgentCDN: "NugsNet/3.26.724 (Android; 7.1.2; Asus; ASUS_Z01QD; Scale/2.0; en)",
+        refererCDN: "https://play.nugs.net/")
+    #endif
 
     /// Header fields for a CDN request (AVURLAsset's
     /// `AVURLAssetHTTPHeaderFieldsKey`, or a URLRequest).
@@ -45,7 +56,7 @@ struct NugsIdentity: Sendable, Equatable {
         }
     }
 
-    // --- the honest alternative ----------------------------------------------
+    // --- the honest identity -------------------------------------------------
 
     static let projectURL = "https://github.com/tsvb/applenugs"
 

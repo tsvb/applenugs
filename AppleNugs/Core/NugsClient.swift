@@ -6,18 +6,27 @@ import Foundation
 /// isolating them here removes the data race and serializes token refresh.
 /// Tokens refresh automatically ~60s before expiry.
 actor NugsClient {
-    /// `URLSession` is `Sendable` and immutable here, so it stays non-isolated —
-    /// the four concurrent tier probes in `resolveStreams` call `streamURL` off
-    /// the actor and must not serialize on it.
+    /// `URLSession` is `Sendable` and immutable here, so it stays non-isolated
+    /// for the DEBUG probe's `probeCDN`, which runs off the actor.
     private nonisolated let http: URLSession
     private let store = SessionStore()
 
-    /// Resolved stream picks per track. Signed CDN URLs rotate on session
+    /// Every tier answer per track (`StreamTierPlan.Outcome`, failures
+    /// excluded), each with its own expiry. Signed CDN URLs rotate on session
     /// boundaries, so entries expire after 4h. Makes prev/next and gapless
-    /// preloading cheap — without it every track change re-probes all four
-    /// platform tiers.
-    private var pickCache: [String: (picks: [StreamPick], expiresAt: Date)] = [:]
+    /// preloading cheap — a cached track needs no resolve at all, and a tier
+    /// known to have no stream isn't asked again.
+    private var pickCache: [String: [Int: (outcome: StreamTierPlan.Outcome, expiresAt: Date)]] = [:]
     private static let pickTTL: TimeInterval = 4 * 60 * 60
+
+    /// One walk per (track, purpose, skipped tiers) at a time: the foreground
+    /// load and the gapless preload asking for the same track share it rather
+    /// than both requesting tier 7.
+    private var resolving: [String: Task<[StreamPick], Error>] = [:]
+
+    /// Paces every nugs API and stream-resolver request (≈4/s, bursts of 8).
+    /// CDN media fetches and artwork are not counted — they never come here.
+    private var bucket = TokenBucket.nugsAPI
 
     /// A single in-flight token refresh shared by all callers, so concurrent
     /// expired-token requests await one refresh instead of stampeding the token
@@ -28,9 +37,9 @@ actor NugsClient {
         let config = URLSessionConfiguration.ephemeral
         config.httpCookieAcceptPolicy = .never
         config.httpShouldSetCookies = false
-        // Default is 60s/7d; tighten so a hung catalog/auth request — or one
-        // stalled stream-tier probe inside resolveStreams' task group — fails
-        // in 30s instead of leaving the user on a frozen load.
+        // Default is 60s/7d; tighten so a hung catalog/auth request — or a
+        // stalled stream-tier resolve — fails in 30s instead of leaving the
+        // user on a frozen load.
         config.timeoutIntervalForRequest = 30
         config.timeoutIntervalForResource = 120
         http = URLSession(configuration: config)
@@ -40,29 +49,12 @@ actor NugsClient {
 
     // --- auth ---------------------------------------------------------------
 
-    /// Password grant (ROPC). Works only for accounts that have a nugs.net
-    /// password — not for Apple/Google/Facebook/SiriusXM SSO accounts, which
-    /// have no password to POST. Those use `loginWithBrowser()` instead.
-    func login(email: String, password: String) async throws {
-        let form = [
-            "client_id": NugsConstants.clientId,
-            "grant_type": "password",
-            "scope": NugsConstants.oauthScope,
-            "username": email,
-            "password": password,
-        ]
-        let (data, status) = try await postForm(NugsConstants.authURL, form: form)
-        guard (200..<300).contains(status) else {
-            throw NugsError.authFailed(status: status, body: String(data: data, encoding: .utf8) ?? "")
-        }
-        try await completeLogin(with: try JSONDecoder().decode(TokenResponse.self, from: data))
-    }
-
-    /// Authorization Code + PKCE grant via a system browser window. Hands
-    /// authentication to the real id.nugs.net login page, so SSO/MFA accounts
-    /// the password grant can't reach work here. Uses the same public
-    /// `clientId`, so the refresh token it yields refreshes through
-    /// `currentSession()` unchanged.
+    /// Authorization Code + PKCE grant via a system browser window — the only
+    /// way to sign in. Credentials are typed into nugs.net's own id.nugs.net
+    /// page, never into this app, and SSO/MFA accounts work the same as
+    /// password ones. The refresh token it yields refreshes through
+    /// `currentSession()`; sessions created by the old in-app password grant
+    /// (same `clientId`) keep refreshing there unchanged.
     func loginWithBrowser() async throws {
         let (code, verifier) = try await BrowserAuthService.authorize()
         let form = [
@@ -79,8 +71,7 @@ actor NugsClient {
         try await completeLogin(with: try JSONDecoder().decode(TokenResponse.self, from: data))
     }
 
-    /// Shared tail of both login flows: resolve the user id and subscription,
-    /// then persist. The two grants differ only in how the token is obtained.
+    /// Tail of the sign-in: resolve the user id and subscription, then persist.
     private func completeLogin(with token: TokenResponse) async throws {
         let userId = try await fetchUserId(accessToken: token.access_token)
         let sub = try await fetchSubInfo(accessToken: token.access_token)
@@ -150,6 +141,7 @@ actor NugsClient {
 
     private func fetchSubInfo(accessToken: String) async throws -> SubInfo {
         let req = Self.subInfoRequest(accessToken: accessToken, identity: .current)
+        try await throttle()
         let (data, res) = try await http.data(for: req)
         let status = (res as? HTTPURLResponse)?.statusCode ?? 0
         guard (200..<300).contains(status) else { throw NugsError.http(status) }
@@ -220,7 +212,7 @@ actor NugsClient {
     }
 
     /// REST GET against the modern video catalog host (`catalogV1Base`). Same
-    /// Bearer token and mobile UA as `catalogGet`; differs only in host, path
+    /// Bearer token and UA as `catalogGet`; differs only in host, path
     /// shape (`/path?k=v`), and that an empty query yields a clean path.
     private func catalogV1Get(_ path: String, query: [String: String] = [:]) async throws -> JSON {
         let session = try await currentSession()
@@ -284,18 +276,24 @@ actor NugsClient {
 
     // --- streaming ----------------------------------------------------------
 
-    /// Resolves the CDN URL for one platformID tier. Returns nil when nugs
-    /// has no stream for that combination. Non-isolated so the four tier probes
-    /// run concurrently off the actor; touches only the non-isolated `http` and
-    /// the passed-in `session`.
-    nonisolated func streamURL(trackId: String, platformId: Int, session: Session) async throws -> String? {
+    /// Asks the resolver for one platformID tier. Never throws: a transport
+    /// error or non-2xx is `.failed` (not cached, may be transient), a 2xx
+    /// without a link is `.noStream`.
+    private func requestTier(trackId: String, platformId: Int,
+                             session: Session) async -> StreamTierPlan.Outcome {
         let req = Self.streamRequest(trackId: trackId, platformId: platformId,
                                      session: session, identity: .current)
-        let (data, res) = try await http.data(for: req)
-        guard let code = (res as? HTTPURLResponse)?.statusCode, (200..<300).contains(code) else {
-            return nil
+        do {
+            try await throttle()
+            let (data, res) = try await http.data(for: req)
+            guard let code = (res as? HTTPURLResponse)?.statusCode, (200..<300).contains(code) else {
+                return .failed
+            }
+            return StreamTierPlan.outcome(link: JSON.parse(data).str("streamLink", "StreamLink"),
+                                          platformId: platformId)
+        } catch {
+            return .failed
         }
-        return JSON.parse(data).str("streamLink", "StreamLink")
     }
 
     /// One tier's `subPlayer.aspx` request. Shared with the DEBUG network
@@ -352,6 +350,7 @@ actor NugsClient {
         var req = URLRequest(url: url)
         req.setValue("Bearer \(session.accessToken)", forHTTPHeaderField: "Authorization")
         req.setValue(NugsIdentity.current.userAgentLegacy, forHTTPHeaderField: "User-Agent")
+        try await throttle()
         let (data, res) = try await http.data(for: req)
         let status = (res as? HTTPURLResponse)?.statusCode ?? 0
         // Reserve a `nil` return for the PPV/owned seam (a 2xx with no
@@ -370,56 +369,71 @@ actor NugsClient {
             stashContentAccess: json.int("stashContentAccess", "StashContentAccess"))
     }
 
-    /// Probes every device tier concurrently, identifies the format of each
-    /// returned URL, and returns the distinct picks ordered by native playback
-    /// preference. The player tries them in order and falls through on
-    /// AVPlayer failure, so a bad first choice self-heals.
-    func resolveStreams(trackId: String) async throws -> [StreamPick] {
-        if let cached = pickCache[trackId], Date() < cached.expiresAt {
-            return cached.picks
-        }
-        let session = try await currentSession()
-        var found: [StreamPick] = []
-        await withTaskGroup(of: StreamPick?.self) { group in
-            for platform in NugsConstants.probePlatforms {
-                group.addTask { [self] in
-                    guard let url = try? await streamURL(
-                            trackId: trackId, platformId: platform, session: session),
-                          !url.isEmpty
-                    else { return nil }
-                    return StreamPick(url: url, platformId: platform, format: .identify(url))
-                }
-            }
-            for await pick in group {
-                if let pick { found.append(pick) }
-            }
-        }
-
-        // Dedup by format (keep the lowest tier that returned it), then order
-        // by preference.
-        var seen = Set<AudioFormat>()
-        var unique: [StreamPick] = []
-        for pick in found.sorted(by: { $0.platformId < $1.platformId }) {
-            if seen.insert(pick.format).inserted { unique.append(pick) }
-        }
-        let ordered = unique.sorted { $0.format.preferenceRank < $1.format.preferenceRank }
-        if !ordered.isEmpty {
-            pickCache[trackId] = (ordered, Date().addingTimeInterval(Self.pickTTL))
-        }
-        return ordered
+    /// Resolves a track's stream one tier at a time (`StreamTierPlan`): tier 7
+    /// first, and only when it has nothing usable for `purpose` the remaining
+    /// tiers in order, stopping at the first usable one. Typically ONE request
+    /// per track, and none when the answer is cached. Returns one pick, or —
+    /// when no tier had a usable one — whatever the walk found, best first
+    /// (possibly empty). `skipping` excludes tiers the player has watched fail.
+    func resolveStreams(trackId: String,
+                        purpose: StreamTierPlan.Purpose = .playback,
+                        skipping: Set<Int> = []) async throws -> [StreamPick] {
+        let key = "\(trackId)|\(purpose)|\(skipping.sorted())"
+        if let inFlight = resolving[key] { return try await inFlight.value }
+        let task = Task { try await self.walkTiers(trackId: trackId, purpose: purpose,
+                                                   skipping: skipping) }
+        resolving[key] = task
+        defer { resolving[key] = nil }
+        return try await task.value
     }
 
-    /// Drops a track's cached picks. The player calls this when an item
+    private func walkTiers(trackId: String, purpose: StreamTierPlan.Purpose,
+                           skipping: Set<Int>) async throws -> [StreamPick] {
+        let now = Date()
+        var known: [Int: StreamTierPlan.Outcome] = [:]
+        for (tier, entry) in pickCache[trackId] ?? [:] where now < entry.expiresAt {
+            known[tier] = entry.outcome
+        }
+        var session: Session?
+        while true {
+            switch StreamTierPlan.next(known: known, skipping: skipping, purpose: purpose) {
+            case .done(let picks):
+                return picks
+            case .request(let tier):
+                // Only fetched once a request is actually needed: a fully cached
+                // track costs no token refresh either.
+                let s: Session
+                if let session { s = session } else { s = try await currentSession(); session = s }
+                let outcome = await requestTier(trackId: trackId, platformId: tier, session: s)
+                known[tier] = outcome
+                if outcome.isCacheable {
+                    pickCache[trackId, default: [:]][tier] =
+                        (outcome, Date().addingTimeInterval(Self.pickTTL))
+                }
+            }
+        }
+    }
+
+    /// Drops a track's cached tier answers. The player calls this when an item
     /// fails — a stale signed URL is indistinguishable from an undecodable
-    /// format, so the next attempt should re-probe from scratch.
+    /// format, so the next attempt resolves afresh.
     func invalidateStreams(for trackId: String) {
         pickCache[trackId] = nil
+    }
+
+    /// Waits for a token from `bucket`. The token is taken before the wait,
+    /// so concurrent callers queue behind each other rather than racing for
+    /// the refill. Throws only `CancellationError`.
+    private func throttle() async throws {
+        let wait = bucket.reserve(at: ProcessInfo.processInfo.systemUptime)
+        if wait > 0 { try await Task.sleep(for: .seconds(wait)) }
     }
 
     // --- helpers ------------------------------------------------------------
 
     private func getJSON(_ url: URL, bearer: String) async throws -> JSON {
         let req = Self.apiRequest(url, bearer: bearer, identity: .current)
+        try await throttle()
         let (data, res) = try await http.data(for: req)
         let status = (res as? HTTPURLResponse)?.statusCode ?? 0
         guard (200..<300).contains(status) else { throw NugsError.http(status) }
@@ -441,6 +455,7 @@ actor NugsClient {
         req.httpBody = Self.encode(form).data(using: .utf8)
         req.setValue("application/x-www-form-urlencoded", forHTTPHeaderField: "Content-Type")
         req.setValue(NugsIdentity.current.userAgentAPI, forHTTPHeaderField: "User-Agent")
+        try await throttle()
         let (data, res) = try await http.data(for: req)
         return (data, (res as? HTTPURLResponse)?.statusCode ?? 0)
     }

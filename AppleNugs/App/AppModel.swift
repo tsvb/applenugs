@@ -39,6 +39,14 @@ final class AppModel {
 
     private var cachedArtists: [ArtistEntry]?
 
+    /// Fully loaded artist catalogs (shows/releases, and videos), reused for
+    /// `ArtistCatalogPaging.cacheTTL` so revisiting an artist page makes no
+    /// requests. Not observed: views read them once per load, never from body.
+    @ObservationIgnored private var artistShowsCache =
+        TTLCache<String, [ContainerSummary]>(ttl: ArtistCatalogPaging.cacheTTL)
+    @ObservationIgnored private var artistVideosCache =
+        TTLCache<String, [VideoSummary]>(ttl: ArtistCatalogPaging.cacheTTL)
+
     var isLoggedIn: Bool {
         if case .loggedIn = sessionState { return true }
         return false
@@ -125,22 +133,9 @@ final class AppModel {
         await bootstrap()
     }
 
-    func login(email: String, password: String) async {
-        isLoggingIn = true
-        loginError = nil
-        defer { isLoggingIn = false }
-        do {
-            try await client.login(email: email, password: password)
-            let session = try await client.currentSession()
-            sessionState = .loggedIn(plan: session.planDescription)
-        } catch {
-            loginError = error.localizedDescription
-        }
-    }
-
-    /// Browser-based OAuth login for SSO/MFA accounts. Mirrors `login` but
-    /// drives the system browser; a user-cancelled sheet is not surfaced as an
-    /// error.
+    /// Sign in on nugs.net's own page in a system browser sheet — the app's
+    /// only sign-in (it never sees a password). A user-cancelled sheet is not
+    /// surfaced as an error.
     func loginWithBrowser() async {
         isLoggingIn = true
         loginError = nil
@@ -161,7 +156,27 @@ final class AppModel {
         video.stop()
         player.clear()
         cachedArtists = nil
+        artistShowsCache.removeAll()
+        artistVideosCache.removeAll()
         sessionState = .loggedOut
+    }
+
+    /// An artist's complete show/release catalog if one was loaded within the
+    /// TTL. Only complete loads are stored (see `ArtistDetailView.load`).
+    func cachedArtistShows(id: String) -> [ContainerSummary]? {
+        artistShowsCache.value(for: id, now: Date())
+    }
+
+    func storeArtistShows(_ shows: [ContainerSummary], id: String) {
+        artistShowsCache.insert(shows, for: id, now: Date())
+    }
+
+    func cachedArtistVideos(id: String) -> [VideoSummary]? {
+        artistVideosCache.value(for: id, now: Date())
+    }
+
+    func storeArtistVideos(_ videos: [VideoSummary], id: String) {
+        artistVideosCache.insert(videos, for: id, now: Date())
     }
 
     /// Full artist list, cached for the app lifetime (cleared on logout).

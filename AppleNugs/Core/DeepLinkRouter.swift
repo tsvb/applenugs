@@ -61,6 +61,13 @@ enum DeepLinkRouter {
     /// date. The UI only ever loads the first page, so a deep link to an older show
     /// would otherwise miss; mirror openVideo's bounded paging.
     private static func pagedContainerId(artistId: String, link: DeepLink, app: AppModel) async throws -> String? {
+        // A catalog the artist page loaded in the last 30 minutes is complete
+        // (to its page cap), so answer from it without paging again. A show
+        // added since then misses here and is found by the search fallback.
+        if let cached = app.cachedArtistShows(id: artistId) {
+            return pick(cached.filter { $0.isLiveShow && $0.dateText == link.date },
+                        venue: link.venue)?.id
+        }
         let pageSize = 100
         let maxPages = 10                                 // safety cap (≤1000 shows)
         var offset = 1

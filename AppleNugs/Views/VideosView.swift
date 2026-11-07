@@ -71,7 +71,7 @@ struct VideosView: View {
         VStack(alignment: .leading, spacing: 12) {
             sectionTitle("Continue Watching")
             ScrollView(.horizontal, showsIndicators: false) {
-                HStack(alignment: .top, spacing: 16) {
+                LazyHStack(alignment: .top, spacing: 16) {
                     ForEach(continueWatching) { progress in
                         NavigationLink(value: Route.video(id: progress.id, title: progress.title)) {
                             resumeCard(progress)
@@ -111,11 +111,14 @@ struct VideosView: View {
 
     // --- Live & Upcoming ----------------------------------------------------
 
+    // All three rails are LazyHStacks: a card (and its thumbnail request)
+    // is only built once it scrolls near the screen, not the whole rail on
+    // first render.
     private var liveSection: some View {
         VStack(alignment: .leading, spacing: 12) {
             sectionTitle("Live & Upcoming")
             ScrollView(.horizontal, showsIndicators: false) {
-                HStack(alignment: .top, spacing: 16) {
+                LazyHStack(alignment: .top, spacing: 16) {
                     ForEach(webcasts) { video in
                         webcastCard(video)
                     }
@@ -134,7 +137,7 @@ struct VideosView: View {
                 .foregroundStyle(theme.palette.textSecondary)
                 .padding(.top, -6)
             ScrollView(.horizontal, showsIndicators: false) {
-                HStack(alignment: .top, spacing: 16) {
+                LazyHStack(alignment: .top, spacing: 16) {
                     ForEach(recentExclusives) { video in
                         webcastCard(video)
                     }

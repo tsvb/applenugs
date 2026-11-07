@@ -132,7 +132,7 @@ final class NetworkProbeRunner {
 }
 
 /// DEBUG-only diagnostics: for the current track, what nugs.net answers to the
-/// honest identity versus today's spoofed one. Reached from the account menu
+/// honest identity versus the legacy Android one. Reached from the account menu
 /// ("Network Probe (Debug)") on both platforms; `-UITestShowNetworkProbe`
 /// presents it at launch for screenshots. Shared by the iOS and macOS shells,
 /// so nothing here may come from `AppleNugs/macOS/` or `AppleNugs/iOS/`.
@@ -221,9 +221,9 @@ struct NetworkProbeView: View {
         VStack(alignment: .leading, spacing: 6) {
             caption("Identities")
             identityLine("Yeti", runner.honest.userAgentAPI)
-            identityLine("Android", NugsIdentity.current.userAgentAPI)
-            identityLine("Resolve", NugsIdentity.current.userAgentLegacy)
-            identityLine("Referer", NugsIdentity.current.refererCDN ?? "none")
+            identityLine("Android", NugsIdentity.legacyAndroidForProbe.userAgentAPI)
+            identityLine("Resolve", NugsIdentity.legacyAndroidForProbe.userAgentLegacy)
+            identityLine("Referer", NugsIdentity.legacyAndroidForProbe.refererCDN ?? "none")
         }
     }
 

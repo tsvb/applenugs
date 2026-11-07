@@ -12,7 +12,8 @@ import Foundation
 
 /// Which user agent a step sends.
 enum ProbeUA: String, Sendable, Hashable {
-    /// Today's: the official Android app's.
+    /// The control: the official Android app's, which the app used to send
+    /// (`NugsIdentity.legacyAndroidForProbe`).
     case spoofed
     /// `Yeti/<version> (unofficial; …)`.
     case honest
@@ -75,19 +76,19 @@ enum ProbeStep: Sendable, Hashable {
         }
     }
 
-    /// The identity this step sends: today's for the control steps, the
-    /// honest one otherwise — except the CDN Referer, which is the step's
-    /// own variable, set independently of the UA.
+    /// The identity this step sends: the legacy Android one for the control
+    /// steps, the honest one otherwise — except the CDN Referer, which is the
+    /// step's own variable, set independently of the UA.
     func identity(honest: NugsIdentity) -> NugsIdentity {
-        var identity = ua == .honest ? honest : .current
+        var identity = ua == .honest ? honest : .legacyAndroidForProbe
         if case .cdn(_, let referer) = self {
-            identity.refererCDN = referer ? NugsConstants.playerReferer : nil
+            identity.refererCDN = referer ? NugsIdentity.legacyAndroidForProbe.refererCDN : nil
         }
         return identity
     }
 }
 
-/// What the probe asks, in order. The control (today's identity) goes first
+/// What the probe asks, in order. The control (the legacy Android identity) goes first
 /// in every group, so a session problem shows up before the honest variant is
 /// blamed for it.
 enum ProbePlan {
@@ -102,7 +103,7 @@ enum ProbePlan {
     }
 
     static let cdnSteps: [ProbeStep] = [
-        .cdn(.spoofed, referer: true),   // exactly today's playback request
+        .cdn(.spoofed, referer: true),   // the old playback request, exactly
         .cdn(.spoofed, referer: false),
         .cdn(.honest, referer: true),
         .cdn(.honest, referer: false),
@@ -114,8 +115,10 @@ enum ProbePlan {
         apiSteps + resolveSteps(platforms: platforms) + cdnSteps
     }
 
-    /// The URL the CDN checks fetch: the one production would play — the best
-    /// `preferenceRank` among the control resolves (lowest tier on a tie) —
+    /// The URL the CDN checks fetch: the one the old parallel fan-out would
+    /// have played — the best `preferenceRank` among the control resolves
+    /// (lowest tier on a tie; tier 7's ALAC on the Phase B track, which is
+    /// also what production now asks for first) —
     /// else the best an honest resolve returned. Nil skips the CDN group.
     static func cdnTarget(from results: [ProbeResult]) -> ProbeResult? {
         let withURL = results.filter { result in
@@ -320,9 +323,10 @@ enum ProbeReport {
         out.append("App: Yeti \(h.appVersion) · \(h.platform)")
         out.append("Track: \(h.trackTitle) — \(h.trackArtist) (trackID \(h.trackId), show \(h.showId ?? "none"))")
         out.append("Yeti UA: \(h.honest.userAgentAPI)")
-        out.append("Android UA (API, CDN): \(NugsIdentity.current.userAgentAPI)")
-        out.append("Android UA (resolve): \(NugsIdentity.current.userAgentLegacy)")
-        out.append("Referer (CDN): \(NugsIdentity.current.refererCDN ?? "none")")
+        let legacy = NugsIdentity.legacyAndroidForProbe
+        out.append("Android UA (API, CDN): \(legacy.userAgentAPI)")
+        out.append("Android UA (resolve): \(legacy.userAgentLegacy)")
+        out.append("Referer (CDN): \(legacy.refererCDN ?? "none")")
         if let note { out.append("Note: \(note)") }
         for group in ProbeGroup.allCases {
             out.append("")
