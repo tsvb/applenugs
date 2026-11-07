@@ -11,7 +11,7 @@ Native **macOS + iOS SwiftUI** player for nugs.net, shipped to users as **Yeti �
 ## Environment & build
 - Work in the git **worktree** you were started in; **don't `cd` to the main checkout** (the repo-root clone). Merge to `main` via a fast-forward from the main checkout using `git -C`, then push (releases/pushes are the maintainer's call).
 - `xcodegen generate` after any `project.yml` edit (`AppleNugs.xcodeproj/` is **gitignored**). Regenerate before building/opening.
-- Schemes: `AppleNugs` (macOS, `-destination 'platform=macOS'`), `AppleNugs-iOS` (`-destination 'generic/platform=iOS Simulator'` or a device id), `AppleNugsTests` (host-free unit tests, **131** as of 2026-08-18 — CI runs them on every push, so take the count from the suite rather than from this line).
+- Schemes: `AppleNugs` (macOS, `-destination 'platform=macOS'`), `AppleNugs-iOS` (`-destination 'generic/platform=iOS Simulator'` or a device id), `AppleNugsTests` (host-free unit tests, **338** as of 2026-11-07 — CI runs them on every push, so take the count from the suite rather than from this line).
 - **Always build/verify with a fresh `-derivedDataPath`** — incremental builds can report a false "clean". Project must stay warning-free under `SWIFT_STRICT_CONCURRENCY=complete` on **both** schemes. SourceKit "No such module 'UIKit'" on iOS-only files = per-target index noise; `xcodebuild` is authoritative.
 - `docs/superpowers/` is **gitignored** (specs, plans, reports — local only, and therefore NOT a safe place for handoff state: a worktree removal deletes it. Durable session state belongs in this file plus the auto-memory index).
 - Visual verify without a login: launch with `-UITEST -UITestSeedQueue` (bypasses login, seeds a now-playing queue). Theme switcher = account menu (person icon). Dashboard = `sidebar.right` toolbar button / ⌥⌘I.
@@ -44,6 +44,28 @@ Native **macOS + iOS SwiftUI** player for nugs.net, shipped to users as **Yeti �
   fixed-geometry cluster uses `NowPlayingFit.scale` + `scaleEffect` + a matching `.frame` —
   `scaleEffect` alone keeps the old footprint.
 - Catalog dates are UTC-midnight instants — use `CrateSection.catalogCalendar`, not `Calendar.current` (see the `applenugs-catalog-dates-are-utc` memory).
+- **Listening stats are artists-only rolling aggregates with NO event log** (landed 2026-11-07; the Home
+  "nice list" the Yeti design builds on). `ListeningStats` (the table), `ListeningCredit` (accumulator +
+  threshold policy, play = min(50%, 240s) LISTENED, not playhead) and `LedgerSummary` (totals, ranking,
+  copy) are pure Foundation and compiled into `AppleNugsTests`; the `@Observable` `ListeningStatsStore`
+  writes `listening.json`. Four rules, all of which fail silently if broken. (1) **`PlayerService` owns
+  the accumulator, not the store** — its credit properties are `@ObservationIgnored` and
+  `store.credit(...)` is called ONLY at commit boundaries (track change, 30s, pause, background,
+  terminate), never per tick; a per-tick entry point would make Home re-diff four times a second.
+  (2) **`HomeView` gates the ledger on `listening.hasAnyPlay`, never on `stats`** — reading the table
+  from Home's body subscribes the greeting, hero, favorites strip and crate grid to every commit.
+  (3) **`save()` refuses to write while `loadFailed` is latched**: a file that didn't decode is the only
+  copy of that history, so it is salvaged per-element and left on disk; `reset()` clears the latch on
+  purpose. The `-UITEST` guard covers WRITES only — **a screenshot run renders real listening data on
+  Home.** (4) **Backgrounded iOS has no tick, so credit is SETTLED, not ticked** (`ListeningCredit.span`:
+  playhead delta capped at wall-clock time since the last sample). `PlayerService.settleListening` runs
+  at every commit, on the existing 60s background wake, before the tick returns on foregrounding, at a
+  track's end (at `duration` — a gapless head has already moved on), before a gapless `next()`, and
+  before a seek, which then rebases the baseline. Don't add a wake or a background tick for stats.
+  Scope cuts are deliberate — don't "restore" them: artists only (no shows/tracks/venues/months),
+  all-time only, Home only (no sidebar row or tab), typographic ledger (cards/tiles rejected), audio only
+  (the store seam is neutral so `VideoPlayerService` could become a second caller). Reset lives in the
+  account menu behind a `.confirmationDialog` (verified presenting from the macOS toolbar `Menu`).
 
 ## START HERE — state as of 2026-11-07 (handoff for a new session)
 
@@ -51,14 +73,25 @@ Native **macOS + iOS SwiftUI** player for nugs.net, shipped to users as **Yeti �
 - **`main` == `origin/main` == `e6ab835`** — everything above is LANDED: the iPhone Duo work (PR #5) and the
   pill duck + Yeti compliance/rename/encrypted downloads/perf + the theme design (PR #6, merged 2026-11-07,
   CI green on `xcode-27`, fast-forward — every hash in this file is on `main`). 307 tests.
-- **`yeti-design`** (checked out, no upstream, starts at `e6ab835`) — the branch for the single-design
-  refactor (step 3 below).
+- **Listening stats LANDED on top (2026-11-07)** — `listening-stats` rebuilt on this base as
+  `listening-stats-rebased` (Tim's feature commit replayed as-is, plus a fix crediting background
+  listening — see the Conventions bullet), fast-forwarded onto `main`. **338 tests.** The old
+  `listening-stats` branch in the main checkout is superseded and can be deleted (Tim's call — it's
+  checked out there, so it can't be touched from this worktree).
+- **`yeti-design`** (no upstream) — the branch for the single-design refactor (step 3 below); fast-forward
+  it to the new `main` before starting.
 - Local `main` ref is synced to `e6ab835` (fast-forwarded from inside the worktree with
   `git branch -f main origin/main` — the worktree shares the repo's refs, and `main` isn't checked out
   anywhere; `git -C …` / network fetches from Tim's remote-control `!` shell fail). Remote branches `iphone-duo` and
   `yeti` are merged and can be deleted on GitHub (Tim's call).
-- `listening-stats` (in the main checkout; built, unmerged, based on the OLD main — needs a rebase onto
-  `e6ab835`, with a CLAUDE.md conflict to resolve). Its Home "nice list" ledger is part of the Yeti design.
+- **Listening stats, still unverified on screen** (a green build can't see these): the ledger POPULATED
+  (nothing has drawn a real row yet — needs a credited play); **locked-screen credit on the Duo** (play a
+  show locked for 5+ min, unlock, the artist's time should include it; `debugBackgroundTicks` must stay 0);
+  the iOS reset dialog and that Reset empties the ledger; row tap → `ArtistDetailView` (an unresolvable
+  name should be inert text); long name vs the `19 plays · 31h` block at the narrowest Mac window; Dynamic
+  Type / VoiceOver; a duration-less stream earning its play at 4 min, not before. Accepted, not defects:
+  the `Artists` total counts artists with seconds but no play yet; hours truncate; `firstPlayedAt` /
+  `lastPlayedAt` are stored but unused. The ledger will be restyled by the Yeti design anyway.
 
 **Landing recipe (used for PR #5 and #6):** push the branch, open a PR (CI runs on the `xcode-27` runner),
 then `git push origin <branch>:main` — fast-forward only, never a merge/rebase, so hashes here stay valid.
@@ -75,8 +108,8 @@ Pushing is Tim's call.
    pill-duck overlay, Mac Now Playing window, sheets, toasts); (c) add Yeti as theme #6 through the existing
    token system and verify on device; (d) make it the only theme (remove pickers, force dark); (e) delete the
    five themes, transport variants, art-color pipeline, wash/grain, ThemeID/ThemeManager (~2,300 lines); keep
-   ONE token struct as the design system. The Home "nice list" ledger depends on the unmerged
-   `listening-stats` branch. Spec it before building. Source design: `docs/design/yeti-theme/yeti-theme.html`
+   ONE token struct as the design system. The Home "nice list" ledger is `ListeningLedger` (landed
+   2026-11-07). Spec it before building. Source design: `docs/design/yeti-theme/yeti-theme.html`
    (+ `.png`, and the three concepts it beat). It carries a token sheet that maps 1:1 onto `Theme` fields and a
    "Wiring it in" list (ThemeID `.yeti`, EqualizerBars branch, play-sticker sites, FoilSweep, BlisterBubble).
    Never quote the song's lyrics in the app or docs (copyrighted) — paraphrase only.
