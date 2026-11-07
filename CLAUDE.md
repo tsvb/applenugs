@@ -64,7 +64,14 @@ Branches, all local, NOT pushed:
 2. **Finish verifying Yeti on hardware:** logout wipes downloads; the **Mac** build (old plaintext downloads
    there must migrate to sealed `.yeti`; Reveal in Finder is gone). Mac local installs must be Developer
    ID-signed (see the local-install-signing memory).
-3. **Implement the "Yeti" theme** (sixth theme) from the finished design: `docs/design/yeti-theme/yeti-theme.html`
+3. **DECISION (Tim, 2026-11-07): Yeti becomes the ONLY design, on macOS and iOS — the five themes go**
+   (reverses the Aug-2026 "keep all themes" call). Staged plan proposed: (a) land the branches; (b) design pass
+   for surfaces the mockup doesn't cover (video, search, downloads, login/connection-failed, Duo two-column +
+   pill-duck overlay, Mac Now Playing window, sheets, toasts); (c) add Yeti as theme #6 through the existing
+   token system and verify on device; (d) make it the only theme (remove pickers, force dark); (e) delete the
+   five themes, transport variants, art-color pipeline, wash/grain, ThemeID/ThemeManager (~2,300 lines); keep
+   ONE token struct as the design system. The Home "nice list" ledger depends on the unmerged
+   `listening-stats` branch. Spec it before building. Source design: `docs/design/yeti-theme/yeti-theme.html`
    (+ `.png`, and the three concepts it beat). It carries a token sheet that maps 1:1 onto `Theme` fields and a
    "Wiring it in" list (ThemeID `.yeti`, EqualizerBars branch, play-sticker sites, FoilSweep, BlisterBubble).
    Never quote the song's lyrics in the app or docs (copyrighted) — paraphrase only.
