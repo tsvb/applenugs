@@ -85,7 +85,9 @@ really good… it's fun"), being built; (2) stage (d) Yeti-only + Mac foil focus
 spec `docs/superpowers/specs/2026-11-07-yeti-only-design.md` (local), approved: Yeti on launch with NO migration
 (Tim: "no one's really using this app… it's only on my phone" — he is the only user; never design for other
 users' saved state here), foil focus on our own controls only, the art-color pipeline deleted, ONE `Theme` token
-struct kept. (4) A new app icon — Tim chose the BLISTER PACK direction; concepts in `docs/design/yeti-icon/`. The whole-branch review listed the collapse hazards for (d)/(e): ~8 `tintIfSet(plainVoice ? x : nil)`
+struct kept. (4) A new app icon — Tim chose the BLISTER PACK direction; concepts in `docs/design/yeti-icon/`; **Tim picked
+concept 2, "The bubble"** (the bubble filling the tile, holding the yellow playing sticker with its four stepping
+bars, one thin foil glint on the rim) as-is — "that's the right choice", no tweaks. The whole-branch review listed the collapse hazards for (d)/(e): ~8 `tintIfSet(plainVoice ? x : nil)`
 sites, ~20 per-view `plainVoice`/`stickers` computed properties, `.stickers`-before-`.equalizerRows` precedence
 checks (DashboardPanel queue slot, `titleBlock`, CrateHeader), `card ? X : 0` paddings in `StandardNowPlayingScreen`,
 two resume cards (`HomeView.resumeCard` + `YetiResumeCard`), duplicate helpers `yetiShowAction` (AlbumDetailView) ≡
