@@ -49,31 +49,84 @@ struct AlbumDetailView: View {
     // --- sections ---------------------------------------------------------------
 
     private func header(_ album: AlbumDetailModel) -> some View {
-        HStack(alignment: .top, spacing: 14) {
+        // Yeti's `.show-ios` sets the text against the cover's bottom edge.
+        HStack(alignment: plainVoice ? .bottom : .top, spacing: 14) {
             if album.imageURL != nil {
                 CoverArt(url: album.imageURL)
                     .frame(width: 110)
             }
-            VStack(alignment: .leading, spacing: 4) {
-                Text(album.title).font(theme.type.hero(26))
-                Text(album.artistName).font(theme.type.title(18)).foregroundStyle(theme.palette.textSecondary)
-                HStack(spacing: 10) {
-                    if let date = album.dateText {
-                        Text(date).font(theme.type.numeric(12))
-                    }
-                    if let venue = album.venue {
-                        Text(venue)
-                    }
-                    if let runtime = album.totalRunningTime {
-                        Text("\(runtime) · \(album.tracks.count) tracks")
-                            .font(theme.type.numeric(12))
-                            .foregroundStyle(theme.palette.textSecondary)
-                    }
-                }
-                .font(.callout)
-                .foregroundStyle(theme.palette.textSecondary)
+            if plainVoice {
+                yetiHeaderText(album)
+            } else {
+                headerText(album)
             }
         }
+    }
+
+    private func headerText(_ album: AlbumDetailModel) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(album.title).font(theme.type.hero(26))
+            Text(album.artistName).font(theme.type.title(18)).foregroundStyle(theme.palette.textSecondary)
+            HStack(spacing: 10) {
+                if let date = album.dateText {
+                    Text(date).font(theme.type.numeric(12))
+                }
+                if let venue = album.venue {
+                    Text(venue)
+                }
+                if let runtime = album.totalRunningTime {
+                    Text("\(runtime) · \(album.tracks.count) tracks")
+                        .font(theme.type.numeric(12))
+                        .foregroundStyle(theme.palette.textSecondary)
+                }
+            }
+            .font(.callout)
+            .foregroundStyle(theme.palette.textSecondary)
+        }
+    }
+
+    /// Yeti's `.show-ios`: the meta stacks instead of sitting side by side
+    /// (where a city wrapped into a ragged column of its own). Title, then
+    /// the artist as a snow link, then "date · venue" on one truncating line,
+    /// then "runtime · N tracks", both in slush 13.5. A missing field drops
+    /// out rather than leaving a blank line.
+    private func yetiHeaderText(_ album: AlbumDetailModel) -> some View {
+        let place = [album.dateText, album.venue].compactMap { $0 }.joined(separator: " · ")
+        return VStack(alignment: .leading, spacing: 4) {
+            Text(album.title)
+                .font(theme.type.hero(26))
+                .foregroundStyle(theme.palette.textPrimary)
+            artistLink(album.artistName)
+            VStack(alignment: .leading, spacing: 2) {
+                if !place.isEmpty {
+                    Text(place)
+                        .lineLimit(1)
+                        .truncationMode(.tail)
+                }
+                if let runtime = album.totalRunningTime {
+                    Text("\(runtime) · \(album.tracks.count) tracks")
+                        .lineLimit(1)
+                }
+            }
+            .font(theme.type.body(13.5))
+            .foregroundStyle(theme.palette.textSecondary)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    /// The artist, heavy 15 in snow, opening the artist page through the same
+    /// `x-applenugs-meta://` route the now-playing links use (the scene
+    /// root's `.nowPlayingMetaLinks` resolves the name; a miss is a toast).
+    /// A `.link` run in a `Text`, like `NowPlayingMetaText`, carrying its snow
+    /// explicitly so SwiftUI doesn't paint it in the link tint.
+    private func artistLink(_ name: String) -> some View {
+        var run = AttributedString(name)
+        run[AttributeScopes.FoundationAttributes.LinkAttribute.self] =
+            NowPlayingMetaLine.Target.artist(name: name).url
+        run[AttributeScopes.SwiftUIAttributes.ForegroundColorAttribute.self] = theme.palette.textPrimary
+        return Text(run)
+            .font(theme.type.title(15))
+            .lineLimit(1)
     }
 
     /// Yeti (`.plainVoice`): Play all is the one snow primary and the rest

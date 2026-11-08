@@ -63,17 +63,32 @@ struct CrateList: View {
 
     // MARK: scope
 
-    private var scopePicker: some View {
-        Picker("Scope", selection: $scope) {
-            Text("Shows \(shows.count)").tag(CrateKind.show)
-            Text("Videos \(videos.count)").tag(CrateKind.video)
-            Text("Albums \(albums.count)").tag(CrateKind.album)
+    /// Yeti (`.plainVoice`): its own segmented control, and no counts in the
+    /// labels — the header's counts line under the name already carries them.
+    @ViewBuilder
+    private var scopeControl: some View {
+        if plainVoice {
+            YetiSegmentedControl("Scope", selection: $scope, options: [
+                .init(value: .show, title: "Shows"),
+                .init(value: .video, title: "Videos"),
+                .init(value: .album, title: "Albums"),
+            ])
+        } else {
+            Picker("Scope", selection: $scope) {
+                Text("Shows \(shows.count)").tag(CrateKind.show)
+                Text("Videos \(videos.count)").tag(CrateKind.video)
+                Text("Albums \(albums.count)").tag(CrateKind.album)
+            }
+            .pickerStyle(.segmented)
+            .labelsHidden()
         }
-        .pickerStyle(.segmented)
-        .labelsHidden()
-        .padding(.horizontal, 16)
-        .padding(.top, 4)
-        .padding(.bottom, 8)
+    }
+
+    private var scopePicker: some View {
+        scopeControl
+            .padding(.horizontal, 16)
+            .padding(.top, 4)
+            .padding(.bottom, 8)
     }
 
     // MARK: filter

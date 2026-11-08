@@ -41,6 +41,9 @@ struct ArtistDetailView: View {
         .background(theme.palette.base)
         .navigationTitle(artist.name)
         .compactNavigationTitle()
+        // Yeti's header prints the name as a 34pt title right below the bar;
+        // the bar keeps only the back button, as the surfaces sheet draws it.
+        .hidesNavigationBarTitle(theme.caps.contains(.plainVoice))
         .overlay {
             if loading && containers.isEmpty {
                 ProgressView()
