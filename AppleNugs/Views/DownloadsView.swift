@@ -12,17 +12,9 @@ struct DownloadsView: View {
     var body: some View {
         Group {
             if app.downloads.manifest.shows.isEmpty {
-                if theme.caps.contains(.blisterPack) {
-                    // Yeti: the empty pack, nothing boxed up yet.
-                    EmptyPackMessage(title: theme.copy.downloadsEmptyTitle,
-                                     message: Self.emptyMessage)
-                } else {
-                    ContentUnavailableView {
-                        Label(theme.copy.downloadsEmptyTitle, systemImage: "arrow.down.circle")
-                    } description: {
-                        Text(Self.emptyMessage)
-                    }
-                }
+                // The empty pack, nothing boxed up yet.
+                EmptyPackMessage(title: theme.copy.downloadsEmptyTitle,
+                                 message: Self.emptyMessage)
             } else {
                 VStack(spacing: 0) {
                     List {
@@ -80,9 +72,8 @@ struct DownloadsView: View {
 
                 Image(systemName: "play.circle")
                     .font(.system(size: 22))
-                    // A play glyph isn't time moving: snow under Yeti.
-                    .foregroundStyle(theme.caps.contains(.plainVoice) ? theme.palette.textPrimary
-                                                                      : theme.palette.accent)
+                    // A play glyph isn't time moving: snow.
+                    .foregroundStyle(theme.palette.textPrimary)
             }
             .contentShape(Rectangle())
         }

@@ -96,20 +96,13 @@ struct MiniPlayerScrubTrack: View {
     }
 }
 
-/// prev / play-pause / next, spread evenly. The play button's treatment is the
-/// theme's business, so it is chosen by `Style` rather than forked per variant.
+/// prev / play-pause / next, spread evenly, with the 46pt play sticker in the
+/// middle (an accent disc would be a pink fill).
 struct MiniPlayerTransportTriad: View {
-    enum Style: Equatable {
-        case filled     // solid accent disc
-        case sticker    // Yeti: the 46pt play sticker (an accent disc would be a pink fill)
-    }
-
     @Environment(AppModel.self) private var app
     @Environment(\.theme) private var theme
 
-    var style: Style = .filled
-    var glyphSize: CGFloat = 13
-    var playDiameter: CGFloat = 34
+    var glyphSize: CGFloat = 18
 
     private var player: PlayerService { app.player }
 
@@ -151,30 +144,15 @@ struct MiniPlayerTransportTriad: View {
         HapticButton(.transportToggle) {
             player.togglePlayPause()
         } label: {
-            if style == .sticker {
-                // Its own disc, glyph and spinner; one size whatever the state.
-                PlaySticker(isPlaying: player.isPlaying,
-                            isBuffering: player.isBuffering,
-                            size: .s46)
-                    .foilFocusOutline(Circle())
-            } else {
-                ZStack {
-                    Circle().fill(theme.palette.accent)
-                    if player.isBuffering {
-                        ProgressView().controlSize(.small).tint(theme.palette.base)
-                    } else {
-                        Image(systemName: player.isPlaying ? "pause.fill" : "play.fill")
-                            .font(.system(size: glyphSize))
-                            .foregroundStyle(theme.palette.base)
-                    }
-                }
-                .frame(width: playDiameter, height: playDiameter)
-                .contentShape(Rectangle())
-            }
+            // Its own disc, glyph and spinner; one size whatever the state.
+            PlaySticker(isPlaying: player.isPlaying,
+                        isBuffering: player.isBuffering,
+                        size: .s46)
+                .foilFocusOutline(Circle())
         }
         .buttonStyle(.plain)
         // The sticker draws its own foil focus outline; no system ring too.
-        .macFocusEffectDisabled(style == .sticker)
+        .macFocusEffectDisabled()
         .disabled(player.current == nil)
         .help("Play / pause (space)")
         .accessibilityLabel(player.isPlaying ? "Pause" : "Play")

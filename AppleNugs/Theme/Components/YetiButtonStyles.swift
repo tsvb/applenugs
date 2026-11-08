@@ -137,6 +137,36 @@ private struct YetiIconButtonBody: View {
     }
 }
 
+// MARK: - Page actions (show + video pages)
+
+extension View {
+    /// A secondary action on the show and video pages: a 36pt frost ring with
+    /// the glyph alone on iPhone (`.actrow .ib`; the label stays for
+    /// accessibility), a frost-outlined labeled button on the Mac. Never the
+    /// accent — saving, queueing and downloading aren't time moving.
+    @ViewBuilder
+    func yetiPageAction() -> some View {
+        #if os(iOS)
+        labelStyle(.iconOnly).buttonStyle(.yetiIcon)
+        #else
+        buttonStyle(.yetiSecondary)
+        #endif
+    }
+
+    /// The show page's Downloaded state: a filled SNOW disc, the glyph bare
+    /// (`.ib` with no ring) on iPhone, a frost-outlined button on the Mac;
+    /// never an accent fill.
+    @ViewBuilder
+    func yetiDownloadedAction() -> some View {
+        #if os(iOS)
+        labelStyle(.iconOnly)
+            .buttonStyle(YetiIconButtonStyle(ringed: false, glyphSize: 26))
+        #else
+        buttonStyle(.yetiSecondary)
+        #endif
+    }
+}
+
 // MARK: - Keyboard focus (macOS)
 
 extension View {

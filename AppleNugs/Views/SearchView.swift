@@ -14,8 +14,6 @@ struct SearchView: View {
     @State private var error: String?
     @FocusState private var fieldFocused: Bool
 
-    private var plainVoice: Bool { theme.caps.contains(.plainVoice) }
-
     var body: some View {
         VStack(spacing: 0) {
             searchField
@@ -24,10 +22,10 @@ struct SearchView: View {
 
             resultsBody
         }
-        // Yeti's night under the whole tab (the results list paints its own
-        // base; the empty/initial states otherwise sat on the system black).
+        // Night under the whole tab (the results list paints its own base;
+        // the empty/initial states otherwise sat on the system black).
         .background {
-            if plainVoice { theme.palette.base.ignoresSafeArea() }
+            theme.palette.base.ignoresSafeArea()
         }
         .navigationTitle("Search")
         .compactNavigationTitle()
@@ -52,37 +50,28 @@ struct SearchView: View {
         }
     }
 
-    /// The system rounded-border field, except under Yeti (`.plainVoice`):
-    /// the surfaces sheet's `.field` — one 40pt shelf field, a slush
+    /// The surfaces sheet's `.field` — one 40pt shelf field, a slush
     /// magnifier, and a foil caret (focus is foil; the root tint is snow).
-    @ViewBuilder
     private var searchField: some View {
-        let field = TextField("Search shows, artists, songs", text: $query,
-                              prompt: plainVoice
-                                ? Text("Search shows, artists, songs")
-                                    .foregroundStyle(theme.palette.textIdle)
-                                : nil)
-            .focused($fieldFocused)
-            .submitLabel(.search)
-            .onSubmit { Task { await run() } }
-        if plainVoice {
-            HStack(spacing: 8) {
-                Image(systemName: "magnifyingglass")
-                    .font(.system(size: 15, weight: .medium))
-                    .foregroundStyle(theme.palette.textSecondary)
-                field
-                    .textFieldStyle(.plain)
-                    .font(theme.type.body(16))
-                    .foregroundStyle(theme.palette.textPrimary)
-                    .tint(theme.palette.accent)
-            }
-            .padding(.horizontal, 12)
-            .frame(minHeight: 40)
-            .background(theme.palette.raised,
-                        in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-        } else {
-            field.textFieldStyle(.roundedBorder)
+        HStack(spacing: 8) {
+            Image(systemName: "magnifyingglass")
+                .font(.system(size: 15, weight: .medium))
+                .foregroundStyle(theme.palette.textSecondary)
+            TextField("Search shows, artists, songs", text: $query,
+                      prompt: Text("Search shows, artists, songs")
+                        .foregroundStyle(theme.palette.textIdle))
+                .focused($fieldFocused)
+                .submitLabel(.search)
+                .onSubmit { Task { await run() } }
+                .textFieldStyle(.plain)
+                .font(theme.type.body(16))
+                .foregroundStyle(theme.palette.textPrimary)
+                .tint(theme.palette.accent)
         }
+        .padding(.horizontal, 12)
+        .frame(minHeight: 40)
+        .background(theme.palette.raised,
+                    in: RoundedRectangle(cornerRadius: 12, style: .continuous))
     }
 
     @ViewBuilder
@@ -98,11 +87,8 @@ struct SearchView: View {
                 description: Text(error))
         } else if let results, let searchedQuery {
             if results.isEmpty {
-                if let line = theme.copy.searchNoResults(searchedQuery) {
-                    ContentUnavailableView(line, systemImage: "magnifyingglass")
-                } else {
-                    ContentUnavailableView.search(text: searchedQuery)
-                }
+                ContentUnavailableView(theme.copy.searchNoResults(searchedQuery) ?? "",
+                                       systemImage: "magnifyingglass")
             } else {
                 resultsList(results)
             }
@@ -150,22 +136,13 @@ struct SearchView: View {
         .background(theme.palette.base)
     }
 
-    @ViewBuilder
+    /// `.minisec`: the barker's heavy slush 15, sentence case. The headers
+    /// after Artists come from the API (`scHeader`), so an all-caps one is set
+    /// in sentence case here.
     private func sectionHeader(_ text: String) -> some View {
-        if plainVoice {
-            // `.minisec`: the barker's heavy slush 15, sentence case. The
-            // headers after Artists come from the API (`scHeader`), so an
-            // all-caps one is set in sentence case here.
-            Text(Self.sentenceCased(text))
-                .font(theme.type.section(15))
-                .foregroundStyle(theme.palette.textSecondary)
-        } else {
-            let condensed = theme.caps.contains(.condensedHeaders)
-            Text(condensed ? text.uppercased() : text)
-                .font(theme.type.section(12))
-                .tracking(condensed ? 1.5 : 0)
-                .foregroundStyle(theme.palette.textSecondary)
-        }
+        Text(Self.sentenceCased(text))
+            .font(theme.type.section(15))
+            .foregroundStyle(theme.palette.textSecondary)
     }
 
     /// "SHOWS" → "Shows"; anything already in mixed case is left alone.
@@ -244,23 +221,18 @@ struct SearchView: View {
         }
     }
 
-    /// A song's play mark. Under `.stickers` it is an OUTLINED disc in slush,
-    /// not a sticker: nothing is playing yet (the sheet's `.rs` with no stock).
-    @ViewBuilder
+    /// A song's play mark: an OUTLINED disc in slush, not a sticker — nothing
+    /// is playing yet (the sheet's `.rs` with no stock).
     private var songPlayMark: some View {
-        if theme.caps.contains(.stickers) {
-            ZStack {
-                Circle().strokeBorder(theme.palette.textSecondary, lineWidth: 1.5)
-                Image(systemName: "play.fill")
-                    .font(.system(size: 9, weight: .bold))
-                    .foregroundStyle(theme.palette.textSecondary)
-                    .offset(x: 1)
-            }
-            .frame(width: 22, height: 22)
-            .padding(.trailing, 4)
-        } else {
-            Image(systemName: "play.fill").font(.caption)
+        ZStack {
+            Circle().strokeBorder(theme.palette.textSecondary, lineWidth: 1.5)
+            Image(systemName: "play.fill")
+                .font(.system(size: 9, weight: .bold))
+                .foregroundStyle(theme.palette.textSecondary)
+                .offset(x: 1)
         }
+        .frame(width: 22, height: 22)
+        .padding(.trailing, 4)
     }
 
     private func run() async {

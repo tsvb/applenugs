@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// One dense library row: number · thumbnail · title · LIVE/4K badges · date.
+/// One dense library row: number · thumbnail · title · Live/4K stickers · date.
 /// Tapping navigates via the item's route; the context menu mirrors the
 /// existing per-kind favorites behavior (albums aren't favoritable).
 struct CrateRow: View {
@@ -15,24 +15,18 @@ struct CrateRow: View {
             HStack(spacing: 9) {
                 Text("\(index)")
                     .font(theme.type.numeric(11))
-                    // `.crate li .ix` is lamp-off idle under Yeti.
-                    .foregroundStyle(theme.caps.contains(.plainVoice) ? theme.palette.textIdle
-                                                                      : theme.palette.textSecondary)
+                    // `.crate li .ix` is lamp-off idle.
+                    .foregroundStyle(theme.palette.textIdle)
                     .frame(width: 22, alignment: .trailing)
                 CrateThumb(url: item.imageURL, kind: item.kind)
                 Text(item.title)
                     .font(theme.type.body(13))
                     .foregroundStyle(theme.palette.textPrimary)
                     .lineLimit(1)
-                if theme.caps.contains(.stickers) {
-                    // Yeti: Live is an offer (a label sticker), 4K a fact (a
-                    // plain tag); never an accent fill.
-                    if item.isLive { LabelSticker("Live") }
-                    if item.has4K { PlainTag("4K") }
-                } else {
-                    if item.isLive { badge("LIVE") }
-                    if item.has4K { badge("4K") }
-                }
+                // Live is an offer (a label sticker), 4K a fact (a plain tag);
+                // never an accent fill.
+                if item.isLive { LabelSticker("Live") }
+                if item.has4K { PlainTag("4K") }
                 Spacer(minLength: 8)
                 if let dateText = item.dateText {
                     Text(dateText)
@@ -47,15 +41,6 @@ struct CrateRow: View {
         .help(item.title)
         .accessibilityLabel([item.title, item.kind.word, item.dateText].compactMap { $0 }.joined(separator: ", "))
         .contextMenu { favoriteButton }
-    }
-
-    private func badge(_ text: String) -> some View {
-        Text(text)
-            .font(theme.type.numeric(10))
-            .foregroundStyle(theme.palette.base)
-            .padding(.horizontal, 4)
-            .padding(.vertical, 1)
-            .background(theme.palette.accent, in: RoundedRectangle(cornerRadius: 3))
     }
 
     @ViewBuilder private var favoriteButton: some View {

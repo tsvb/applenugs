@@ -13,8 +13,8 @@ struct PillTransportControls: View {
     let controls: [PillLayout.Control]
 
     /// How the play/pause control draws. The pill always uses `.glyph`; the
-    /// expanded panel passes `.sticker` under `.stickers` (Yeti's play sticker,
-    /// which is wider than the pill's control slot, so it keeps its own frame).
+    /// expanded panel passes `.sticker` (the play sticker, which is wider than
+    /// the pill's control slot, so it keeps its own frame).
     enum PlayControl: Equatable {
         case glyph
         case sticker(PlaySticker.Size)

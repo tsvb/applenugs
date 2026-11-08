@@ -27,9 +27,8 @@ extension View {
     /// runs on its own keyframe clock, so it adds nothing to the 4 Hz tick and
     /// the host must not pass anything derived from `currentTime` either.
     /// The band is an overlay masked by the title's own glyphs, so the title
-    /// never changes size or wraps differently mid-pass. A no-op unless the
-    /// theme has `.foilSweep`; skipped (the title simply stays snow) under
-    /// Reduce Motion.
+    /// never changes size or wraps differently mid-pass. Skipped (the title
+    /// simply stays snow) under Reduce Motion.
     func foilSweep(identity: String?, isPlaying: Bool) -> some View {
         modifier(FoilSweepModifier(identity: identity, isPlaying: isPlaying))
     }
@@ -56,26 +55,24 @@ struct FoilSweepModifier: ViewModifier {
         let foil = theme.palette.accent
         return content
             .overlay {
-                if theme.caps.contains(.foilSweep) {
-                    // At rest the animator sits at 1: the band has left the
-                    // title on the trailing side, so nothing is drawn.
-                    Color.clear
-                        .keyframeAnimator(initialValue: 1.0, trigger: runs) { clear, phase in
-                            clear.overlay {
-                                if phase > 0, phase < 1 {
-                                    FoilBand(phase: phase, foil: foil)
-                                }
-                            }
-                        } keyframes: { _ in
-                            KeyframeTrack {
-                                MoveKeyframe(0.0)
-                                LinearKeyframe(1.0, duration: Self.duration, timingCurve: Self.curve)
+                // At rest the animator sits at 1: the band has left the
+                // title on the trailing side, so nothing is drawn.
+                Color.clear
+                    .keyframeAnimator(initialValue: 1.0, trigger: runs) { clear, phase in
+                        clear.overlay {
+                            if phase > 0, phase < 1 {
+                                FoilBand(phase: phase, foil: foil)
                             }
                         }
-                        .mask { content }
-                        .allowsHitTesting(false)
-                        .accessibilityHidden(true)
-                }
+                    } keyframes: { _ in
+                        KeyframeTrack {
+                            MoveKeyframe(0.0)
+                            LinearKeyframe(1.0, duration: Self.duration, timingCurve: Self.curve)
+                        }
+                    }
+                    .mask { content }
+                    .allowsHitTesting(false)
+                    .accessibilityHidden(true)
             }
             .onAppear { trigger.appear(identity: identity, isPlaying: isPlaying) }
             .onChange(of: identity) { evaluate() }
@@ -83,11 +80,9 @@ struct FoilSweepModifier: ViewModifier {
     }
 
     private func evaluate() {
-        // The trigger advances even when the band won't run (Reduce Motion, or
-        // a theme without the cap), so toggling either later can't replay a
-        // stale track's sweep.
+        // The trigger advances even when the band won't run (Reduce Motion),
+        // so toggling it later can't replay a stale track's sweep.
         guard trigger.observe(identity: identity, isPlaying: isPlaying),
-              theme.caps.contains(.foilSweep),
               !reduceMotion else { return }
         runs &+= 1
     }

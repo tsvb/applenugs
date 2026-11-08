@@ -4,11 +4,10 @@ import SwiftUI
 /// a time-aware greeting, favorites, and a taste of the crate to invite
 /// digging.
 ///
-/// On macOS it also carries a glowing "continue listening" hero and two entry
-/// tiles, both desktop-only by design — see `resumeCard` and `entryRow`. The
-/// one exception is Yeti (`.blisterPack`): there iPhone Home gets the hero too,
-/// in the blister pack (Tim's ruling 1), and the Mac's becomes the flat
-/// card-stock `YetiResumeCard` (ruling 4). Both live in `HomeResumeHero.swift`.
+/// Both platforms carry a "continue listening" hero while a track is loaded:
+/// on iPhone the blister pack (Tim's ruling 1), on the Mac the flat card-stock
+/// `YetiResumeCard` (ruling 4); both live in `HomeResumeHero.swift`. The Mac
+/// also gets two entry tiles (`entryRow`), desktop-only by design.
 struct HomeView: View {
     @Environment(AppModel.self) private var app
     @Environment(UIState.self) private var ui
@@ -24,17 +23,9 @@ struct HomeView: View {
 
     private var player: PlayerService { app.player }
 
-    /// Whether a hero renders at all. On iPhone only Yeti has one, and the
-    /// `.blisterPack` check comes FIRST so the other themes' Home never reads
-    /// (and never subscribes to) `player.current`. Under Yeti this body reads
-    /// `current` and nothing else of the player; the hero hosts read the rest.
-    private var showsHero: Bool {
-        #if os(macOS)
-        player.current != nil
-        #else
-        theme.caps.contains(.blisterPack) && player.current != nil
-        #endif
-    }
+    /// Whether a hero renders at all. This body reads `current` and nothing
+    /// else of the player; the hero host reads the rest.
+    private var showsHero: Bool { player.current != nil }
 
     /// The rest of the app pads to 16–20; 36 is a wide-window luxury.
     #if os(iOS)
@@ -47,7 +38,7 @@ struct HomeView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 30) {
                 greeting.reveal(appeared, 0)
-                if showsHero { hero.reveal(appeared, 1) }
+                if showsHero { YetiHeroHost().reveal(appeared, 1) }
                 if !app.favorites.isEmpty { favoritesStrip.reveal(appeared, 2) }
                 #if os(macOS)
                 entryRow.reveal(appeared, 3)
@@ -72,127 +63,45 @@ struct HomeView: View {
 
     // --- greeting -----------------------------------------------------------
 
-    private var plainVoice: Bool { theme.caps.contains(.plainVoice) }
-
+    /// No eyebrow: the greeting stands alone.
     private var greeting: some View {
         VStack(alignment: .leading, spacing: 8) {
-            // `.plainVoice` drops the eyebrow: the greeting stands alone.
-            if !plainVoice {
-                Text("YETI")
-                    .font(theme.type.numeric(11))
-                    .tracking(3)
-                    .foregroundStyle(theme.palette.accent)
-            }
             Text(greetingText)
                 .font(theme.type.hero(greetingSize))
                 .foregroundStyle(theme.palette.textPrimary)
             Text(theme.copy.homeLede)
-                .font(plainVoice ? theme.type.body(16) : theme.type.title(16))
+                .font(theme.type.body(16))
                 .foregroundStyle(theme.palette.textSecondary)
         }
     }
 
-    /// 42 everywhere, except Yeti's iPhone, which sets the greeting at the
-    /// large-title size (`.large-title { font-size: 34px }`) to leave the
-    /// hero room above the fold.
+    /// 42 on the Mac; the iPhone sets the greeting at the large-title size
+    /// (`.large-title { font-size: 34px }`) to leave the hero room above the
+    /// fold.
     private var greetingSize: CGFloat {
         #if os(iOS)
-        plainVoice ? 34 : 42
+        34
         #else
         42
         #endif
     }
 
-    /// `.plainVoice` says it plainly — "Good evening", no period — but "Late
-    /// set." is a sentence, and keeps its stop.
+    /// Said plainly — "Good evening", no period — but "Late set." is a
+    /// sentence, and keeps its stop.
     private var greetingText: String {
-        let stop = plainVoice ? "" : "."
         switch Calendar.current.component(.hour, from: Date()) {
-        case 5..<12:  return "Good morning" + stop
-        case 12..<17: return "Good afternoon" + stop
-        case 17..<22: return "Good evening" + stop
+        case 5..<12:  return "Good morning"
+        case 12..<17: return "Good afternoon"
+        case 17..<22: return "Good evening"
         default:      return "Late set."
-        }
-    }
-
-    // --- the hero -----------------------------------------------------------
-
-    @ViewBuilder
-    private var hero: some View {
-        if theme.caps.contains(.blisterPack) {
-            YetiHeroHost()
-        } else {
-            #if os(macOS)
-            resumeCard
-            #endif
-        }
-    }
-
-    // --- continue listening (the hero) --------------------------------------
-
-    // macOS only. On iPhone the mini-player docks above the tab bar whenever a
-    // track is loaded — which, because the queue is restored at launch, is
-    // exactly whenever this hero would render. It showed the same art, title,
-    // meta and progress twice on one screen and pushed the crate below the
-    // fold. Resume lives in the dock there; Home gets the space back. (Yeti
-    // reverses that on purpose — Tim's ruling 1 — with its own hero, above.)
-    #if os(macOS)
-    private var resumeArtSize: CGFloat { 96 }
-    private var resumeTitleSize: CGFloat { 24 }
-    private var resumeGlyphSize: CGFloat { 48 }
-
-    @ViewBuilder
-    private var resumeCard: some View {
-        if let track = player.current {
-            Button {
-                player.togglePlayPause()
-            } label: {
-                HStack(spacing: 18) {
-                    ArtChip(image: player.nowPlayingImage,
-                            fallbackText: track.artist ?? track.title ?? "?",
-                            size: resumeArtSize)
-                        .shadow(color: theme.palette.accent.opacity(0.45), radius: 22, y: 6)
-
-                    VStack(alignment: .leading, spacing: 5) {
-                        Text("CONTINUE LISTENING")
-                            .font(theme.type.numeric(10))
-                            .tracking(1.8)
-                            .foregroundStyle(theme.palette.textSecondary)
-                        Text(track.title ?? "Unknown track")
-                            .font(theme.type.hero(resumeTitleSize))
-                            .foregroundStyle(theme.palette.textPrimary)
-                            .lineLimit(1)
-                        NowPlayingMetaText(track: track)
-                            .font(theme.type.title(14))
-                            .foregroundStyle(theme.palette.textSecondary)
-                            .lineLimit(1)
-                        ResumeProgressRule().padding(.top, 6)
-                    }
-                    Spacer(minLength: 8)
-                    Image(systemName: player.isPlaying ? "pause.circle.fill" : "play.circle.fill")
-                        .font(.system(size: resumeGlyphSize))
-                        .foregroundStyle(theme.palette.accent)
-                        .symbolRenderingMode(.hierarchical)
-                }
-                .padding(20)
-                .background {
-                    RoundedRectangle(cornerRadius: 16, style: .continuous)
-                        .fill(theme.palette.raised)
-                        .overlay {
-                            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                                .strokeBorder(theme.palette.hairline, lineWidth: 1)
-                        }
-                }
-                .contentShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-            }
-            .buttonStyle(.plain)
         }
     }
 
     // --- entry points -------------------------------------------------------
 
-    // macOS only, for the same reason as the hero: on iPhone these two tiles
-    // re-open Artists and Search, which the tab bar already puts one tap away.
+    // macOS only: on iPhone these two tiles re-open Artists and Search, which
+    // the tab bar already puts one tap away.
+    #if os(macOS)
     private var entryRow: some View {
         HStack(spacing: 14) {
             EntryTile(icon: "music.mic",
@@ -211,15 +120,15 @@ struct HomeView: View {
 
     // --- from the crate -----------------------------------------------------
 
-    /// On iPhone this is the only section that always renders — no resume hero,
-    /// no entry tiles, and favorites may well be empty. So it has to account for
+    /// On iPhone this is the only section that always renders — no entry
+    /// tiles, the hero only while a track is loaded, and favorites may well be
+    /// empty. So it has to account for
     /// itself when it's loading, empty, or offline, or a new user's Home is a
     /// greeting alone on a blank screen, promising a crate that never arrives.
     private var crate: some View {
         VStack(alignment: .leading, spacing: 14) {
-            Text(theme.caps.contains(.condensedHeaders) ? "FROM THE CRATE" : "From the crate")
+            Text("From the crate")
                 .font(theme.type.section(sectionSize))
-                .tracking(theme.caps.contains(.condensedHeaders) ? 1.6 : 0)
                 .foregroundStyle(theme.palette.textPrimary)
 
             if !sample.isEmpty {
@@ -281,22 +190,21 @@ struct HomeView: View {
         }
     }
 
-    /// Section headers: 15 everywhere, `.sec h3`'s heavy 22 under `.plainVoice`.
-    private var sectionSize: CGFloat { plainVoice ? 22 : 15 }
+    /// Section headers: `.sec h3`'s heavy 22.
+    private var sectionSize: CGFloat { 22 }
 
     // --- favorites strip ----------------------------------------------------
 
     private var favoritesStrip: some View {
         VStack(alignment: .leading, spacing: 14) {
             HStack {
-                Text(theme.caps.contains(.condensedHeaders) ? "FAVORITES" : "Favorites")
+                Text("Favorites")
                     .font(theme.type.section(sectionSize))
-                    .tracking(theme.caps.contains(.condensedHeaders) ? 1.6 : 0)
                     .foregroundStyle(theme.palette.textPrimary)
                 Spacer()
-                Button(plainVoice ? "See all" : "See all ›") { ui.sidebarSelection = .favorites }
+                Button("See all") { ui.sidebarSelection = .favorites }
                     .buttonStyle(.plain)
-                    .font(theme.type.body(plainVoice ? 14 : 12))
+                    .font(theme.type.body(14))
                     .foregroundStyle(theme.palette.textSecondary)
             }
 
@@ -307,8 +215,7 @@ struct HomeView: View {
                         NavigationLink(value: Route.artist(ArtistEntry(id: fav.id, name: fav.name))) {
                             HStack {
                                 Text(fav.name)
-                                    .font(plainVoice ? theme.type.body(13.5).weight(.bold)
-                                                     : theme.type.body(13))
+                                    .font(theme.type.body(13.5).weight(.bold))
                                     .foregroundStyle(theme.palette.textPrimary)
                                     .lineLimit(1)
                                 Spacer(minLength: 0)
@@ -320,10 +227,8 @@ struct HomeView: View {
                                     .fill(theme.palette.raised)
                                     // `.chips span`: shelf with a frost keyline.
                                     .overlay {
-                                        if plainVoice {
-                                            RoundedRectangle(cornerRadius: 9, style: .continuous)
-                                                .strokeBorder(theme.palette.hairline, lineWidth: 1)
-                                        }
+                                        RoundedRectangle(cornerRadius: 9, style: .continuous)
+                                            .strokeBorder(theme.palette.hairline, lineWidth: 1)
                                     }
                             }
                             .contentShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
@@ -365,7 +270,7 @@ struct HomeView: View {
 
 // MARK: - Yeti hero host
 
-/// Reads the player for Yeti's Home hero and hands the hero plain values, so
+/// Reads the player for the Home hero and hands the hero plain values, so
 /// `isPlaying`, the cover, the pick and the specs subscribe this small view —
 /// not the greeting, favorites strip, ledger and crate around it. (Playback
 /// time is read one level further down still, in `ResumeProgressRule`.)

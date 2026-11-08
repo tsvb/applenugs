@@ -28,10 +28,8 @@ struct FavoritesView: View {
     }
 
     private func sectionTitle(_ text: String) -> some View {
-        let condensed = theme.caps.contains(.condensedHeaders)
-        return Text(condensed ? text.uppercased() : text)
+        Text(text)
             .font(theme.type.section(17))
-            .tracking(condensed ? 1.4 : 0)
             .foregroundStyle(theme.palette.textPrimary)
     }
 
@@ -55,13 +53,10 @@ struct FavoritesView: View {
                             RoundedRectangle(cornerRadius: 9, style: .continuous)
                                 .fill(theme.palette.raised)
                         }
-                        // Yeti: chips on the shelf with a frost keyline, as
-                        // on Home.
+                        // Chips on the shelf with a frost keyline, as on Home.
                         .overlay {
-                            if theme.caps.contains(.plainVoice) {
-                                RoundedRectangle(cornerRadius: 9, style: .continuous)
-                                    .strokeBorder(theme.palette.hairline, lineWidth: 1)
-                            }
+                            RoundedRectangle(cornerRadius: 9, style: .continuous)
+                                .strokeBorder(theme.palette.hairline, lineWidth: 1)
                         }
                         .contentShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
                     }
@@ -130,28 +125,9 @@ struct FavoritesView: View {
                      eventStart: nil, has4K: false)
     }
 
-    @ViewBuilder
+    /// The empty pack.
     private var emptyState: some View {
-        if theme.caps.contains(.blisterPack) {
-            // Yeti: the empty pack.
-            EmptyPackMessage(title: "Nothing saved yet",
-                             message: "Star an artist, show, or video to keep it here.")
-        } else {
-            classicEmptyState
-        }
-    }
-
-    private var classicEmptyState: some View {
-        VStack(spacing: 8) {
-            Image(systemName: "star")
-                .font(.system(size: 34))
-                .foregroundStyle(theme.palette.accent)
-            Text("Nothing saved yet")
-                .font(theme.type.hero(22))
-                .foregroundStyle(theme.palette.textPrimary)
-            Text("Star an artist, show, or video to keep it here.")
-                .font(theme.type.body(13))
-                .foregroundStyle(theme.palette.textSecondary)
-        }
+        EmptyPackMessage(title: "Nothing saved yet",
+                         message: "Star an artist, show, or video to keep it here.")
     }
 }

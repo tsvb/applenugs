@@ -6,11 +6,10 @@ import SwiftUI
 /// per-artist Videos section. Clones ShowCard's text block but draws a 16:9
 /// poster instead of the square CoverArt used for audio shows.
 ///
-/// Yeti (the surfaces sheet's `.vt`): under `.stickers` the centered play
-/// glyph goes (the poster is the button) and the badges become a
-/// `LabelSticker` for offers (Live, Free) and a `PlainTag` for facts (PPV,
-/// Audio, 4K); under `.plainVoice` the poster sits flat with a 1pt frost
-/// keyline, the placeholder glyph is slush, and the text block takes
+/// The surfaces sheet's `.vt`: no centered play glyph (the poster is the
+/// button); the badges are a `LabelSticker` for offers (Live, Free) and a
+/// `PlainTag` for facts (PPV, Audio, 4K); the poster sits flat with a 1pt
+/// frost keyline, the placeholder glyph is slush, and the text block takes
 /// ShowCard's heavy title over a slush artist line.
 struct VideoThumbnail<PosterAccessory: View>: View {
     @Environment(\.theme) private var theme
@@ -20,9 +19,6 @@ struct VideoThumbnail<PosterAccessory: View>: View {
     /// above the title block (e.g. a Continue Watching progress bar). Kept in
     /// flow so it never depends on the variable height of the text block.
     @ViewBuilder var posterAccessory: () -> PosterAccessory
-
-    private var stickers: Bool { theme.caps.contains(.stickers) }
-    private var plain: Bool { theme.caps.contains(.plainVoice) }
 
     init(video: VideoSummary, width: CGFloat = 220,
          @ViewBuilder posterAccessory: @escaping () -> PosterAccessory) {
@@ -37,13 +33,13 @@ struct VideoThumbnail<PosterAccessory: View>: View {
                 .frame(width: width)
             posterAccessory()
             Text(video.title)
-                .font(plain ? theme.type.title(15) : theme.type.body(12))
+                .font(theme.type.title(15))
                 .foregroundStyle(theme.palette.textPrimary)
                 .lineLimit(2)
                 .multilineTextAlignment(.leading)
             if let artist = video.artistName {
                 Text(artist)
-                    .font(plain ? theme.type.body(13) : theme.type.numeric(10))
+                    .font(theme.type.body(13))
                     .foregroundStyle(theme.palette.textSecondary)
                     .lineLimit(1)
             }
@@ -54,16 +50,13 @@ struct VideoThumbnail<PosterAccessory: View>: View {
     private var poster: some View {
         ZStack {
             posterImage
-            if !stickers { playOverlay }
             badges
         }
         .aspectRatio(16.0 / 9.0, contentMode: .fit)
         .frame(maxWidth: .infinity)
         .clipShape(RoundedRectangle(cornerRadius: 6))
         .overlay {
-            if plain {
-                RoundedRectangle(cornerRadius: 6).strokeBorder(theme.palette.hairline, lineWidth: 1)
-            }
+            RoundedRectangle(cornerRadius: 6).strokeBorder(theme.palette.hairline, lineWidth: 1)
         }
     }
 
@@ -89,30 +82,12 @@ struct VideoThumbnail<PosterAccessory: View>: View {
         Rectangle()
             .fill(theme.palette.raised)
             .overlay(Image(systemName: "play.rectangle")
-                .foregroundStyle(plain ? theme.palette.textSecondary
-                                       : theme.palette.accent.opacity(0.7)))
-    }
-
-    private var playOverlay: some View {
-        Image(systemName: "play.circle.fill")
-            .font(.system(size: 34))
-            .symbolRenderingMode(.hierarchical)
-            .foregroundStyle(theme.palette.accent)
-            .shadow(color: .black.opacity(0.45), radius: 6, y: 2)
-    }
-
-    @ViewBuilder
-    private var badges: some View {
-        if stickers {
-            stickerBadges
-        } else {
-            classicBadges
-        }
+                .foregroundStyle(theme.palette.textSecondary))
     }
 
     /// `.vt .badges`: offers on the left, facts on the right, 8pt in, 5pt
     /// apart (the inset also clears the sticker's tilt and lift).
-    private var stickerBadges: some View {
+    private var badges: some View {
         VStack {
             HStack(alignment: .top, spacing: 5) {
                 if video.isLive { LabelSticker("Live") }
@@ -125,34 +100,6 @@ struct VideoThumbnail<PosterAccessory: View>: View {
             Spacer(minLength: 0)
         }
         .padding(8)
-    }
-
-    private var classicBadges: some View {
-        VStack {
-            HStack(alignment: .top, spacing: 4) {
-                if video.isLive { badge("LIVE", filled: true) }
-                if video.access == .free { badge("FREE", filled: true) }
-                if video.access == .ppv { badge("PPV", filled: false) }
-                Spacer(minLength: 0)
-                if video.isAudio { badge("AUDIO", filled: false) }
-                if video.has4K { badge("4K", filled: false) }
-            }
-            Spacer(minLength: 0)
-        }
-        .padding(6)
-    }
-
-    private func badge(_ text: String, filled: Bool) -> some View {
-        Text(text)
-            .font(theme.type.numeric(9).weight(.semibold))
-            .tracking(0.5)
-            .foregroundStyle(filled ? Color.white : theme.palette.textPrimary)
-            .padding(.horizontal, 6)
-            .padding(.vertical, 2)
-            .background {
-                RoundedRectangle(cornerRadius: 4, style: .continuous)
-                    .fill(filled ? theme.palette.accent : theme.palette.raised.opacity(0.9))
-            }
     }
 }
 

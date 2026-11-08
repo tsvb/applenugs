@@ -123,19 +123,6 @@ enum AudioFormat: String {
         }
     }
 
-    /// Short badge text for the transport bar.
-    var badge: String {
-        switch self {
-        case .flac16: return "FLAC"
-        case .mqa24: return "MQA"
-        case .alac16: return "ALAC"
-        case .s360ra: return "360RA"
-        case .aac150: return "AAC"
-        case .hls: return "HLS"
-        case .unknown: return "?"
-        }
-    }
-
     /// Native playback preference (lower is better). Unlike the web port we
     /// put ALAC first — it ships in an MP4 container, AVFoundation's home
     /// turf — and HLS stays playable (AVPlayer speaks it natively; the

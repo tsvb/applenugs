@@ -69,8 +69,8 @@ final class UIState {
 
     // --- toasts (queue-op confirmations, same as the web layout) ---------------
 
-    /// A transient message. `kind` only changes how Yeti draws it (a check or
-    /// a warning mark); every other theme renders both kinds the same.
+    /// A transient message. `kind` only changes the capsule's mark (a check or
+    /// a warning mark).
     struct Toast: Equatable {
         enum Kind: Equatable { case success, failure }
         let text: String

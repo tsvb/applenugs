@@ -22,30 +22,10 @@ struct ConnectionFailedView: View {
     let onListenOffline: () -> Void
     let onSignOut: () -> Void
 
-    var body: some View {
-        if theme.caps.contains(.blisterPack) {
-            packBody
-        } else {
-            ContentUnavailableView {
-                Label("Couldn't reach nugs.net", systemImage: "wifi.exclamationmark")
-            } description: {
-                Text(message)
-            } actions: {
-                Button("Try again", action: onRetry)
-                    .buttonStyle(.borderedProminent)
-                // The whole point of downloads is being reachable right here.
-                if hasDownloads {
-                    Button("Listen offline", action: onListenOffline)
-                }
-                Button("Sign out", action: onSignOut)
-            }
-        }
-    }
-
     /// The surfaces sheet's connection figure: the small empty pack, a
     /// sentence a person can act on, the raw error last in quiet monospace,
     /// one snow primary. The Mac centers the same column in the window.
-    private var packBody: some View {
+    var body: some View {
         VStack(spacing: 0) {
             // `.card.pack.sm { width: 156px }`
             BlisterPack(emptyStyle: .small)

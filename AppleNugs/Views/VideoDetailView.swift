@@ -6,11 +6,11 @@ import SwiftUI
 /// Clones the AlbumDetailView load/overlay idiom; playback is owned by the
 /// shared VideoPlayerService (one AVPlayer, audio/video arbiter).
 ///
-/// Yeti: AVKit's controls are untouched; we own only the Live sticker over
-/// them (`.stickers`). Under `.plainVoice` Play/Pause and the screen's other
-/// lone primaries (Watch on…, Buy on nugs.net) are snow, everything else is a
-/// frost ring, benefit links are snow with a dotted underline, the PPV panel
-/// is card stock, and errors are said in snow and slush, never colored.
+/// AVKit's controls are untouched; we own only the Live sticker over them.
+/// Play/Pause and the screen's other lone primaries (Watch on…, Buy on
+/// nugs.net) are snow, everything else is a frost ring, benefit links are snow
+/// with a dotted underline, the PPV panel is card stock, and errors are said
+/// in snow and slush, never colored.
 struct VideoDetailView: View {
     let videoId: String
     var titleHint: String?
@@ -22,8 +22,6 @@ struct VideoDetailView: View {
     @State private var detail: VideoDetail?
     @State private var error: String?
     @State private var linkOut: URL?   // set when a free item has no in-app stream
-
-    private var plainVoice: Bool { theme.caps.contains(.plainVoice) }
 
     var body: some View {
         ScrollView {
@@ -40,7 +38,7 @@ struct VideoDetailView: View {
                         Button { openURL(linkOut) } label: {
                             Label(watchButtonTitle, systemImage: "arrow.up.right.square")
                         }
-                        .videoPrimary(plainVoice)
+                        .buttonStyle(.yetiPrimary)
                     }
                     if let detail {
                         header(detail)
@@ -66,9 +64,7 @@ struct VideoDetailView: View {
             if shouldAttemptPlay && linkOut == nil && detail == nil && error == nil {
                 ProgressView()
             } else if let error {
-                VideoErrorMessage(title: "Couldn't load this video",
-                                  systemImage: "exclamationmark.triangle",
-                                  reason: error)
+                VideoErrorMessage(title: "Couldn't load this video", reason: error)
             }
         }
         .task(id: videoId) { await load() }
@@ -91,7 +87,6 @@ struct VideoDetailView: View {
                 .overlay {
                     if let loadError = app.video.loadError {
                         VideoErrorMessage(title: "Can't play this video",
-                                          systemImage: "play.slash",
                                           reason: loadError,
                                           overPlayer: true)
                     }
@@ -111,7 +106,7 @@ struct VideoDetailView: View {
                 } placeholder: {
                     Image(systemName: "waveform")
                         .font(.system(size: 40))
-                        .foregroundStyle(plainVoice ? theme.palette.textSecondary : theme.palette.accent)
+                        .foregroundStyle(theme.palette.textSecondary)
                 }
                 .padding(24)
             }
@@ -152,8 +147,7 @@ struct VideoDetailView: View {
     /// as attributed HTML so links (e.g. donation pages) stay tappable; falls
     /// back to plain text if the markdown parse fails.
     ///
-    /// Under `.plainVoice` each link run is snow with a dotted underline, never
-    /// the accent. The runs keep their `.link`, so a tap still goes through
+    /// Each link run is snow with a dotted underline, never the accent. The runs keep their `.link`, so a tap still goes through
     /// `openURL`, where the root `.nowPlayingMetaLinks` interceptor hands any
     /// foreign URL back to the system: the donation page opens externally.
     @ViewBuilder private func benefitNotes(_ html: String) -> some View {
@@ -297,7 +291,8 @@ struct VideoDetailView: View {
                       systemImage: "arrow.clockwise")
                     .font(theme.type.body(12))
             }
-            .videoResumeStyle(plainVoice, accent: theme.palette.accent)
+            .buttonStyle(.yetiSecondary)
+            .controlSize(.small)
         }
     }
 
@@ -324,12 +319,10 @@ struct VideoDetailView: View {
     @ViewBuilder
     private func chapterList(_ detail: VideoDetail) -> some View {
         if !detail.chapters.isEmpty {
-            let condensed = theme.caps.contains(.condensedHeaders)
-            // `.minisec` under `.plainVoice`: heavy 15 in slush.
-            Text(condensed ? "CHAPTERS" : "Chapters")
+            // `.minisec`: heavy 15 in slush.
+            Text("Chapters")
                 .font(theme.type.section(15))
-                .tracking(condensed ? 1.4 : 0)
-                .foregroundStyle(plainVoice ? theme.palette.textSecondary : theme.palette.textPrimary)
+                .foregroundStyle(theme.palette.textSecondary)
                 .padding(.top, 6)
             VStack(spacing: 0) {
                 ForEach(detail.chapters) { chapter in
@@ -398,10 +391,9 @@ struct VideoDetailView: View {
 // MARK: - Parts (plain values in, so they render without a player)
 
 /// One row in the chapter list: title, start time, hover highlight, seek on tap.
-/// Yeti: under `.stickers` the play glyph goes (`.rows li.nolead`) and the
-/// current chapter takes the playing-row sale yellow; under `.plainVoice`
-/// every title is heavy 15 (so being current never changes a row's weight)
-/// and rows are ruled in frost.
+/// No play glyph (`.rows li.nolead`); the current chapter takes the
+/// playing-row sale yellow; every title is heavy 15 (so being current never
+/// changes a row's weight) and rows are ruled in frost.
 struct ChapterRow: View {
     let chapter: VideoChapter
     let isCurrent: Bool
@@ -410,74 +402,45 @@ struct ChapterRow: View {
     @Environment(\.theme) private var theme
     @State private var hovering = false
 
-    private var stickers: Bool { theme.caps.contains(.stickers) }
-    private var plainVoice: Bool { theme.caps.contains(.plainVoice) }
-
-    private var currentColor: Color { stickers ? theme.palette.playState : theme.palette.accent }
-
     var body: some View {
         Button(action: seek) {
             HStack(spacing: 8) {
-                if !stickers {
-                    Image(systemName: isCurrent ? "play.fill" : "play")
-                        .font(.system(size: 10))
-                        .foregroundStyle(isCurrent ? theme.palette.accent : theme.palette.textSecondary)
-                        .frame(width: 16, alignment: .center)
-                }
                 Text(chapter.title)
-                    .font(plainVoice ? theme.type.title(15) : theme.type.body(13))
-                    .fontWeight(plainVoice ? nil : (isCurrent ? .semibold : .regular))
-                    .foregroundStyle(isCurrent ? currentColor : theme.palette.textPrimary)
+                    .font(theme.type.title(15))
+                    .foregroundStyle(isCurrent ? theme.palette.playState : theme.palette.textPrimary)
                     .lineLimit(1)
                 Spacer(minLength: 8)
                 Text(TransportBar.format(seconds: chapter.startSeconds))
-                    .font(theme.type.numeric(plainVoice ? 13.5 : 12))
+                    .font(theme.type.numeric(13.5))
                     .foregroundStyle(theme.palette.textSecondary)
             }
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .padding(.vertical, plainVoice ? 10 : 5)
+        .padding(.vertical, 10)
         .padding(.horizontal, 6)
         .background(hovering ? theme.palette.raised : .clear,
                     in: RoundedRectangle(cornerRadius: 5))
         .overlay(alignment: .top) {
-            if plainVoice {
-                Rectangle().fill(theme.palette.hairline).frame(height: 1)
-            }
+            Rectangle().fill(theme.palette.hairline).frame(height: 1)
         }
         .onHover { hovering = $0 }
     }
 }
 
-/// The badge over the player when the stream is live: Yeti's `Live` label
-/// sticker under `.stickers`, else today's accent-filled LIVE.
+/// The badge over the player when the stream is live: the `Live` label
+/// sticker.
 struct VideoLiveBadge: View {
-    @Environment(\.theme) private var theme
-
     var body: some View {
-        if theme.caps.contains(.stickers) {
-            LabelSticker("Live")
-                .padding(10)
-        } else {
-            Text("LIVE")
-                .font(theme.type.numeric(10).weight(.bold))
-                .tracking(1.2)
-                .foregroundStyle(.white)
-                .padding(.horizontal, 7)
-                .padding(.vertical, 3)
-                .background(theme.palette.accent, in: RoundedRectangle(cornerRadius: 4))
-                .padding(10)
-        }
+        LabelSticker("Live")
+            .padding(10)
     }
 }
 
-/// Play/Pause, Go Live (live streams only) and Save. Under `.plainVoice`:
-/// Play/Pause is the snow primary, Go Live a frost ring that reads the copy's
-/// `liveEdgeDisabled` while it has nothing to do, and Save the iPhone's 36pt
-/// ring pushed to the trailing edge (a labeled frost button on the Mac).
-/// Every theme says "Go Live" while it can act; only the disabled label is
-/// the theme's (the default is "Go Live" too).
+/// Play/Pause, Go Live (live streams only) and Save. Play/Pause is the snow
+/// primary, Go Live a frost ring that says "Go Live" while it can act and the
+/// copy's `liveEdgeDisabled` while it has nothing to do, and Save the iPhone's
+/// 36pt ring pushed to the trailing edge (a labeled frost button on the Mac).
 struct VideoActionRow: View {
     let isPlaying: Bool
     let isLive: Bool
@@ -489,15 +452,13 @@ struct VideoActionRow: View {
 
     @Environment(\.theme) private var theme
 
-    private var plainVoice: Bool { theme.caps.contains(.plainVoice) }
-
     var body: some View {
         HStack(spacing: 8) {
             Button(action: playPause) {
                 Label(isPlaying ? "Pause" : "Play",
                       systemImage: isPlaying ? "pause.fill" : "play.fill")
             }
-            .videoPrimary(plainVoice)
+            .buttonStyle(.yetiPrimary)
 
             if isLive {
                 Button(action: goLive) {
@@ -505,10 +466,10 @@ struct VideoActionRow: View {
                           systemImage: "dot.radiowaves.left.and.right")
                 }
                 .disabled(atLiveEdge)
-                .videoSecondary(plainVoice)
+                .buttonStyle(.yetiSecondary)
             }
 
-            if plainVoice { Spacer(minLength: 0) }
+            Spacer(minLength: 0)
 
             saveButton
         }
@@ -518,53 +479,21 @@ struct VideoActionRow: View {
         Button(action: toggleSave) {
             Label(saved ? "Saved" : "Save", systemImage: saved ? "star.fill" : "star")
         }
-        .videoSave(plainVoice, otherwiseTint: saved ? theme.palette.accent : nil)
+        // Saving isn't time moving: never the accent.
+        .yetiPageAction()
         .help(saved ? "Remove from Favorites" : "Save video to Favorites")
     }
 }
 
-/// PPV's locked panel and its buy button. Under `.plainVoice` the panel is
-/// card stock with a frost keyline and a slush lock, and "Buy on nugs.net"
+/// PPV's locked panel and its buy button. The panel is card stock with a frost keyline and a slush lock, and "Buy on nugs.net"
 /// is the full-width snow primary, its outbound arrow saying it leaves the app.
 struct PayPerViewPanel: View {
     let buy: () -> Void
 
     @Environment(\.theme) private var theme
 
-    var body: some View {
-        if theme.caps.contains(.plainVoice) {
-            yeti
-        } else {
-            classic
-        }
-    }
-
-    private var classic: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            RoundedRectangle(cornerRadius: 8)
-                .fill(theme.palette.raised)
-                .aspectRatio(16.0/9.0, contentMode: .fit)
-                .overlay {
-                    VStack(spacing: 6) {
-                        Image(systemName: "lock.circle")
-                            .font(.system(size: 34))
-                            .foregroundStyle(theme.palette.accent)
-                        Text("Pay-per-view").font(theme.type.title(15))
-                            .foregroundStyle(theme.palette.textPrimary)
-                        Text("Not included in your subscription")
-                            .font(theme.type.body(12))
-                            .foregroundStyle(theme.palette.textSecondary)
-                    }
-                }
-            Button(action: buy) {
-                Label("Buy on nugs.net", systemImage: "arrow.up.right.square")
-            }
-            .buttonStyle(.borderedProminent)
-        }
-    }
-
     /// `.ppv`: card stock, 14pt corners, a 1pt frost keyline.
-    private var yeti: some View {
+    var body: some View {
         let shape = RoundedRectangle(cornerRadius: 14, style: .continuous)
         return VStack(alignment: .leading, spacing: 16) {
             shape
@@ -597,59 +526,47 @@ struct PayPerViewPanel: View {
     }
 }
 
-/// A load or playback error. Five themes: today's `ContentUnavailableView`
-/// (over a dimmed player when `overPlayer`). Under `.plainVoice` it is said,
-/// not colored: a slush mark, a heavy snow title and the slush reason, with
-/// no triangle; over the player it sits on the sheet's near-black.
+/// A load or playback error, said, not colored: a slush mark, a heavy snow
+/// title and the slush reason, with no triangle; over the player it sits on
+/// the sheet's near-black.
 struct VideoErrorMessage: View {
     let title: String
-    let systemImage: String
     let reason: String
     var overPlayer = false
 
     @Environment(\.theme) private var theme
 
     var body: some View {
-        if theme.caps.contains(.plainVoice) {
-            VStack(spacing: 8) {
-                Image(systemName: "exclamationmark.circle")
-                    .font(.system(size: 28, weight: .semibold))
-                    .foregroundStyle(theme.palette.textSecondary)
-                    .accessibilityHidden(true)
-                Text(title)
-                    .font(theme.type.title(17))
-                    .foregroundStyle(theme.palette.textPrimary)
-                Text(reason)
-                    .font(theme.type.body(13.5))
-                    .foregroundStyle(theme.palette.textSecondary)
-                    .lineLimit(3)
-            }
-            .multilineTextAlignment(.center)
-            .padding(16)
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .background { if overPlayer { Color(hex: 0x05070D) } }
-            .accessibilityElement(children: .combine)
-        } else if overPlayer {
-            ContentUnavailableView(title, systemImage: systemImage, description: Text(reason))
-                .background(.black.opacity(0.6))
-        } else {
-            ContentUnavailableView(title, systemImage: systemImage, description: Text(reason))
+        VStack(spacing: 8) {
+            Image(systemName: "exclamationmark.circle")
+                .font(.system(size: 28, weight: .semibold))
+                .foregroundStyle(theme.palette.textSecondary)
+                .accessibilityHidden(true)
+            Text(title)
+                .font(theme.type.title(17))
+                .foregroundStyle(theme.palette.textPrimary)
+            Text(reason)
+                .font(theme.type.body(13.5))
+                .foregroundStyle(theme.palette.textSecondary)
+                .lineLimit(3)
         }
+        .multilineTextAlignment(.center)
+        .padding(16)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background { if overPlayer { Color(hex: 0x05070D) } }
+        .accessibilityElement(children: .combine)
     }
 }
 
-/// Benefit/donation notes as attributed markdown. Under `.plainVoice` every
-/// link run carries snow and a dotted underline explicitly (SwiftUI honors a
-/// run's own color over the link tint), on slush body text; otherwise links
-/// take the accent tint as they always have. Attributes are set with the
+/// Benefit/donation notes as attributed markdown. Every link run carries snow
+/// and a dotted underline explicitly (SwiftUI honors a run's own color over
+/// the link tint), on slush body text. Attributes are set with the
 /// `AttributeScopes` key subscript, not the dynamic-member form, which warns
 /// under strict concurrency.
 struct BenefitNotesText: View {
     let markdown: String
 
     @Environment(\.theme) private var theme
-
-    private var plainVoice: Bool { theme.caps.contains(.plainVoice) }
 
     var body: some View {
         Group {
@@ -659,19 +576,18 @@ struct BenefitNotesText: View {
                 Text(markdown)
             }
         }
-        .font(theme.type.body(plainVoice ? 14 : 13))
+        .font(theme.type.body(14))
         .foregroundStyle(theme.palette.textSecondary)
-        .tint(plainVoice ? theme.palette.textPrimary : theme.palette.accent)
+        .tint(theme.palette.textPrimary)
         .textSelection(.enabled)
     }
 
-    /// The parsed markdown (nil if the parse fails), with `.plainVoice`'s
-    /// link styling applied to every run that carries a link.
+    /// The parsed markdown (nil if the parse fails), with the link styling
+    /// applied to every run that carries a link.
     private func styled() -> AttributedString? {
         guard var attributed = try? AttributedString(
             markdown: markdown,
             options: .init(interpretedSyntax: .inlineOnlyPreservingWhitespace)) else { return nil }
-        guard plainVoice else { return attributed }
         let linkRanges = attributed.runs
             .filter { $0[AttributeScopes.FoundationAttributes.LinkAttribute.self] != nil }
             .map(\.range)
@@ -682,50 +598,5 @@ struct BenefitNotesText: View {
                 Text.LineStyle(pattern: .dot, color: theme.palette.textPrimary)
         }
         return attributed
-    }
-}
-
-// MARK: - Yeti button styles for this screen
-
-private extension View {
-    /// The screen's lone primary: snow under `.plainVoice`, else today's
-    /// `.borderedProminent`.
-    @ViewBuilder
-    func videoPrimary(_ on: Bool) -> some View {
-        if on { buttonStyle(.yetiPrimary) } else { buttonStyle(.borderedProminent) }
-    }
-
-    /// A frost ring under `.plainVoice`; off, the button keeps the default
-    /// style it always had.
-    @ViewBuilder
-    func videoSecondary(_ on: Bool) -> some View {
-        if on { buttonStyle(.yetiSecondary) } else { self }
-    }
-
-    /// Save: the iPhone's 36pt frost ring with the glyph alone (the label stays
-    /// for accessibility), a labeled frost button on the Mac; never the accent
-    /// (saving isn't time). Off, `.tint(otherwiseTint)` as before.
-    @ViewBuilder
-    func videoSave(_ on: Bool, otherwiseTint: Color?) -> some View {
-        if on {
-            #if os(iOS)
-            labelStyle(.iconOnly).buttonStyle(.yetiIcon)
-            #else
-            buttonStyle(.yetiSecondary)
-            #endif
-        } else {
-            tint(otherwiseTint)
-        }
-    }
-
-    /// Resume: a small frost ring under `.plainVoice`, else today's accent-
-    /// tinted `.bordered`.
-    @ViewBuilder
-    func videoResumeStyle(_ on: Bool, accent: Color) -> some View {
-        if on {
-            buttonStyle(.yetiSecondary).controlSize(.small)
-        } else {
-            buttonStyle(.bordered).tint(accent)
-        }
     }
 }

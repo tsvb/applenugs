@@ -48,48 +48,22 @@ struct AlbumDetailView: View {
     // --- sections ---------------------------------------------------------------
 
     private func header(_ album: AlbumDetailModel) -> some View {
-        // Yeti's `.show-ios` sets the text against the cover's bottom edge.
-        HStack(alignment: plainVoice ? .bottom : .top, spacing: 14) {
+        // `.show-ios` sets the text against the cover's bottom edge.
+        HStack(alignment: .bottom, spacing: 14) {
             if album.imageURL != nil {
                 CoverArt(url: album.imageURL)
                     .frame(width: 110)
             }
-            if plainVoice {
-                yetiHeaderText(album)
-            } else {
-                headerText(album)
-            }
+            headerText(album)
         }
     }
 
-    private func headerText(_ album: AlbumDetailModel) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text(album.title).font(theme.type.hero(26))
-            Text(album.artistName).font(theme.type.title(18)).foregroundStyle(theme.palette.textSecondary)
-            HStack(spacing: 10) {
-                if let date = album.dateText {
-                    Text(date).font(theme.type.numeric(12))
-                }
-                if let venue = album.venue {
-                    Text(venue)
-                }
-                if let runtime = album.totalRunningTime {
-                    Text("\(runtime) · \(album.tracks.count) tracks")
-                        .font(theme.type.numeric(12))
-                        .foregroundStyle(theme.palette.textSecondary)
-                }
-            }
-            .font(.callout)
-            .foregroundStyle(theme.palette.textSecondary)
-        }
-    }
-
-    /// Yeti's `.show-ios`: the meta stacks instead of sitting side by side
+    /// `.show-ios`: the meta stacks instead of sitting side by side
     /// (where a city wrapped into a ragged column of its own). Title, then
     /// the artist as a snow link, then "date · venue" on one truncating line,
     /// then "runtime · N tracks", both in slush 13.5. A missing field drops
     /// out rather than leaving a blank line.
-    private func yetiHeaderText(_ album: AlbumDetailModel) -> some View {
+    private func headerText(_ album: AlbumDetailModel) -> some View {
         let place = [album.dateText, album.venue].compactMap { $0 }.joined(separator: " · ")
         return VStack(alignment: .leading, spacing: 4) {
             Text(album.title)
@@ -128,11 +102,9 @@ struct AlbumDetailView: View {
             .lineLimit(1)
     }
 
-    /// Yeti (`.plainVoice`): Play all is the one snow primary and the rest
-    /// are frost rings — round icon buttons on iPhone (`.actrow .ib`),
-    /// frost-outlined labeled buttons on the Mac.
-    private var plainVoice: Bool { theme.caps.contains(.plainVoice) }
-
+    /// Play all is the one snow primary and the rest are frost rings — round
+    /// icon buttons on iPhone (`.actrow .ib`), frost-outlined labeled buttons
+    /// on the Mac.
     private func actions(_ album: AlbumDetailModel) -> some View {
         HStack(spacing: 8) {
             playAllButton(album)
@@ -145,7 +117,7 @@ struct AlbumDetailView: View {
                 Label("Play next", systemImage: "text.line.first.and.arrowtriangle.forward")
             }
             .disabled(album.tracks.isEmpty)
-            .yetiShowAction(plainVoice)
+            .yetiPageAction()
 
             Button {
                 if app.player.enqueue(queueTracks(album)) {
@@ -155,11 +127,10 @@ struct AlbumDetailView: View {
                 Label("Queue", systemImage: "plus")
             }
             .disabled(album.tracks.isEmpty)
-            .yetiShowAction(plainVoice)
+            .yetiPageAction()
 
-            // `.actrow .grow`: Yeti pushes Save and Download to the trailing
-            // edge.
-            if plainVoice { Spacer(minLength: 0) }
+            // `.actrow .grow`: Save and Download sit at the trailing edge.
+            Spacer(minLength: 0)
 
             // Five labeled buttons overflow iPhone widths; the secondary
             // actions go icon-only there (labels stay for accessibility).
@@ -179,19 +150,14 @@ struct AlbumDetailView: View {
         }
     }
 
-    @ViewBuilder
     private func playAllButton(_ album: AlbumDetailModel) -> some View {
-        let button = Button {
+        Button {
             app.player.play(queueTracks(album))
         } label: {
             Label("Play all", systemImage: "play.fill")
         }
         .disabled(album.tracks.isEmpty)
-        if plainVoice {
-            button.buttonStyle(.yetiPrimary)
-        } else {
-            button.buttonStyle(.borderedProminent)
-        }
+        .buttonStyle(.yetiPrimary)
     }
 
     /// Offline download state machine: idle → live progress → downloaded
@@ -207,8 +173,6 @@ struct AlbumDetailView: View {
         @State private var confirmRemoveDownload = false
         @State private var downloadFailureShown = false
 
-        private var plainVoice: Bool { theme.caps.contains(.plainVoice) }
-
         var body: some View {
             switch app.downloads.state(for: albumId) {
             case .none:
@@ -218,14 +182,14 @@ struct AlbumDetailView: View {
                     Label("Download", systemImage: "arrow.down.circle")
                 }
                 .disabled(album.tracks.isEmpty)
-                .yetiShowAction(plainVoice)
+                .yetiPageAction()
 
             case .downloading(let fraction):
                 HStack(spacing: 6) {
                     ProgressView(value: fraction)
                         // A download moves through time: foil, explicitly,
-                        // against Yeti's snow root tint.
-                        .tintIfSet(plainVoice ? theme.palette.accent : nil)
+                        // against the snow root tint.
+                        .tint(theme.palette.accent)
                         .frame(width: 44)
                         .accessibilityLabel("Downloading show")
                         .accessibilityValue("\(Int(fraction * 100)) percent")
@@ -245,7 +209,7 @@ struct AlbumDetailView: View {
                 } label: {
                     Label("Downloaded", systemImage: "arrow.down.circle.fill")
                 }
-                .yetiDownloaded(plainVoice, accent: theme.palette.accent)
+                .yetiDownloadedAction()
                 .confirmationDialog("Remove this show's downloaded files?",
                                     isPresented: $confirmRemoveDownload,
                                     titleVisibility: .visible) {
@@ -261,7 +225,7 @@ struct AlbumDetailView: View {
                 } label: {
                     Label("Download failed", systemImage: "exclamationmark.arrow.circlepath")
                 }
-                .yetiShowAction(plainVoice)
+                .yetiPageAction()
                 .alert("Download failed", isPresented: $downloadFailureShown) {
                     Button("Retry") { app.downloads.download(downloadRequest()) }
                     Button("OK", role: .cancel) {}
@@ -294,9 +258,9 @@ struct AlbumDetailView: View {
         } label: {
             Label(fav ? "Saved" : "Save", systemImage: fav ? "star.fill" : "star")
         }
-        // A saved show isn't time moving: Yeti's star is snow (the frost
-        // ring's glyph), never accent; the other themes keep today's tint.
-        .yetiShowAction(plainVoice, otherwiseTint: fav ? theme.palette.accent : nil)
+        // A saved show isn't time moving: the star is snow (the frost ring's
+        // glyph), never accent.
+        .yetiPageAction()
         .help(fav ? "Remove from Favorites" : "Save show to Favorites")
     }
 
@@ -324,13 +288,11 @@ struct AlbumDetailView: View {
 
         ForEach(groups, id: \.key) { setNum, rows in
             if showHeaders {
-                let label = TrackEntry.setLabel(setNum)
-                Text(theme.caps.contains(.condensedHeaders) ? label.uppercased() : label)
+                Text(TrackEntry.setLabel(setNum))
                     .font(theme.type.section(15))
-                    .tracking(theme.caps.contains(.condensedHeaders) ? 1.4 : 0)
-                    // `.setname`: Yeti's set headers are the barker's heavy
-                    // slush, sentence case.
-                    .foregroundStyle(plainVoice ? theme.palette.textSecondary : theme.palette.textPrimary)
+                    // `.setname`: set headers are the barker's heavy slush,
+                    // sentence case.
+                    .foregroundStyle(theme.palette.textSecondary)
                     .padding(.top, 6)
             }
             VStack(spacing: 0) {
@@ -416,12 +378,9 @@ private struct TrackRow: View {
         #endif
     }
 
-    private var stickers: Bool { theme.caps.contains(.stickers) }
-    private var plainVoice: Bool { theme.caps.contains(.plainVoice) }
-
-    /// Yeti's setlist rows (`.setlist li`, `.setlist.ios li`): 44pt on
-    /// iPhone, 36pt on the Mac, each ruled in frost.
-    private var yetiRowHeight: CGFloat {
+    /// The setlist rows (`.setlist li`, `.setlist.ios li`): 44pt on iPhone,
+    /// 36pt on the Mac, each ruled in frost.
+    private var rowHeight: CGFloat {
         #if os(iOS)
         44
         #else
@@ -435,8 +394,8 @@ private struct TrackRow: View {
                 HStack(spacing: 8) {
                     numberColumn
                     Text(track.title)
-                        .font(theme.type.body(plainVoice ? 15 : 13))
-                        .fontWeight(isCurrent ? (plainVoice ? .heavy : .semibold) : .regular)
+                        .font(theme.type.body(15))
+                        .fontWeight(isCurrent ? .heavy : .regular)
                         .foregroundStyle(isCurrent ? theme.palette.playState : theme.palette.textPrimary)
                     Spacer(minLength: 8)
                     if let duration = track.durationText {
@@ -460,16 +419,16 @@ private struct TrackRow: View {
                 .help("Add to queue")
             }
             .buttonStyle(.borderless)
-            // `.setlist.ios li .q`: lamp-off idle under Yeti (the snow root
-            // tint would print them louder than the title).
-            .tintIfSet(plainVoice ? theme.palette.textIdle : nil)
+            // `.setlist.ios li .q`: lamp-off idle (the snow root tint would
+            // print them louder than the title).
+            .tint(theme.palette.textIdle)
             .opacity(rowActionsVisible ? 1 : 0)
         }
         .padding(.vertical, 4)
         .padding(.horizontal, 6)
-        .frame(minHeight: plainVoice ? yetiRowHeight : nil)
+        .frame(minHeight: rowHeight)
         .background {
-            if stickers && isCurrent {
+            if isCurrent {
                 // The playing row's faint sale wash (`.setlist li.playing`),
                 // the Mac setlist rule brought to iPhone too.
                 LinearGradient(stops: [.init(color: theme.palette.playState.opacity(0.07), location: 0),
@@ -480,9 +439,7 @@ private struct TrackRow: View {
         .background(hovering ? theme.palette.raised : .clear,
                     in: RoundedRectangle(cornerRadius: 5))
         .overlay(alignment: .top) {
-            if plainVoice {
-                Rectangle().fill(theme.palette.hairline).frame(height: 1)
-            }
+            Rectangle().fill(theme.palette.hairline).frame(height: 1)
         }
         .onHover { hovering = $0 }
         .contextMenu {
@@ -492,78 +449,21 @@ private struct TrackRow: View {
         }
     }
 
-    /// The 28pt number column. Under `.stickers` the playing row shows the
-    /// 20pt `RowSticker` in place of its number (the spec's new EqualizerBars
-    /// site), and EVERY row's column is 20pt tall, so the sticker moving to
-    /// another track never resizes a row. `isPlaying` is read only on the
-    /// playing row, so a pause re-renders that one row, not the show page.
-    @ViewBuilder
+    /// The 28pt number column. The playing row shows the 20pt `RowSticker`
+    /// in place of its number (the stage-c spec's row-sticker table), and
+    /// EVERY row's column is 20pt tall, so the sticker moving to another track
+    /// never resizes a row. `isPlaying` is read only on the playing row, so a
+    /// pause re-renders that one row, not the show page.
     private var numberColumn: some View {
-        if stickers {
-            Group {
-                if isCurrent {
-                    RowSticker(isPlaying: app.player.isPlaying, size: .s20)
-                } else {
-                    Text("\(track.trackNum)")
-                        .font(theme.type.numeric(12))
-                        .foregroundStyle(theme.palette.textIdle)
-                }
+        Group {
+            if isCurrent {
+                RowSticker(isPlaying: app.player.isPlaying, size: .s20)
+            } else {
+                Text("\(track.trackNum)")
+                    .font(theme.type.numeric(12))
+                    .foregroundStyle(theme.palette.textIdle)
             }
-            .frame(width: 28, height: RowSticker.Size.s20.diameter, alignment: .trailing)
-        } else {
-            Text("\(track.trackNum).")
-                .font(theme.type.numeric(12))
-                .foregroundStyle(theme.palette.textSecondary)
-                .frame(width: 28, alignment: .trailing)
         }
-    }
-}
-
-// MARK: - Yeti action styles
-
-private extension View {
-    /// A show-page secondary action under Yeti (`.plainVoice`): a 36pt frost
-    /// ring with the glyph alone on iPhone (`.actrow .ib`; the label stays for
-    /// accessibility), a frost-outlined labeled button on the Mac. Off, the
-    /// button is untouched.
-    @ViewBuilder
-    func yetiShowAction(_ on: Bool) -> some View {
-        if on {
-            #if os(iOS)
-            labelStyle(.iconOnly).buttonStyle(.yetiIcon)
-            #else
-            buttonStyle(.yetiSecondary)
-            #endif
-        } else {
-            self
-        }
-    }
-
-    /// `yetiShowAction`, but off it applies `.tint(otherwiseTint)` exactly as
-    /// the five themes always have (a `nil` tint included).
-    @ViewBuilder
-    func yetiShowAction(_ on: Bool, otherwiseTint: Color?) -> some View {
-        if on {
-            yetiShowAction(true)
-        } else {
-            tint(otherwiseTint)
-        }
-    }
-
-    /// Downloaded: under Yeti a filled SNOW disc, the glyph bare
-    /// (`.ib` with no ring) on iPhone, a frost-outlined button on the Mac,
-    /// never an accent fill. Off, today's accent tint.
-    @ViewBuilder
-    func yetiDownloaded(_ on: Bool, accent: Color) -> some View {
-        if on {
-            #if os(iOS)
-            labelStyle(.iconOnly)
-                .buttonStyle(YetiIconButtonStyle(ringed: false, glyphSize: 26))
-            #else
-            buttonStyle(.yetiSecondary)
-            #endif
-        } else {
-            tint(accent)
-        }
+        .frame(width: 28, height: RowSticker.Size.s20.diameter, alignment: .trailing)
     }
 }

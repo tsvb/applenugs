@@ -3,8 +3,7 @@ import SwiftUI
 /// Yeti's empty state (`.es` under a `.card.pack.sm` in the surfaces sheet):
 /// the EMPTY blister pack, the app before anything has arrived, over a heavy
 /// snow title and one slush line. Shared by the Library's Downloads and
-/// Favorites; hosts show it under `.blisterPack` and keep their own empty
-/// state otherwise.
+/// Favorites, and the Videos tab.
 struct EmptyPackMessage: View {
     @Environment(\.theme) private var theme
 

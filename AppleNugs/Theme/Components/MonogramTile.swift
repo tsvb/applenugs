@@ -15,18 +15,16 @@ struct MonogramTile: View {
         return result.isEmpty ? "?" : result
     }
 
-    /// Under `.plainVoice` the tile is printed on card stock in slush
-    /// (`.mono` in the Yeti surfaces sheet): accent letters there would be
-    /// pink type on the bubble, the very fill the theme keeps for time.
-    private var plain: Bool { theme.caps.contains(.plainVoice) }
-
     var body: some View {
+        // Printed on card stock in slush (`.mono` in the surfaces sheet):
+        // accent letters would be pink type on the bubble, the very fill the
+        // design keeps for time.
         RoundedRectangle(cornerRadius: size * 0.18, style: .continuous)
-            .fill(plain ? (theme.palette.labelPaper ?? theme.palette.raised) : theme.palette.raised)
+            .fill(theme.palette.labelPaper ?? theme.palette.raised)
             .overlay {
                 Text(initials)
                     .font(theme.type.section(size * 0.4))
-                    .foregroundStyle(plain ? theme.palette.textSecondary : theme.palette.accent)
+                    .foregroundStyle(theme.palette.textSecondary)
             }
             .overlay {
                 RoundedRectangle(cornerRadius: size * 0.18, style: .continuous)

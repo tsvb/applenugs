@@ -2,7 +2,7 @@ import SwiftUI
 
 /// Yeti's lossless badge: "Lossless" over "24/96" in night ink on a disc of
 /// sticker stock, tilted like a price sticker slapped on the box. Replaces the
-/// format badge under `.stickers`. Translated from the design sheet's
+/// old format badge. Translated from the design sheet's
 /// `.sticker` (62pt, −11°) and `.sticker.tiny` (smaller, −9°).
 ///
 /// What it says comes from the pure `PriceStickerLabel`; a `nil` label means

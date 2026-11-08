@@ -12,11 +12,6 @@ struct ArtistListView: View {
     @State private var error: String?
     @FocusState private var filterFocused: Bool
 
-    /// Yeti (`.plainVoice`): the `.alist` rows of the first sheet's "Pill over
-    /// an artist list" — names only (Tim's ruling 2: no show counts), heavy
-    /// 17 on frost rules, under heavy slush letter headers.
-    private var plainVoice: Bool { theme.caps.contains(.plainVoice) }
-
     /// A–Z sections, derived state: filtering + grouping + locale-aware
     /// sorting over a catalog hundreds deep is too heavy to redo on every
     /// body evaluation (favorites toggles, theme switches, toasts) — it
@@ -64,16 +59,19 @@ struct ArtistListView: View {
                     Section {
                         ForEach(section.artists) { artist in
                             NavigationLink(value: Route.artist(artist)) {
+                                // The `.alist` rows of the first sheet's "Pill
+                                // over an artist list": names only (Tim's
+                                // ruling 2: no show counts), heavy 17 on frost
+                                // rules, under heavy slush letter headers.
                                 Text(artist.name)
-                                    .font(plainVoice ? theme.type.title(17) : theme.type.body(14))
+                                    .font(theme.type.title(17))
                                     .foregroundStyle(theme.palette.textPrimary)
-                                    .lineLimit(plainVoice ? 1 : nil)
-                                    .padding(.vertical, plainVoice ? 4 : 1)
+                                    .lineLimit(1)
+                                    .padding(.vertical, 4)
                             }
-                            // Yeti rules each row in frost (`.alist li`); the
-                            // other themes let the letter headers carry it.
-                            .listRowSeparator(plainVoice ? .visible : .hidden)
-                            .listRowSeparatorTint(plainVoice ? theme.palette.hairline : nil)
+                            // Each row is ruled in frost (`.alist li`).
+                            .listRowSeparator(.visible)
+                            .listRowSeparatorTint(theme.palette.hairline)
                             .themedListRow()
                             .contextMenu {
                                 let fav = app.favorites.isArtistFavorited(artist.id)
@@ -84,18 +82,11 @@ struct ArtistListView: View {
                             }
                         }
                     } header: {
-                        if plainVoice {
-                            // `.letter`: heavy slush, untracked. A header isn't
-                            // time moving, so it isn't foil.
-                            Text(section.letter)
-                                .font(theme.type.section(17))
-                                .foregroundStyle(theme.palette.textSecondary)
-                        } else {
-                            Text(section.letter)
-                                .font(theme.type.section(12))
-                                .tracking(theme.caps.contains(.condensedHeaders) ? 1.6 : 0.5)
-                                .foregroundStyle(theme.palette.accent)
-                        }
+                        // `.letter`: heavy slush, untracked. A header isn't
+                        // time moving, so it isn't foil.
+                        Text(section.letter)
+                            .font(theme.type.section(17))
+                            .foregroundStyle(theme.palette.textSecondary)
                     }
                 }
             }
@@ -125,11 +116,8 @@ struct ArtistListView: View {
                     systemImage: "exclamationmark.triangle",
                     description: Text(error))
             } else if sections.isEmpty && !artists.isEmpty {
-                if let line = theme.copy.searchNoResults(filter) {
-                    ContentUnavailableView(line, systemImage: "magnifyingglass")
-                } else {
-                    ContentUnavailableView.search(text: filter)
-                }
+                ContentUnavailableView(theme.copy.searchNoResults(filter) ?? "",
+                                       systemImage: "magnifyingglass")
             }
         }
         .task { await load() }
@@ -141,18 +129,15 @@ struct ArtistListView: View {
     private var filterField: some View {
         HStack(spacing: 8) {
             Image(systemName: "magnifyingglass")
-                .font(.system(size: plainVoice ? 15 : 12, weight: .medium))
+                .font(.system(size: 15, weight: .medium))
                 .foregroundStyle(theme.palette.textSecondary)
             TextField("Filter artists", text: $filter,
-                      prompt: plainVoice
-                        ? Text("Filter artists").foregroundStyle(theme.palette.textIdle)
-                        : nil)
+                      prompt: Text("Filter artists").foregroundStyle(theme.palette.textIdle))
                 .textFieldStyle(.plain)
-                .font(theme.type.body(plainVoice ? 16 : 13))
+                .font(theme.type.body(16))
                 .foregroundStyle(theme.palette.textPrimary)
-                // The root tint is snow under Yeti; the caret is focus, and
-                // focus is foil.
-                .tintIfSet(plainVoice ? theme.palette.accent : nil)
+                // The root tint is snow; the caret is focus, and focus is foil.
+                .tint(theme.palette.accent)
                 .focused($filterFocused)
                 .submitLabel(.done)
             if !filter.isEmpty {
@@ -164,19 +149,17 @@ struct ArtistListView: View {
                 .buttonStyle(.plain)
             }
         }
-        .padding(.horizontal, plainVoice ? 12 : 10)
+        .padding(.horizontal, 12)
         .padding(.vertical, 7)
         // `.search`: a 38pt shelf field, radius 12, no keyline at rest (the
         // foil focus ring stays).
-        .frame(minHeight: plainVoice ? 38 : nil)
+        .frame(minHeight: 38)
         .background {
-            let radius: CGFloat = plainVoice ? 12 : 9
-            RoundedRectangle(cornerRadius: radius, style: .continuous)
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
                 .fill(theme.palette.raised)
                 .overlay {
-                    RoundedRectangle(cornerRadius: radius, style: .continuous)
-                        .strokeBorder(filterFocused ? theme.palette.accent.opacity(0.7)
-                                                    : (plainVoice ? .clear : theme.palette.hairline),
+                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        .strokeBorder(filterFocused ? theme.palette.accent.opacity(0.7) : .clear,
                                       lineWidth: 1)
                 }
         }

@@ -32,20 +32,8 @@ struct LibraryView: View {
         .compactNavigationTitle()
     }
 
-    /// Yeti (`.plainVoice`) draws its own segmented control; every other
-    /// theme keeps the system one.
-    @ViewBuilder
     private var segmentPicker: some View {
-        if theme.caps.contains(.plainVoice) {
-            YetiSegmentedControl("Library section", selection: $segment,
-                                 options: Segment.allCases.map { .init(value: $0, title: $0.rawValue) })
-        } else {
-            Picker("Library section", selection: $segment) {
-                ForEach(Segment.allCases) { s in
-                    Text(s.rawValue).tag(s)
-                }
-            }
-            .pickerStyle(.segmented)
-        }
+        YetiSegmentedControl("Library section", selection: $segment,
+                             options: Segment.allCases.map { .init(value: $0, title: $0.rawValue) })
     }
 }

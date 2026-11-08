@@ -4,8 +4,7 @@ import SwiftUI
 /// track, radius 10, 3pt inset, and one lighter thumb under the selected
 /// segment that slides between them. Labels are heavy rounded 13.5 — snow on
 /// the thumb, slush off it. Hosts use it in place of a system
-/// `Picker(.segmented)` under `.plainVoice` and keep the system picker for
-/// every other theme.
+/// `Picker(.segmented)`.
 ///
 /// The font is the same selected or not (only the color changes), so a
 /// segment's label never changes width as the thumb moves. The thumb's

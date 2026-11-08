@@ -45,9 +45,9 @@ struct ResumeProgressRule: View {
     @Environment(AppModel.self) private var app
     @Environment(\.theme) private var theme
 
-    /// 320 on the Mac card today, 360 on Yeti's (`.resume .prog`), unbounded
-    /// in the iPhone hero's name panel.
-    var maxWidth: CGFloat = 320
+    /// 360 on the Mac card (`.resume .prog`), unbounded in the iPhone hero's
+    /// name panel.
+    let maxWidth: CGFloat
 
     var body: some View {
         GeometryReader { geo in
@@ -71,7 +71,7 @@ struct ResumeProgressRule: View {
 
 // MARK: - iPhone hero
 
-/// The iPhone Home hero under `.blisterPack` (Tim's ruling 1: the Mac's resume
+/// The iPhone Home hero (Tim's ruling 1: the Mac's resume
 /// card, ported, on the peg): the cover in the bubble on card stock with the
 /// price sticker on its corner; the title, meta and a foil progress rule
 /// printed on the card; and a 54pt play sticker beside them. Translated from
@@ -156,14 +156,14 @@ struct YetiHomeHero: View {
 
 // MARK: - Mac resume card
 
-/// The macOS Home resume card under `.blisterPack` (Tim's ruling 4): card
+/// The macOS Home resume card (Tim's ruling 4): card
 /// stock with a FLAT 96pt cover — no bubble (that stays special to the
 /// miniplayer and the Now Playing window, so an open dashboard never shows
 /// two bubbles of one cover) and no hang slot (`.resume::before { display:
 /// none }`) — no "CONTINUE LISTENING" eyebrow, a foil progress rule and a
 /// 54pt play sticker. From `yeti-surfaces.html` "Mac Home" (`.card.resume`).
 ///
-/// The whole card toggles playback, exactly as the other themes' card does.
+/// The whole card toggles playback.
 struct YetiResumeCard: View {
     @Environment(\.theme) private var theme
 

@@ -18,11 +18,10 @@ import SwiftUI
 /// Every string it renders comes from `LedgerSummary`, so the formatting is
 /// pinned by tests rather than by this body. Do not format here.
 ///
-/// Under `.plainVoice` (Yeti) it is "the nice list": a sentence-case section
-/// header, one totals line ("112 hours listened · 9 artists"), and rows of a
-/// checked box, the name (which truncates first) and plays / hours in two
-/// right-aligned columns. Same data, same gate, same resolution; only the
-/// setting changes, and the split numbers still come from `LedgerSummary`.
+/// It is "the nice list": a sentence-case section header, one totals line
+/// ("112 hours listened · 9 artists"), and rows of a checked box, the name
+/// (which truncates first) and plays / hours in two right-aligned columns; the
+/// split numbers come from `LedgerSummary`.
 ///
 /// Shared across macOS and iOS; the nice list's columns are a little wider on
 /// the Mac (the sheet's `.ledger-wide`).
@@ -43,31 +42,10 @@ struct ListeningLedger: View {
         let rows = LedgerSummary.top(tallies)
         let totals = LedgerSummary.totals(tallies)
 
-        Group {
-            if theme.caps.contains(.plainVoice) {
-                niceList(rows: rows, totals: totals)
-            } else {
-                VStack(alignment: .leading, spacing: 12) {
-                    Text(theme.copy.ledgerTitle)
-                        .font(theme.type.numeric(10))
-                        .tracking(1.8)
-                        .foregroundStyle(theme.palette.textSecondary)
-
-                    VStack(spacing: 0) {
-                        totalRow(label: "Hours", value: totals.hoursText)
-                        hairline
-                        totalRow(label: "Artists", value: totals.artistCountText)
-                        ForEach(rows) { row in
-                            hairline
-                            leaderRow(row)
-                        }
-                    }
-                }
+        niceList(rows: rows, totals: totals)
+            .task(id: rows.map(\.key).joined(separator: "|")) {
+                await resolveNames(rows)
             }
-        }
-        .task(id: rows.map(\.key).joined(separator: "|")) {
-            await resolveNames(rows)
-        }
     }
 
     // --- rows ---------------------------------------------------------------
@@ -77,26 +55,6 @@ struct ListeningLedger: View {
         Rectangle()
             .fill(theme.palette.hairline)
             .frame(height: 1)
-    }
-
-    private func totalRow(label: String, value: String) -> some View {
-        HStack(alignment: .firstTextBaseline, spacing: 12) {
-            Text(label)
-                .font(theme.type.body(14))
-                .foregroundStyle(theme.palette.textSecondary)
-            Spacer(minLength: 8)
-            Text(value)
-                .font(theme.type.numeric(14))
-                .foregroundStyle(theme.palette.textPrimary)
-        }
-        .padding(.vertical, 9)
-    }
-
-    /// Tappable only when the stored display name resolved against the catalog.
-    /// An unresolved name renders as plain text — never a dead tap target.
-    @ViewBuilder
-    private func leaderRow(_ row: LedgerSummary.Row) -> some View {
-        linked(row) { leaderRowBody(row) }
     }
 
     /// Wraps a row in a `NavigationLink` only when its name resolved.
@@ -113,28 +71,7 @@ struct ListeningLedger: View {
         }
     }
 
-    private func leaderRowBody(_ row: LedgerSummary.Row) -> some View {
-        HStack(alignment: .firstTextBaseline, spacing: 12) {
-            Text("\(row.rank)")
-                .font(theme.type.numeric(12))
-                .foregroundStyle(theme.palette.textIdle)
-                .frame(width: 16, alignment: .leading)
-            Text(row.displayName)
-                .font(theme.type.body(14))
-                .foregroundStyle(theme.palette.textPrimary)
-                .lineLimit(1)
-            Spacer(minLength: 8)
-            Text("\(row.playsText) · \(row.hoursText)")
-                .font(theme.type.numeric(12))
-                .foregroundStyle(theme.palette.textSecondary)
-                .lineLimit(1)
-                .layoutPriority(1)
-        }
-        .padding(.vertical, 9)
-        .contentShape(Rectangle())
-    }
-
-    // --- the nice list (`.plainVoice`) -----------------------------------------
+    // --- the nice list -------------------------------------------------------
 
     /// `.nice li { grid-template-columns: 22px 1fr 62px 40px }`, and the Mac's
     /// `.nice.ledger-wide` (72/48). Minimum widths, so the columns line up at

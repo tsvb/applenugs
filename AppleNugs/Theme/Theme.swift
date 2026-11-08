@@ -99,16 +99,12 @@ struct Theme: Equatable, Sendable {
     // Closure-typed Typography isn't Equatable; identity is the key that matters.
     static func == (a: Theme, b: Theme) -> Bool { a.id == b.id }
 
-    /// The tint `ThemedRoot` applies to the whole app. Under `.plainVoice` it is
-    /// snow (`textPrimary`), so system-tinted controls (prominent buttons, the
-    /// selected tab, toggles, links, untinted sliders) never paint an accent
-    /// fill; such a theme applies its accent explicitly, only where time moves
-    /// (scrub sliders, the pill ring, progress). Every other theme keeps its
-    /// accent.
-    var rootTint: Color {
-        if caps.contains(.plainVoice) { return palette.textPrimary }
-        return palette.accent
-    }
+    /// The tint `ThemedRoot` applies to the whole app: snow (`textPrimary`), so
+    /// system-tinted controls (prominent buttons, the selected tab, toggles,
+    /// links, untinted sliders) never paint an accent fill; the accent is
+    /// applied explicitly, only where time moves (scrub sliders, the pill
+    /// ring, progress).
+    var rootTint: Color { palette.textPrimary }
 
     static func make(_ id: ThemeID) -> Theme {
         switch id {

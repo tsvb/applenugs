@@ -18,8 +18,6 @@ struct CrateList: View {
     @State private var filter = ""
     @FocusState private var filterFocused: Bool
 
-    private var plainVoice: Bool { theme.caps.contains(.plainVoice) }
-
     /// Derived state, not computed in `body`: filtering + grouping + sorting a
     /// catalog hundreds deep is too heavy to redo on every body evaluation
     /// (theme switches, favorites toggles, playback ticks). Rebuilt only when
@@ -63,25 +61,14 @@ struct CrateList: View {
 
     // MARK: scope
 
-    /// Yeti (`.plainVoice`): its own segmented control, and no counts in the
-    /// labels — the header's counts line under the name already carries them.
-    @ViewBuilder
+    /// Our own segmented control, and no counts in the labels — the header's
+    /// counts line under the name already carries them.
     private var scopeControl: some View {
-        if plainVoice {
-            YetiSegmentedControl("Scope", selection: $scope, options: [
-                .init(value: .show, title: "Shows"),
-                .init(value: .video, title: "Videos"),
-                .init(value: .album, title: "Albums"),
-            ])
-        } else {
-            Picker("Scope", selection: $scope) {
-                Text("Shows \(shows.count)").tag(CrateKind.show)
-                Text("Videos \(videos.count)").tag(CrateKind.video)
-                Text("Albums \(albums.count)").tag(CrateKind.album)
-            }
-            .pickerStyle(.segmented)
-            .labelsHidden()
-        }
+        YetiSegmentedControl("Scope", selection: $scope, options: [
+            .init(value: .show, title: "Shows"),
+            .init(value: .video, title: "Videos"),
+            .init(value: .album, title: "Albums"),
+        ])
     }
 
     private var scopePicker: some View {
@@ -99,15 +86,12 @@ struct CrateList: View {
                 .font(.system(size: 12, weight: .medium))
                 .foregroundStyle(theme.palette.textSecondary)
             TextField(placeholder, text: $filter,
-                      prompt: plainVoice
-                        ? Text(placeholder).foregroundStyle(theme.palette.textIdle)
-                        : nil)
+                      prompt: Text(placeholder).foregroundStyle(theme.palette.textIdle))
                 .textFieldStyle(.plain)
-                .font(theme.type.body(plainVoice ? 15 : 13))
+                .font(theme.type.body(15))
                 .foregroundStyle(theme.palette.textPrimary)
-                // The root tint is snow under Yeti; the caret is focus, and
-                // focus is foil.
-                .tintIfSet(plainVoice ? theme.palette.accent : nil)
+                // The root tint is snow; the caret is focus, and focus is foil.
+                .tint(theme.palette.accent)
                 .focused($filterFocused)
                 .submitLabel(.done)
             if !filter.isEmpty {
@@ -120,20 +104,13 @@ struct CrateList: View {
                 .accessibilityLabel("Clear filter")
             }
         }
-        .padding(.horizontal, plainVoice ? 12 : 10)
+        .padding(.horizontal, 12)
         .padding(.vertical, 7)
-        // Yeti's `.field`: a 40pt shelf field, radius 12, no keyline.
-        .frame(minHeight: plainVoice ? 40 : nil)
+        // The `.field`: a 40pt shelf field, radius 12, no keyline.
+        .frame(minHeight: 40)
         .background {
-            let radius: CGFloat = plainVoice ? 12 : 8
-            RoundedRectangle(cornerRadius: radius, style: .continuous)
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
                 .fill(theme.palette.raised)
-                .overlay {
-                    if !plainVoice {
-                        RoundedRectangle(cornerRadius: radius, style: .continuous)
-                            .strokeBorder(theme.palette.hairline, lineWidth: 1)
-                    }
-                }
         }
         .padding(.horizontal, 16)
         .padding(.bottom, 8)
@@ -192,24 +169,13 @@ struct CrateList: View {
         }
     }
 
-    /// Month headers. Yeti (`.plainVoice`): the barker's heavy slush 15
-    /// (`.month`), sentence case; every other theme keeps the system header.
-    @ViewBuilder
+    /// Month headers: the barker's heavy slush 15 (`.month`), sentence case.
     private func monthHeader(_ month: Date?) -> some View {
-        if theme.caps.contains(.plainVoice) {
-            Text(header(month))
-                .font(theme.type.section(15))
-                .foregroundStyle(theme.palette.textSecondary)
-        } else {
-            Text(header(month))
-        }
-    }
-
-    private func header(_ month: Date?) -> String {
-        let title = CrateSection.monthTitle(month,
-                                            calendar: CrateSection.catalogCalendar,
-                                            locale: .current)
-        return theme.caps.contains(.condensedHeaders) ? title.uppercased() : title
+        Text(CrateSection.monthTitle(month,
+                                     calendar: CrateSection.catalogCalendar,
+                                     locale: .current))
+            .font(theme.type.section(15))
+            .foregroundStyle(theme.palette.textSecondary)
     }
 
     private var loadingFooter: some View {

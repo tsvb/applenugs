@@ -41,9 +41,9 @@ struct ArtistDetailView: View {
         .background(theme.palette.base)
         .navigationTitle(artist.name)
         .compactNavigationTitle()
-        // Yeti's header prints the name as a 34pt title right below the bar;
-        // the bar keeps only the back button, as the surfaces sheet draws it.
-        .hidesNavigationBarTitle(theme.caps.contains(.plainVoice))
+        // The header prints the name as a 34pt title right below the bar; the
+        // bar keeps only the back button, as the surfaces sheet draws it.
+        .hidesNavigationBarTitle()
         .overlay {
             if loading && containers.isEmpty {
                 ProgressView()
@@ -159,22 +159,18 @@ struct CoverArt: View {
         .aspectRatio(1, contentMode: .fit)
         .frame(maxWidth: .infinity)
         .clipShape(RoundedRectangle(cornerRadius: 6))
-        // Yeti: a cover sits flat on the shelf with a 1pt frost keyline (the
-        // bubble is only for what's playing) — the show page and `ShowCard`.
+        // A cover sits flat on the shelf with a 1pt frost keyline (the bubble
+        // is only for what's playing) — the show page and `ShowCard`.
         .overlay {
-            if plain {
-                RoundedRectangle(cornerRadius: 6).strokeBorder(theme.palette.hairline, lineWidth: 1)
-            }
+            RoundedRectangle(cornerRadius: 6).strokeBorder(theme.palette.hairline, lineWidth: 1)
         }
     }
-
-    private var plain: Bool { theme.caps.contains(.plainVoice) }
 
     private var placeholder: some View {
         Rectangle()
             .fill(theme.palette.raised)
-            // A placeholder isn't time moving: slush under Yeti.
+            // A placeholder isn't time moving: slush.
             .overlay(Image(systemName: "music.note")
-                .foregroundStyle(plain ? theme.palette.textSecondary : theme.palette.accent.opacity(0.7)))
+                .foregroundStyle(theme.palette.textSecondary))
     }
 }

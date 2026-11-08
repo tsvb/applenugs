@@ -2,8 +2,8 @@ import SwiftUI
 
 /// Yeti's play-state disc for a row: four night-ink bars stepping down
 /// 100/75/50/25 on sticker stock while playing; the same disc with the bars
-/// lying flat on idle-gray stock (`palette.textIdle`) while paused. Replaces
-/// `EqualizerBars`' bounce at the sites the spec lists. Translated from the
+/// lying flat on idle-gray stock (`palette.textIdle`) while paused. Marks the
+/// queue's playing slot and the setlist's playing row. Translated from the
 /// design sheet's `.rs` / `.rs .stair` / `.rs.paused` / `.rs.sm`.
 ///
 /// **One constant frame in both states** — a pause must never resize a row.

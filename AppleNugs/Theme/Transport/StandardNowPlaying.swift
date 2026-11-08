@@ -1,7 +1,7 @@
 import SwiftUI
 
-/// The Mac transport bar's now-playing block, token-styled. Yeti
-/// (`.plainVoice`) draws its own variant with an art chip.
+/// The Mac transport bar's now-playing block: an art chip, the title, the
+/// meta line and the queue position.
 struct StandardNowPlaying: View {
     @Environment(AppModel.self) private var app
     @Environment(\.theme) private var theme
@@ -9,23 +9,8 @@ struct StandardNowPlaying: View {
     private var player: PlayerService { app.player }
 
     var body: some View {
-        if let track = player.current, theme.caps.contains(.plainVoice) {
+        if let track = player.current {
             plainBlock(track)
-        } else if let track = player.current {
-            VStack(alignment: .leading, spacing: 2) {
-                HStack(spacing: 6) {
-                    Text("\(player.index + 1)/\(player.queue.count)")
-                        .font(theme.type.numeric(10))
-                        .foregroundStyle(theme.palette.textSecondary)
-                    Text(track.title ?? "Unknown track")
-                        .font(theme.type.title(14))
-                        .lineLimit(1)
-                }
-                NowPlayingMetaText(track: track)
-                    .font(.caption)
-                    .foregroundStyle(theme.palette.textSecondary)
-                    .lineLimit(1)
-            }
         } else {
             Text(theme.copy.nowPlaying)
                 .font(.callout)
@@ -33,7 +18,7 @@ struct StandardNowPlaying: View {
         }
     }
 
-    /// Yeti's block (`.plainVoice`), as drawn in the surfaces page's Mac
+    /// The block as drawn in the surfaces page's Mac
     /// transport bar: a flat 42pt art chip (no bubble — that is the
     /// miniplayer's), the title, the meta line, and the queue position said
     /// plainly ("3 of 24") in lamp-off gray under them.

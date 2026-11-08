@@ -14,8 +14,6 @@ struct LoginView: View {
 
 /// The sign-in screen itself, from plain values (no `AppModel`), so the
 /// offscreen harness can render it.
-///
-/// Note it shows BEFORE login, under whatever theme was persisted last.
 struct LoginContent: View {
     @Environment(\.theme) private var theme
 
@@ -23,21 +21,11 @@ struct LoginContent: View {
     let error: String?
     let onSignIn: () -> Void
 
-    var body: some View {
-        if theme.caps.contains(.blisterPack) {
-            packBody
-        } else {
-            standardBody
-        }
-    }
-
-    // MARK: Yeti
-
     /// The surfaces sheet's sign-in figure: the EMPTY pack with the "Yeti"
     /// nameplate printed on its card (the app before the show arrives), one
     /// snow primary, a failure said in snow — never red. The Mac centers the
     /// same column in the window.
-    private var packBody: some View {
+    var body: some View {
         VStack(spacing: 0) {
             // `.card.pack { width: 210px }`, `.plate-sm { font-weight: 900;
             // font-size: 30px; letter-spacing: -.02em }`
@@ -107,55 +95,6 @@ struct LoginContent: View {
         }
         .multilineTextAlignment(.center)
         .padding(.horizontal, 28)
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-    }
-
-    // MARK: Other themes (unchanged)
-
-    private var standardBody: some View {
-        VStack(spacing: 18) {
-            VStack(spacing: 6) {
-                Image(systemName: "waveform.circle.fill")
-                    .font(.system(size: 44))
-                    .foregroundStyle(.tint)
-                Text("Yeti")
-                    .font(.largeTitle.weight(.semibold))
-                Text("An unofficial player for nugs.net")
-                    .foregroundStyle(.secondary)
-            }
-
-            if let error {
-                Text(error)
-                    .font(.callout)
-                    .foregroundStyle(.red)
-                    .frame(maxWidth: 360)
-                    .multilineTextAlignment(.center)
-            }
-
-            Button {
-                onSignIn()
-            } label: {
-                if isLoggingIn {
-                    ProgressView().controlSize(.small).frame(minWidth: 160)
-                } else {
-                    Label("Sign in with nugs.net", systemImage: "globe")
-                        .frame(minWidth: 160)
-                }
-            }
-            .buttonStyle(.borderedProminent)
-            .disabled(isLoggingIn)
-            .accessibilityIdentifier("login.signIn")
-
-            VStack(spacing: 4) {
-                Text("You sign in on nugs.net’s own page; this app never sees your password.")
-                Text("Unofficial. Not affiliated with nugs.net or Apple.")
-            }
-            .font(.caption)
-            .foregroundStyle(.secondary)
-            .frame(maxWidth: 380)
-            .multilineTextAlignment(.center)
-        }
-        .padding()
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 }

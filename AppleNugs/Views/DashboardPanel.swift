@@ -5,8 +5,8 @@ import SwiftUI
 /// player's resolved pick + AVFoundation decoder instead of header parsing.
 ///
 /// Rendered as a `ScrollView`+`VStack` rather than a `List`: the inspector
-/// content updates every frame during playback (elapsed time, buffer-ahead,
-/// the equalizer animation), and a `List` is `NSTableView`-backed. Live size
+/// content updates every frame during playback (elapsed time, buffer-ahead),
+/// and a `List` is `NSTableView`-backed. Live size
 /// churn inside the inspector's split child re-enters the `NSTableView`
 /// delegate, which on macOS 26 aborts with `_postWindowNeedsUpdateConstraints`
 /// when it collides with a window resize / inspector toggle. A `ScrollView`
@@ -27,7 +27,6 @@ struct DashboardPanel: View {
     @State private var confirmingClear = false
 
     private var player: PlayerService { app.player }
-    private var plainVoice: Bool { theme.caps.contains(.plainVoice) }
 
     var body: some View {
         ScrollView {
@@ -53,17 +52,12 @@ struct DashboardPanel: View {
         .background(theme.palette.base)
     }
 
-    /// Section headers in the theme's display face; condensed themes track them
-    /// out as letterpress small caps. Under `.plainVoice` they are the design's
-    /// barker headers: a real section header in snow ("Here it comes"), not a
-    /// small gray label.
+    /// Section headers are the design's barker headers: a real section header
+    /// in snow ("Here it comes"), not a small gray label.
     private func sectionHeader(_ text: String) -> some View {
-        let condensed = theme.caps.contains(.condensedHeaders)
-        let plain = theme.caps.contains(.plainVoice)
-        return Text(condensed ? text.uppercased() : text)
-            .font(theme.type.section(plain ? 17 : 12))
-            .tracking(condensed ? 1.6 : 0)
-            .foregroundStyle(plain ? theme.palette.textPrimary : theme.palette.textSecondary)
+        Text(text)
+            .font(theme.type.section(17))
+            .foregroundStyle(theme.palette.textPrimary)
     }
 
     // --- now playing ---------------------------------------------------------
@@ -100,7 +94,7 @@ struct DashboardPanel: View {
         if let track = player.current {
             VStack(alignment: .leading, spacing: 3) {
                 Text(track.title ?? "Unknown track")
-                    .font(theme.type.title(theme.caps.contains(.plainVoice) ? 20 : 15))
+                    .font(theme.type.title(20))
                     .lineLimit(1)
                     .truncationMode(.tail)
                 NowPlayingMetaText(track: track, fields: [.artist])
@@ -152,18 +146,14 @@ struct DashboardPanel: View {
     private var qualitySection: some View {
         if player.current != nil {
             VStack(alignment: .leading, spacing: 6) {
-                if theme.caps.contains(.stickers) {
-                    // The price sticker rides the quality header. This whole
-                    // section is already gated on `player.current`, and the
-                    // sticker holds its frame when a known lossy pick hides
-                    // it, so the header never changes height.
-                    HStack {
-                        sectionHeader(theme.copy.dashHeaders.quality)
-                        Spacer(minLength: 8)
-                        PriceSticker(player: player, size: Self.headerStickerSize)
-                    }
-                } else {
+                // The price sticker rides the quality header. This whole
+                // section is already gated on `player.current`, and the
+                // sticker holds its frame when a known lossy pick hides it,
+                // so the header never changes height.
+                HStack {
                     sectionHeader(theme.copy.dashHeaders.quality)
+                    Spacer(minLength: 8)
+                    PriceSticker(player: player, size: Self.headerStickerSize)
                 }
                 VStack(spacing: 5) {
                     ForEach(SignalReadout.rows(format: player.nowPick?.format,
@@ -219,22 +209,21 @@ struct DashboardPanel: View {
         }
     }
 
-    /// The row's title. Yeti (`.plainVoice`) prints the playing row heavy in
-    /// sale yellow (`playState`); every
-    /// other theme keeps the inherited text color, untouched.
+    /// The row's title. The playing row prints heavy in sale yellow
+    /// (`playState`); the rest keep the inherited text color.
     @ViewBuilder
     private func queueTitle(_ track: QueueTrack, isCurrent: Bool) -> some View {
         let title = Text(track.title ?? "Unknown track")
             .font(.caption)
             .lineLimit(1)
             .truncationMode(.tail)
-        if plainVoice && isCurrent {
+        if isCurrent {
             title
                 .fontWeight(.heavy)
                 .foregroundStyle(theme.palette.playState)
         } else {
             title
-                .fontWeight(isCurrent ? .semibold : .regular)
+                .fontWeight(.regular)
         }
     }
 
@@ -245,21 +234,9 @@ struct DashboardPanel: View {
             } label: {
                 HStack(spacing: 6) {
                     if i == player.index {
-                        // `.stickers` first: Yeti carries `.equalizerRows` too,
-                        // and its queue slot takes the static row sticker
-                        // instead of the bounce (spec's EqualizerBars table).
-                        if theme.caps.contains(.stickers) {
-                            RowSticker(isPlaying: player.isPlaying, size: .s16)
-                                .frame(width: 16)
-                        } else if theme.caps.contains(.equalizerRows) {
-                            EqualizerBars(isPlaying: player.isPlaying)
-                                .frame(width: 16)
-                        } else {
-                            Image(systemName: player.isPlaying ? "speaker.wave.2.fill" : "pause.fill")
-                                .font(.caption2)
-                                .foregroundStyle(theme.palette.playState)
-                                .frame(width: 16)
-                        }
+                        // The static row sticker marks the playing slot.
+                        RowSticker(isPlaying: player.isPlaying, size: .s16)
+                            .frame(width: 16)
                     } else {
                         Text(String(i + 1))
                             .font(theme.type.numeric(10))
@@ -293,66 +270,46 @@ struct DashboardPanel: View {
 
 // MARK: - rows
 
-/// A playback error, as the dashboard shows it. Red with a warning triangle in
-/// every theme but Yeti, which says it in snow with a slush mark on a shelf
-/// block (`.plainVoice`: errors are said, not alarmed). Reads no player state.
+/// A playback error, as the dashboard shows it: said in snow with a slush mark
+/// on a shelf block (errors are said, not alarmed). Reads no player state.
 private struct PlaybackErrorLine: View {
     @Environment(\.theme) private var theme
 
     let message: String
 
-    /// The offline-expiry error's "why" line (`OfflineAccessPolicy.detail`),
-    /// on every theme. Part of this conditional error block — never a Signal
+    /// The offline-expiry error's "why" line (`OfflineAccessPolicy.detail`).
+    /// Part of this conditional error block — never a Signal
     /// row, so the Signal section's constant row set is untouched.
     private var detail: String? { OfflineAccessPolicy.detail(forError: message) }
 
     var body: some View {
-        if theme.caps.contains(.plainVoice) {
-            HStack(alignment: .firstTextBaseline, spacing: 8) {
-                Image(systemName: "exclamationmark.triangle")
-                    .foregroundStyle(theme.palette.textSecondary)
-                    .accessibilityHidden(true)
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(message)
-                        .fontWeight(.semibold)
-                        .foregroundStyle(theme.palette.textPrimary)
-                        .lineLimit(2)
+        HStack(alignment: .firstTextBaseline, spacing: 8) {
+            Image(systemName: "exclamationmark.triangle")
+                .foregroundStyle(theme.palette.textSecondary)
+                .accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(message)
+                    .fontWeight(.semibold)
+                    .foregroundStyle(theme.palette.textPrimary)
+                    .lineLimit(2)
+                    .fixedSize(horizontal: false, vertical: true)
+                if let detail {
+                    Text(detail)
+                        .foregroundStyle(theme.palette.textSecondary)
                         .fixedSize(horizontal: false, vertical: true)
-                    if let detail {
-                        Text(detail)
-                            .foregroundStyle(theme.palette.textSecondary)
-                            .fixedSize(horizontal: false, vertical: true)
-                    }
                 }
             }
-            .font(.caption)
-            .padding(.horizontal, 10)
-            .padding(.vertical, 8)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(theme.palette.raised, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
-            .overlay {
-                RoundedRectangle(cornerRadius: 10, style: .continuous)
-                    .strokeBorder(theme.palette.hairline, lineWidth: 1)
-            }
-            .accessibilityElement(children: .combine)
-        } else {
-            Label {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(message)
-                        .lineLimit(2)
-                        .fixedSize(horizontal: false, vertical: true)
-                    if let detail {
-                        Text(detail)
-                            .foregroundStyle(theme.palette.textSecondary)
-                            .fixedSize(horizontal: false, vertical: true)
-                    }
-                }
-            } icon: {
-                Image(systemName: "exclamationmark.triangle")
-            }
-            .font(.caption)
-            .foregroundStyle(.red)
         }
+        .font(.caption)
+        .padding(.horizontal, 10)
+        .padding(.vertical, 8)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(theme.palette.raised, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                .strokeBorder(theme.palette.hairline, lineWidth: 1)
+        }
+        .accessibilityElement(children: .combine)
     }
 }
 
