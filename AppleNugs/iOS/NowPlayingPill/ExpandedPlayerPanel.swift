@@ -18,10 +18,11 @@ struct ExpandedPlayerPanel: View {
     private var player: PlayerService { app.player }
 
     var body: some View {
-        // The 46pt play sticker in the transport row and the 32pt price
-        // sticker where the format badge sat are taller than what they
-        // replaced, so the stack keeps tight 6pt gaps to hold the whole panel
-        // inside the fixed 250pt detent (the design measured it).
+        // The 46pt play sticker in the transport row is taller than the glyph
+        // it replaced, so the stack keeps tight 6pt gaps to hold the whole
+        // panel inside the fixed 250pt detent. No price sticker here (Tim,
+        // 2026-11-07: next to the play sticker its weight competed with it):
+        // the quality is quiet text under the venue instead.
         VStack(spacing: 6) {
             HStack(spacing: 10) {
                 ArtChip(image: player.nowPlayingImage,
@@ -36,6 +37,7 @@ struct ExpandedPlayerPanel: View {
                         .font(theme.type.body(12))
                         .foregroundStyle(theme.palette.textSecondary)
                         .lineLimit(1)
+                    qualityLine
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
 
@@ -56,11 +58,6 @@ struct ExpandedPlayerPanel: View {
                     .frame(width: 26, height: 26)
                     .accessibilityLabel("AirPlay")
                 Spacer()
-                // Presence follows `player.current` (inside the sticker's own
-                // init), never `nowPick`, and it holds its 32pt frame when
-                // hidden, so the row never reflows at a track change.
-                PriceSticker(player: player, size: .s32)
-                Spacer()
                 queueButton
             }
         }
@@ -75,6 +72,22 @@ struct ExpandedPlayerPanel: View {
                 #endif
                 .presentationBackground(theme.palette.base)
         }
+    }
+
+    /// "Lossless 16/44" in quiet slush text, from the same policy as the price
+    /// sticker: presence follows `player.current`, never `nowPick` (which is
+    /// nil'd on every track change), so it reads "Lossless" until the stream
+    /// is known instead of blinking. Always one line tall — a blank line when
+    /// hidden (a stream known to be lossy) — so the panel never reflows.
+    private var qualityLine: some View {
+        let label = PriceStickerLabel(player: player)
+        let text = label.map { [$0.title, $0.spec].compactMap { $0 }.joined(separator: " ") } ?? " "
+        return Text(text)
+            .font(theme.type.numeric(11))
+            .foregroundStyle(theme.palette.textSecondary)
+            .lineLimit(1)
+            .accessibilityLabel(label?.accessibilityLabel ?? "")
+            .accessibilityHidden(label == nil)
     }
 
     /// A frost-outlined button (never filled or tinted with the accent).
