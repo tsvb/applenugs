@@ -136,7 +136,7 @@ struct AppleNugsApp: App {
                 .environment(ui)
                 .environment(themes)
                 .environment(\.theme, themes.theme)
-                .providesArtColor(app: app, theme: themes.theme)
+                .themed(themes.theme)
                 // A separate scene root with its own environment, so the meta
                 // link interceptor has to be installed here too.
                 .nowPlayingMetaLinks(app: app, ui: ui)

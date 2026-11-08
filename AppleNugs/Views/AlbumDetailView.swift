@@ -224,8 +224,7 @@ struct AlbumDetailView: View {
                 HStack(spacing: 6) {
                     ProgressView(value: fraction)
                         // A download moves through time: foil, explicitly,
-                        // against Yeti's snow root tint (a static accent, so
-                        // no art color is needed here).
+                        // against Yeti's snow root tint.
                         .tintIfSet(plainVoice ? theme.palette.accent : nil)
                         .frame(width: 44)
                         .accessibilityLabel("Downloading show")
@@ -405,7 +404,6 @@ private struct TrackRow: View {
 
     @Environment(AppModel.self) private var app
     @Environment(\.theme) private var theme
-    @Environment(\.artColor) private var artColor
     @State private var hovering = false
 
     /// Touch has no hover: on iOS the per-row actions are always visible
@@ -439,7 +437,7 @@ private struct TrackRow: View {
                     Text(track.title)
                         .font(theme.type.body(plainVoice ? 15 : 13))
                         .fontWeight(isCurrent ? (plainVoice ? .heavy : .semibold) : .regular)
-                        .foregroundStyle(isCurrent ? theme.activeEmphasis(art: artColor) : theme.palette.textPrimary)
+                        .foregroundStyle(isCurrent ? theme.palette.playState : theme.palette.textPrimary)
                     Spacer(minLength: 8)
                     if let duration = track.durationText {
                         Text(duration)

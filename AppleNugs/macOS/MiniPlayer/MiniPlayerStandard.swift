@@ -9,7 +9,6 @@ import SwiftUI
 struct MiniPlayerStandard: View {
     @Environment(AppModel.self) private var app
     @Environment(\.theme) private var theme
-    @Environment(\.artColor) private var artColor
 
     private var player: PlayerService { app.player }
     private var pack: Bool { theme.caps.contains(.blisterPack) }
@@ -29,7 +28,6 @@ struct MiniPlayerStandard: View {
             }
         }
         .padding(10)
-        .background(Color.clear.artWash(theme.washStyle, color: artColor))
     }
 
     /// Yeti's info block, as drawn in the first sheet's `.mini`: a 100pt small

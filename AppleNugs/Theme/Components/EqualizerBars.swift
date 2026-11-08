@@ -4,7 +4,6 @@ import SwiftUI
 /// ~8fps and frozen flat when paused, so it costs nothing when idle.
 struct EqualizerBars: View {
     @Environment(\.theme) private var theme
-    @Environment(\.artColor) private var artColor
     let isPlaying: Bool
 
     var body: some View {
@@ -13,7 +12,7 @@ struct EqualizerBars: View {
             HStack(alignment: .center, spacing: 2) {
                 ForEach(0..<3, id: \.self) { i in
                     Capsule()
-                        .fill(theme.effectiveAccent(art: artColor))
+                        .fill(theme.palette.accent)
                         .frame(width: 2.5, height: height(bar: i, at: t))
                 }
             }

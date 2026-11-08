@@ -32,7 +32,7 @@ struct RootView: View {
                 connectionFailedView(message)
             }
         }
-        .providesArtColor(app: app, theme: theme)
+        .themed(theme)
         .nowPlayingMetaLinks(app: app, ui: ui)
         .task { await app.bootstrap() }
         .onAppear { KeyboardShortcuts.install(app: app, ui: ui) }

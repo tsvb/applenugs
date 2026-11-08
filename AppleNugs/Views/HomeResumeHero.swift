@@ -44,7 +44,6 @@ struct OpenNowPlayingAction: Equatable, Sendable {
 struct ResumeProgressRule: View {
     @Environment(AppModel.self) private var app
     @Environment(\.theme) private var theme
-    @Environment(\.artColor) private var artColor
 
     /// 320 on the Mac card today, 360 on Yeti's (`.resume .prog`), unbounded
     /// in the iPhone hero's name panel.
@@ -54,7 +53,7 @@ struct ResumeProgressRule: View {
         GeometryReader { geo in
             ZStack(alignment: .leading) {
                 Capsule().fill(theme.palette.hairline)
-                Capsule().fill(theme.effectiveAccent(art: artColor))
+                Capsule().fill(theme.palette.accent)
                     .frame(width: geo.size.width * fraction)
             }
         }

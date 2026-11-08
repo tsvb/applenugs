@@ -14,7 +14,6 @@ struct IOSRootView: View {
     @Environment(UIState.self) private var ui
     @Environment(\.theme) private var theme
 
-    @State private var artProvider = ArtColorProvider()
     // Starts presented under -UITestShowNowPlaying so layout screenshots can
     // reach the full-screen player without a tap (simctl cannot tap).
     @State private var nowPlayingPresented =
@@ -33,19 +32,6 @@ struct IOSRootView: View {
     /// tallies, so the wipe is unrecoverable — it does not happen on one tap.
     @State private var confirmingStatsReset = false
 
-    /// The accent the chrome should use right now: the live art color when the
-    /// active theme is art-driven, else nil (so static themes are untouched).
-    private var activeArtColor: Color? {
-        theme.consumesArtColor ? artProvider.color : nil
-    }
-
-    /// Refires the extractor when the track changes, when its art finishes
-    /// loading, or when the theme's appetite for art changes.
-    private var artTaskID: String {
-        let track = app.player.current?.id.uuidString ?? "none"
-        return "\(track)|\(app.player.nowPlayingImage != nil)|\(theme.consumesArtColor)"
-    }
-
     var body: some View {
         Group {
             switch app.sessionState {
@@ -61,17 +47,10 @@ struct IOSRootView: View {
                 connectionFailedView(message)
             }
         }
-        .themed(theme, art: activeArtColor)
-        .environment(\.artColor, activeArtColor)
+        .themed(theme)
         // One scene, so one install point; the cover, the panel and the
         // dashboard sheet nested inside them all inherit it.
         .nowPlayingMetaLinks(app: app, ui: ui)
-        .task(id: artTaskID) {
-            artProvider.update(
-                image: app.player.nowPlayingImage,
-                key: app.player.current?.artworkPath,
-                enabled: theme.consumesArtColor)
-        }
         .task { await app.bootstrap() }
         // Deep links (applenugs://show/…). Parse here; AppModel acts now if the
         // session is up, or stashes for the drain below. The now-playing cover

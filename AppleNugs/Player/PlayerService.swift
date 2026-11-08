@@ -1251,9 +1251,8 @@ final class PlayerService {
     // --- artwork --------------------------------------------------------------
 
     /// The cached cover image for the now-playing track, if it has loaded.
-    /// Reused by themed now-playing chips and the album-art color extractor —
-    /// reading the observed cache means views update when art arrives, with no
-    /// extra fetch.
+    /// Reused by the now-playing chips and art tiles — reading the observed
+    /// cache means views update when art arrives, with no extra fetch.
     var nowPlayingImage: PlatformImage? {
         current?.artworkPath.flatMap { artworkCache[$0] }
     }

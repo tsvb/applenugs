@@ -10,7 +10,6 @@ import SwiftUI
 struct MiniPlayerScrubTrack: View {
     @Environment(AppModel.self) private var app
     @Environment(\.theme) private var theme
-    @Environment(\.artColor) private var artColor
 
     /// Drawn thickness. The hit area stays 20 pt tall regardless.
     private static let trackHeight: CGFloat = 3
@@ -39,7 +38,7 @@ struct MiniPlayerScrubTrack: View {
                 ZStack(alignment: .leading) {
                     Capsule().fill(theme.palette.hairline)
                     Capsule()
-                        .fill(theme.effectiveAccent(art: artColor))
+                        .fill(theme.palette.accent)
                         .frame(width: width * fraction)
                 }
                 .frame(height: Self.trackHeight)
@@ -107,7 +106,6 @@ struct MiniPlayerTransportTriad: View {
 
     @Environment(AppModel.self) private var app
     @Environment(\.theme) private var theme
-    @Environment(\.artColor) private var artColor
 
     var style: Style = .filled
     var glyphSize: CGFloat = 13
@@ -161,7 +159,7 @@ struct MiniPlayerTransportTriad: View {
                     .foilFocusOutline(Circle())
             } else {
                 ZStack {
-                    Circle().fill(theme.effectiveAccent(art: artColor))
+                    Circle().fill(theme.palette.accent)
                     if player.isBuffering {
                         ProgressView().controlSize(.small).tint(theme.palette.base)
                     } else {

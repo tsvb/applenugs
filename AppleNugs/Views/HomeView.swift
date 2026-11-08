@@ -13,12 +13,6 @@ struct HomeView: View {
     @Environment(AppModel.self) private var app
     @Environment(UIState.self) private var ui
     @Environment(\.theme) private var theme
-    #if os(macOS)
-    /// Only the resume hero reads the art color. Left unguarded, this would
-    /// re-render Home on every track change on iPhone, where the hero no
-    /// longer exists.
-    @Environment(\.artColor) private var artColor
-    #endif
 
     @State private var sample: [ArtistEntry] = []
     @State private var artistCount = 0
@@ -157,7 +151,7 @@ struct HomeView: View {
                     ArtChip(image: player.nowPlayingImage,
                             fallbackText: track.artist ?? track.title ?? "?",
                             size: resumeArtSize)
-                        .shadow(color: (artColor ?? theme.palette.accent).opacity(0.45), radius: 22, y: 6)
+                        .shadow(color: theme.palette.accent.opacity(0.45), radius: 22, y: 6)
 
                     VStack(alignment: .leading, spacing: 5) {
                         Text("CONTINUE LISTENING")
@@ -177,18 +171,13 @@ struct HomeView: View {
                     Spacer(minLength: 8)
                     Image(systemName: player.isPlaying ? "pause.circle.fill" : "play.circle.fill")
                         .font(.system(size: resumeGlyphSize))
-                        .foregroundStyle(theme.effectiveAccent(art: artColor))
+                        .foregroundStyle(theme.palette.accent)
                         .symbolRenderingMode(.hierarchical)
                 }
                 .padding(20)
                 .background {
                     RoundedRectangle(cornerRadius: 16, style: .continuous)
                         .fill(theme.palette.raised)
-                        .overlay {
-                            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                                .fill(.clear)
-                                .artWash(theme.washStyle, color: artColor)
-                        }
                         .overlay {
                             RoundedRectangle(cornerRadius: 16, style: .continuous)
                                 .strokeBorder(theme.palette.hairline, lineWidth: 1)

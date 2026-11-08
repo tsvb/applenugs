@@ -22,7 +22,6 @@ enum ThemeID: String, CaseIterable, Identifiable, Codable {
         }
     }
 
-    /// Accent swatch for the picker (the static accent; art-driven themes show
-    /// their fallback).
+    /// Accent swatch for the picker (the theme's accent).
     var swatch: Color { Theme.make(self).palette.accent }
 }

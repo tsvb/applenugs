@@ -2,7 +2,7 @@ import SwiftUI
 
 // Yeti's two button shapes. Primaries are snow with night ink and secondaries
 // are frost-outlined with a snow label, never an accent fill: under Yeti the
-// root tint is snow (`Theme.rootTint(art:)`), and a snow-tinted
+// root tint is snow (`Theme.rootTint`), and a snow-tinted
 // `.borderedProminent` would still draw a white label on the snow capsule.
 //
 // Colors come from the theme's tokens: snow = `textPrimary`, night ink =

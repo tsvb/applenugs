@@ -12,7 +12,6 @@ enum NowPlayingWindow {
 struct NowPlayingScreen: View {
     @Environment(AppModel.self) private var app
     @Environment(\.theme) private var theme
-    @Environment(\.artColor) private var artColor
     @Environment(\.dismiss) private var dismiss
     @Environment(UIState.self) private var ui
     @Environment(\.nowPlayingQueueBeside) private var queueBeside
@@ -83,12 +82,6 @@ struct NowPlayingScreen: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background {
             theme.palette.base
-                .overlay { ArtWashBackground(style: theme.washStyle, color: artColor ?? .clear) }
-                .overlay {
-                    if theme.textureOpacity > 0 {
-                        PaperGrain().opacity(theme.textureOpacity).allowsHitTesting(false)
-                    }
-                }
                 .ignoresSafeArea()
         }
         .dismissesOnNavigation($dashboardShown, ui: ui)
@@ -224,7 +217,7 @@ struct NowPlayingScreen: View {
             RoundedRectangle(cornerRadius: 18, style: .continuous)
                 .strokeBorder(theme.palette.textPrimary.opacity(0.12), lineWidth: 1)
         }
-        .shadow(color: (artColor ?? theme.palette.accent).opacity(0.35), radius: 28, y: 10)
+        .shadow(color: theme.palette.accent.opacity(0.35), radius: 28, y: 10)
     }
 
     private var seekBlock: some View {
@@ -244,7 +237,7 @@ struct NowPlayingScreen: View {
                 if editing { scrubValue = player.currentTime } else { player.seek(to: scrubValue) }
                 scrubbing = editing
             }
-            .tint(theme.effectiveAccent(art: artColor))
+            .tint(theme.palette.accent)
             .disabled(player.duration <= 0)
             .accessibilityLabel("Playback position")
             .accessibilityValue(TransportBar.format(seconds: scrubbing ? scrubValue : player.currentTime))
@@ -324,7 +317,7 @@ struct NowPlayingScreen: View {
                 // Volume isn't time, so under `.plainVoice` it isn't foil.
                 .tint(theme.caps.contains(.plainVoice)
                       ? theme.palette.textSecondary
-                      : theme.effectiveAccent(art: artColor))
+                      : theme.palette.accent)
                 .accessibilityLabel("Volume")
             Image(systemName: "speaker.wave.3.fill").font(.system(size: 12))
         }
@@ -347,7 +340,7 @@ struct NowPlayingScreen: View {
         HStack {
             RoutePicker(tint: theme.caps.contains(.plainVoice)
                         ? theme.palette.textSecondary
-                        : theme.effectiveAccent(art: artColor))
+                        : theme.palette.accent)
                 .frame(width: 44, height: 44)
 
             Spacer()
@@ -418,7 +411,7 @@ struct NowPlayingScreen: View {
 
             Spacer()
 
-            RoutePicker(tint: theme.effectiveAccent(art: artColor))
+            RoutePicker(tint: theme.palette.accent)
                 .frame(width: 44, height: 44)
 
             // The queue already sits beside the player on iPhone Duo's inner

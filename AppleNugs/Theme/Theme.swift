@@ -11,24 +11,9 @@ enum TransportSignature: Sendable {
     case clickWheel    // Click Wheel: monochrome circular-pad player (iOS full screen)
 }
 
-/// Whether the accent is a fixed color or derived from the current cover art.
-enum AccentMode: Sendable {
-    case staticAccent
-    case artDriven(fallback: Color)
-}
-
-/// How (if at all) the extracted album-art color washes into the chrome.
-enum WashStyle: Sendable {
-    case none
-    case linear        // Soundboard: gradient behind transport + now-playing
-    case warmLow       // Shoebox: faint warm wash
-    case bloom18       // The Receiver: 18% bloom behind the inspector art only
-}
-
 /// Opt-in bespoke behaviors, kept off the host views so nothing forks.
 struct Capabilities: OptionSet, Sendable {
     let rawValue: Int
-    static let artWash          = Capabilities(rawValue: 1 << 0)
     static let equalizerRows    = Capabilities(rawValue: 1 << 1)
     static let vuMeter          = Capabilities(rawValue: 1 << 2)
     static let condensedHeaders = Capabilities(rawValue: 1 << 3)
@@ -46,7 +31,7 @@ struct Capabilities: OptionSet, Sendable {
     static let foilSweep        = Capabilities(rawValue: 1 << 7)
     /// Yeti: sentence-case headers, no eyebrows, errors said in snow rather than
     /// red, snow-with-night-ink primary buttons, and the barker copy. Also turns
-    /// the app-wide root tint to `textPrimary` (see `Theme.rootTint(art:)`).
+    /// the app-wide root tint to `textPrimary` (see `Theme.rootTint`).
     static let plainVoice       = Capabilities(rawValue: 1 << 8)
 }
 
@@ -56,7 +41,7 @@ struct Capabilities: OptionSet, Sendable {
 struct Palette: Sendable {
     let base, raised, hairline: Color
     let textPrimary, textSecondary, textIdle: Color
-    let accent: Color            // static fallback; art may override at runtime
+    let accent: Color
     let losslessBadge: Color?    // distinct lossless tint (Tape Room teal), else nil
     let playState: Color         // active/playing emphasis
     let vuPeak: Color?           // VU peak tick (The Receiver only)
@@ -106,49 +91,23 @@ struct Theme: Equatable, Sendable {
     let id: ThemeID
     let palette: Palette
     let type: Typography
-    let textureOpacity: Double
     let copy: IdleCopy
     let caps: Capabilities
     let transport: TransportSignature
-    let accentMode: AccentMode
-    let washStyle: WashStyle
     let darkOnly: Bool
 
     // Closure-typed Typography isn't Equatable; identity is the key that matters.
     static func == (a: Theme, b: Theme) -> Bool { a.id == b.id }
 
-    /// The accent to actually use: the live art color when the theme is
-    /// art-driven and a color is available, else the static accent.
-    func effectiveAccent(art: Color?) -> Color {
-        switch accentMode {
-        case .staticAccent:      return palette.accent
-        case .artDriven(let fb): return art ?? fb
-        }
-    }
-
-    /// Color for the currently-playing emphasis (active row, now-playing glyph).
-    /// Art-driven themes follow the cover color so it matches the rest of the
-    /// chrome; static themes keep their deliberate play-state color (Tape Room
-    /// amber, Shoebox rust, The Receiver tube-teal).
-    func activeEmphasis(art: Color?) -> Color {
-        if case .artDriven = accentMode { return effectiveAccent(art: art) }
-        return palette.playState
-    }
-
     /// The tint `ThemedRoot` applies to the whole app. Under `.plainVoice` it is
     /// snow (`textPrimary`), so system-tinted controls (prominent buttons, the
     /// selected tab, toggles, links, untinted sliders) never paint an accent
     /// fill; such a theme applies its accent explicitly, only where time moves
-    /// (scrub sliders, the pill ring, progress). Every other theme keeps
-    /// `effectiveAccent(art:)`, exactly as before.
-    func rootTint(art: Color?) -> Color {
+    /// (scrub sliders, the pill ring, progress). Every other theme keeps its
+    /// accent.
+    var rootTint: Color {
         if caps.contains(.plainVoice) { return palette.textPrimary }
-        return effectiveAccent(art: art)
-    }
-
-    var consumesArtColor: Bool {
-        if case .artDriven = accentMode { return true }
-        return washStyle != .none
+        return palette.accent
     }
 
     static func make(_ id: ThemeID) -> Theme {
@@ -180,15 +139,12 @@ extension Theme {
             section: { .system(size: $0, weight: .semibold, design: .serif) },
             body:    { .system(size: $0) },
             numeric: { .system(size: $0, design: .monospaced) }),
-        textureOpacity: 0,
         copy: IdleCopy(
             nowPlaying: "Nothing playing. Press / to search.",
             dashboardIdle: "Idle",
             dashHeaders: ("Now Playing", "Quality", "Up Next")),
         caps: [],
         transport: .tapeLabel,
-        accentMode: .staticAccent,
-        washStyle: .none,
         darkOnly: false)
 
     static let soundboard = Theme(
@@ -205,15 +161,12 @@ extension Theme {
             section: { .system(size: $0, weight: .semibold) },
             body:    { .system(size: $0) },
             numeric: { .system(size: $0, design: .monospaced) }),
-        textureOpacity: 0,
         copy: IdleCopy(
             nowPlaying: "Nothing playing — press / to search.",
             dashboardIdle: "Idle",
             dashHeaders: ("Now Playing", "Signal", "Up Next")),
-        caps: [.artWash, .equalizerRows],
+        caps: [.equalizerRows],
         transport: .standard,
-        accentMode: .artDriven(fallback: Color(hex: 0xE0902E)),
-        washStyle: .linear,
         darkOnly: false)
 
     static let shoebox = Theme(
@@ -230,15 +183,12 @@ extension Theme {
             section: { .custom("AvenirNextCondensed-Bold", size: $0) },
             body:    { .system(size: $0) },
             numeric: { .system(size: $0, design: .monospaced) }),
-        textureOpacity: 0.035,
         copy: IdleCopy(
             nowPlaying: "B-side's empty. Press / to find a show.",
             dashboardIdle: "Nothing cued up.",
             dashHeaders: ("Now Playing", "Quality", "Up Next")),
-        caps: [.condensedHeaders, .indexLetterTab, .artWash],
+        caps: [.condensedHeaders, .indexLetterTab],
         transport: .jCard,
-        accentMode: .staticAccent,
-        washStyle: .warmLow,
         darkOnly: false)
 
     static let tapeDeck = Theme(
@@ -255,15 +205,12 @@ extension Theme {
             section: { .system(size: $0, weight: .heavy,    design: .monospaced) },
             body:    { .system(size: $0) },
             numeric: { .system(size: $0, weight: .heavy,    design: .monospaced) }),
-        textureOpacity: 0,
         copy: IdleCopy(
             nowPlaying: "No signal. Press / to tune in.",
             dashboardIdle: "NO SIGNAL",
             dashHeaders: ("TUNED TO", "SIGNAL", "REELS")),
-        caps: [.vuMeter, .artWash],
+        caps: [.vuMeter],
         transport: .faceplate,
-        accentMode: .staticAccent,
-        washStyle: .bloom18,
         darkOnly: true)
 }
 
@@ -286,22 +233,19 @@ extension Theme {
             section: { .system(size: $0, weight: .semibold) },
             body:    { .system(size: $0) },
             numeric: { .system(size: $0, design: .monospaced) }),
-        textureOpacity: 0,
         copy: IdleCopy(
             nowPlaying: "Nothing playing. Give the wheel a spin.",
             dashboardIdle: "Idle",
             dashHeaders: ("Now Playing", "Quality", "Up Next")),
         caps: [],
         transport: .clickWheel,
-        accentMode: .staticAccent,
-        washStyle: .none,
         darkOnly: true)
 }
 
 extension Theme {
     /// Yeti, an unofficial player's own look: night-blue shelves, snow type,
     /// sale-yellow stickers and one foil accent kept for things that move with
-    /// time. Heavy rounded type, no texture, no art wash, dark only. Its
+    /// time. Heavy rounded type, dark only. Its
     /// bespoke visuals are gated on the caps below, never on `id`.
     static let yeti = Theme(
         id: .yeti,
@@ -322,7 +266,6 @@ extension Theme {
             section: { .system(size: $0, weight: .heavy, design: .rounded) },
             body:    { .system(size: $0, design: .rounded) },
             numeric: { .system(size: $0, design: .rounded).monospacedDigit() }),
-        textureOpacity: 0,
         copy: IdleCopy(
             nowPlaying: "It's on its way",
             dashboardIdle: "It's on its way",
@@ -337,8 +280,6 @@ extension Theme {
             ledgerTitle: "The nice list"),
         caps: [.equalizerRows, .blisterPack, .stickers, .foilSweep, .plainVoice],
         transport: .standard,
-        accentMode: .staticAccent,
-        washStyle: .none,
         darkOnly: true)
 }
 

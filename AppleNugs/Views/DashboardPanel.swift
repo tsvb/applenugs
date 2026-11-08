@@ -16,7 +16,6 @@ struct DashboardPanel: View {
     @Environment(AppModel.self) private var app
     @Environment(UIState.self) private var ui
     @Environment(\.theme) private var theme
-    @Environment(\.artColor) private var artColor
 
     /// False when the panel sits BESIDE the full-screen player (iPhone Duo's
     /// `NowPlayingArrangement`), where the "Now" section would only repeat the
@@ -120,7 +119,6 @@ struct DashboardPanel: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(8)
-            .background(Color.clear.artWash(theme.washStyle, color: artColor))
             if let error = player.playbackError {
                 PlaybackErrorLine(message: error)
             }
@@ -222,7 +220,7 @@ struct DashboardPanel: View {
     }
 
     /// The row's title. Yeti (`.plainVoice`) prints the playing row heavy in
-    /// sale yellow (`activeEmphasis` = `playState` on a static theme); every
+    /// sale yellow (`playState`); every
     /// other theme keeps the inherited text color, untouched.
     @ViewBuilder
     private func queueTitle(_ track: QueueTrack, isCurrent: Bool) -> some View {
@@ -233,7 +231,7 @@ struct DashboardPanel: View {
         if plainVoice && isCurrent {
             title
                 .fontWeight(.heavy)
-                .foregroundStyle(theme.activeEmphasis(art: artColor))
+                .foregroundStyle(theme.palette.playState)
         } else {
             title
                 .fontWeight(isCurrent ? .semibold : .regular)
@@ -259,7 +257,7 @@ struct DashboardPanel: View {
                         } else {
                             Image(systemName: player.isPlaying ? "speaker.wave.2.fill" : "pause.fill")
                                 .font(.caption2)
-                                .foregroundStyle(theme.activeEmphasis(art: artColor))
+                                .foregroundStyle(theme.palette.playState)
                                 .frame(width: 16)
                         }
                     } else {

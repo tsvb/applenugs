@@ -5,7 +5,6 @@ import SwiftUI
 struct TransportBar: View {
     @Environment(AppModel.self) private var app
     @Environment(\.theme) private var theme
-    @Environment(\.artColor) private var artColor
 
     #if os(macOS)
     @Environment(\.openWindow) private var openWindow
@@ -81,12 +80,6 @@ struct TransportBar: View {
 
     private var barBackground: some View {
         theme.palette.raised
-            .overlay { ArtWashBackground(style: theme.washStyle, color: artColor ?? .clear) }
-            .overlay {
-                if theme.textureOpacity > 0 {
-                    PaperGrain().opacity(theme.textureOpacity).allowsHitTesting(false)
-                }
-            }
     }
 
     /// Lossless formats get the theme's dedicated lossless tint when it has one;
@@ -235,7 +228,7 @@ struct TransportBar: View {
             .controlSize(.small)
             // The root tint is snow under `.plainVoice`; time moving is foil,
             // so say it here. Other themes keep inheriting the root's accent.
-            .tintIfSet(plainVoice ? theme.effectiveAccent(art: artColor) : nil)
+            .tintIfSet(plainVoice ? theme.palette.accent : nil)
             .accessibilityLabel("Playback position")
             .accessibilityValue(Self.format(seconds: scrubbing ? scrubValue : player.currentTime))
 
