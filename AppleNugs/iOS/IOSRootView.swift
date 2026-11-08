@@ -11,7 +11,8 @@ import UIKit
 /// bar vanished the moment anything was pushed.
 ///
 /// The one exception is a vertical tab bar (iPhone Duo): there the pill is
-/// mounted as a TabView overlay that ducks on scroll — see `NowPlayingAccessory`.
+/// mounted by hand on its own shelf, and tucks into it on scroll — see
+/// `NowPlayingAccessory` and PillDuck.swift.
 struct IOSRootView: View {
     @Environment(AppModel.self) private var app
     @Environment(UIState.self) private var ui
@@ -28,7 +29,9 @@ struct IOSRootView: View {
     /// The pill's expanded panel. Owned here, not by the pill — see the sheet.
     @State private var panelShown = false
     /// The pill's duck on iPhone Duo (see PillDuck.swift). Written by the
-    /// scroll roots, read only by `PillDuckOverlay` — never by this body.
+    /// scroll roots, the slot and the tab stacks' safe-area measurement; read
+    /// only by the shelf, the pill and the views that follow the lip — never
+    /// by this body.
     @State private var pillDuck = PillDuck()
     #if DEBUG
     /// The DEBUG Network Probe sheet (account menu). Starts presented under
@@ -239,6 +242,7 @@ struct IOSRootView: View {
         // a toast fired from a pushed screen — AlbumDetailView's "Playing
         // next" / "Added to queue" — would silently vanish. One level out,
         // the overlay stays visible across every push in this stack.
+        let pillDuck = pillDuck
         NavigationStack(path: $ui.navPath) {
             content()
                 .navigationDestination(for: Route.self) { route in
@@ -257,6 +261,15 @@ struct IOSRootView: View {
                     ToolbarItem(placement: .topBarTrailing) { accountMenu }
                 }
         }
+        // The home-indicator band the shelf's content clearance is measured
+        // above (the stack fills the tab, so its frame reaches the band).
+        .onGeometryChange(for: CGFloat.self) { $0.safeAreaInsets.bottom } action: {
+            pillDuck.measuredBottomSafeArea($0)
+        }
+        // The pill's shelf (iPhone Duo, vertical tab bar; draws nothing
+        // elsewhere). On the stack, like the toast, so it stays put across
+        // pushes; in tab content, so it runs UNDER the vertical tab bar.
+        .overlay(alignment: .bottom) { PillShelfBand() }
         .overlay(alignment: .bottom) { toastOverlay }
     }
 
@@ -330,9 +343,9 @@ struct IOSRootView: View {
                 // same overlay by construction, so the same safe area and
                 // padding apply there too, but that specific case wasn't
                 // exercised with a live tap (see the report for why).
-                // Where the pill is hand-mounted over a vertical tab bar
-                // instead (iPhone Duo) nothing excludes it from the safe area,
-                // so `ToastPillClearance` adds the pill's rise above it.
+                // Where the pill is hand-mounted on its shelf instead (iPhone
+                // Duo, vertical tab bar) nothing excludes the shelf from the
+                // safe area, so `ToastPillClearance` lifts the toast over it.
                 .modifier(ToastPillClearance())
                 .transition(.opacity)
                 .allowsHitTesting(false)
@@ -341,8 +354,8 @@ struct IOSRootView: View {
 }
 
 /// Hosts `NowPlayingPill` on the `TabView`: in the system bottom accessory
-/// everywhere the tab bar is horizontal, and as our own ducking overlay where
-/// it is laid out vertically (iPhone Duo — see PillDuck.swift).
+/// everywhere the tab bar is horizontal, and on our own shelf where it is laid
+/// out vertically (iPhone Duo — see PillDuck.swift).
 ///
 /// `\.toolbarVerticalEdge` is iOS 27.1+, so reading it needs a type of its own
 /// behind `#available`; below 27.1 there is no vertical tab bar to detect.
@@ -388,7 +401,8 @@ private struct VerticalBarReader: ViewModifier {
 /// gap above the tab bar.
 ///
 /// With a vertical bar the accessory is switched OFF and the pill is mounted
-/// in the overlay instead. Toggling the accessory can't duck it: it pops (or
+/// on its shelf instead (the band itself is drawn inside each tab — see
+/// `PillShelfBand`). Toggling the accessory can't duck it: it pops (or
 /// crossfades in place) and reflows the content's bottom safe area each time.
 private struct PillMount: ViewModifier {
     let verticalBar: Bool
@@ -405,25 +419,34 @@ private struct PillMount: ViewModifier {
             }
             .tabBarMinimizeBehavior(.onScrollDown)
             // Centered in the content column: the TabView's trailing safe area
-            // already excludes the vertical bar.
+            // already excludes the vertical bar. Above the TabView, so the pill
+            // rides over pushed screens; the shelf under it is in each tab.
             .overlay(alignment: .bottom) {
                 if overlay {
-                    PillDuckOverlay(onTap: onTap, onExpand: onExpand)
+                    PillShelfOverlay(onTap: onTap, onExpand: onExpand)
                 }
             }
             .environment(\.pillOverlayActive, overlay)
     }
 }
 
-/// The toast's 8pt bottom gap, plus — while the pill is the hand-mounted
-/// overlay (iPhone Duo, vertical tab bar) — the pill's rise above the safe
-/// area, so the toast sits 8pt above the pill as it does above the accessory.
-/// Deliberately not duck-aware: a toast that hopped down whenever the pill
-/// ducked would move under the reader. Exactly 8 on every other device.
+/// The toast's 8pt bottom gap, plus — while the pill is on its shelf (iPhone
+/// Duo, vertical tab bar) — the shelf's height above the safe area, so the
+/// toast sits 8pt above the shelf's CURRENT lip, as it does above the
+/// accessory. It follows the lip as the shelf folds and opens, on the same
+/// curve, like every scroll view's margin: never behind the opaque shelf.
+/// Exactly 8 on every other device.
 private struct ToastPillClearance: ViewModifier {
+    @Environment(PillDuck.self) private var duck: PillDuck?
     @Environment(\.pillOverlayActive) private var overlayActive
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     func body(content: Content) -> some View {
-        content.padding(.bottom, 8 + (overlayActive ? PillDuckMetrics.contentClearance : 0))
+        let lift = overlayActive ? (duck?.contentClearance ?? 0) : 0
+        content
+            .animation(PillShelfMotion.shelf(ducked: duck?.isDucked ?? false,
+                                             reduceMotion: reduceMotion)) {
+                $0.padding(.bottom, 8 + lift)
+            }
     }
 }

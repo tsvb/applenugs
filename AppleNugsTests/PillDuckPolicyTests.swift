@@ -51,8 +51,11 @@ final class PillDuckPolicyTests: XCTestCase {
         XCTAssertEqual(sample.maxOffset, 976)
     }
 
-    func testInactiveSampleDoesNotScroll() {
-        XCTAssertEqual(P.step(ducked, from: .inactive, to: .inactive), .shown)
+    /// Content that can't scroll carries no motion, and holds the pill where
+    /// it is (travel resets) — the idle return, not a sample, brings it back.
+    func testInactiveSampleHoldsVisibility() {
+        XCTAssertEqual(P.step(ducked, from: .inactive, to: .inactive), ducked)
+        XCTAssertEqual(P.step(.shown, from: .inactive, to: .inactive), .shown)
     }
 
     /// The gate switching on (playback starts, or the Duo folds) over a list
@@ -156,6 +159,95 @@ final class PillDuckPolicyTests: XCTestCase {
     func testContentGrowingAtTheBottomIsNotTravel() {
         let state = P.step(ducked, from: s(2000, max: 2000), to: s(2000, max: 3000))
         XCTAssertEqual(state, ducked)
+    }
+
+    // --- the shelf's feedback loop ----------------------------------------
+    //
+    // Folding the shelf takes 42pt (76 − the 34pt home-indicator band) off
+    // every scroll view's bottom margin, so the range shrinks by 42; opening it
+    // gives the 42 back. At the bottom of a page that must not read as travel,
+    // or the pill flaps: fold → "scroll up" → open → "scroll down" → fold.
+
+    /// The fold under a bottom-pinned offset the system leaves alone.
+    func testShelfFoldingAtTheBottomIsNotTravel() {
+        XCTAssertEqual(P.step(ducked, from: s(2000, max: 2000), to: s(2000, max: 1958)), ducked)
+    }
+
+    /// The fold, with the system pulling the offset in to the new end.
+    func testShelfFoldingThatMovesTheOffsetIsNotTravel() {
+        XCTAssertEqual(P.step(ducked, from: s(2000, max: 2000), to: s(1958, max: 1958)), ducked)
+    }
+
+    /// The shelf opening again at the bottom: the range grows back, with or
+    /// without the system keeping the last row pinned above the lip.
+    func testShelfOpeningAtTheBottomIsNotTravel() {
+        XCTAssertEqual(P.step(.shown, from: s(1958, max: 1958), to: s(1958, max: 2000)), .shown)
+        XCTAssertEqual(P.step(.shown, from: s(1958, max: 1958), to: s(2000, max: 2000)), .shown)
+    }
+
+    /// A barely-scrollable page whose whole range the fold takes away.
+    func testShelfFoldingAwayTheWholeRangeKeepsThePillDucked() {
+        XCTAssertEqual(P.step(ducked, from: s(30, max: 30), to: s(0, max: -12)), ducked)
+    }
+
+    /// A short page the fold leaves with a range inside the top zone: the
+    /// system pulling the offset down into the zone is not the user reaching
+    /// the top.
+    func testShelfFoldingIntoTheTopZoneKeepsThePillDucked() {
+        XCTAssertEqual(P.step(ducked, from: s(50, max: 50), to: s(8, max: 8)), ducked)
+    }
+
+    /// The fix doesn't blunt real motion inside the shared range.
+    func testUserTravelWhileTheRangeChangesStillCounts() {
+        XCTAssertEqual(P.step(ducked, from: s(1000, max: 2000), to: s(980, max: 1958)), .shown)
+    }
+
+    // --- the gate ------------------------------------------------------------
+
+    func testGateAdmitsOnlyTheUsersOwnScrolling() {
+        var gate = P.Gate()
+        XCTAssertFalse(gate.admits(at: 10), "idle: nothing is being scrolled")
+        gate.drive = .system
+        XCTAssertFalse(gate.admits(at: 10), "a programmatic scroll never moves the pill")
+        gate.drive = .user
+        XCTAssertTrue(gate.admits(at: 10))
+    }
+
+    /// While the shelf folds or opens, even the user's own samples are
+    /// dropped: they carry the shelf's resize along with the finger.
+    func testGateDropsSamplesWhileTheShelfMoves() {
+        var gate = P.Gate(drive: .user)
+        gate.transitioned(at: 10)
+        XCTAssertFalse(gate.admits(at: 10))
+        XCTAssertFalse(gate.admits(at: 10 + P.settleWindow - 0.01))
+        XCTAssertTrue(gate.admits(at: 10 + P.settleWindow))
+    }
+
+    /// The window covers the slower of the two shelf moves: the fold's 70ms
+    /// delay plus its 300ms, and the 260ms open.
+    func testSettleWindowCoversTheFold() {
+        XCTAssertGreaterThanOrEqual(P.settleWindow, 0.07 + 0.30)
+        XCTAssertGreaterThanOrEqual(P.settleWindow, 0.26)
+    }
+
+    // --- shelf geometry ------------------------------------------------------
+
+    /// iPhone Duo's outer display: a 34pt home-indicator band. Open, content
+    /// stops 42pt above it (at the 76pt lip); closed, the 16pt lip sits inside
+    /// the band and content keeps the band alone.
+    func testContentClearanceOnTheOuterDisplay() {
+        XCTAssertEqual(PillShelfGeometry.contentClearance(ducked: false, bottomSafeArea: 34), 42)
+        XCTAssertEqual(PillShelfGeometry.contentClearance(ducked: true, bottomSafeArea: 34), 0)
+    }
+
+    func testContentClearanceWithoutASafeArea() {
+        XCTAssertEqual(PillShelfGeometry.contentClearance(ducked: false, bottomSafeArea: 0), 76)
+        XCTAssertEqual(PillShelfGeometry.contentClearance(ducked: true, bottomSafeArea: 0), 16)
+    }
+
+    /// A keyboard (or any bottom inset taller than the shelf) already clears it.
+    func testContentClearanceIsNeverNegative() {
+        XCTAssertEqual(PillShelfGeometry.contentClearance(ducked: false, bottomSafeArea: 300), 0)
     }
 
     func testNoMovementHoldsState() {

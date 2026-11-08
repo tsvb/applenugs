@@ -238,7 +238,8 @@ targets:
         # iOS-only layout logic.
       - path: AppleNugs/iOS/NowPlayingPill/PillDuckPolicy.swift
         # Pure Foundation scroll-direction policy for the pill's duck on a
-        # vertical tab bar (iPhone Duo): hysteresis, top zone, rubber bands.
+        # vertical tab bar (iPhone Duo): hysteresis, top zone, rubber bands,
+        # the shelf's feedback guard and its content clearance.
         # Compiled in for the same host-free reason as PillLayout above.
       - path: AppleNugs/Theme/Transport/NowPlayingMetaLine.swift
         # Pure Foundation policy for the now-playing meta line's linkable runs
