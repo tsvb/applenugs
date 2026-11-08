@@ -233,16 +233,25 @@ final class PillDuckPolicyTests: XCTestCase {
     // --- shelf geometry ------------------------------------------------------
 
     /// iPhone Duo's outer display: a 34pt home-indicator band. Open, content
-    /// stops 42pt above it (at the 76pt lip); closed, the 16pt lip sits inside
-    /// the band and content keeps the band alone.
+    /// stops 42pt above it (at the 76pt lip); closed, the 16pt lip sits just
+    /// ABOVE the band, so content stops 16pt above it and the slot clears the
+    /// home indicator.
     func testContentClearanceOnTheOuterDisplay() {
         XCTAssertEqual(PillShelfGeometry.contentClearance(ducked: false, bottomSafeArea: 34), 42)
-        XCTAssertEqual(PillShelfGeometry.contentClearance(ducked: true, bottomSafeArea: 34), 0)
+        XCTAssertEqual(PillShelfGeometry.contentClearance(ducked: true, bottomSafeArea: 34), 16)
+        XCTAssertEqual(PillShelfGeometry.height(ducked: true, bottomSafeArea: 34), 50)
     }
 
     func testContentClearanceWithoutASafeArea() {
         XCTAssertEqual(PillShelfGeometry.contentClearance(ducked: false, bottomSafeArea: 0), 76)
         XCTAssertEqual(PillShelfGeometry.contentClearance(ducked: true, bottomSafeArea: 0), 16)
+    }
+
+    /// A keyboard-sized inset can't lift the closed lip above the open shelf.
+    func testClosedHeightIgnoresATallInset() {
+        XCTAssertEqual(PillShelfGeometry.height(ducked: true, bottomSafeArea: 300), 56)
+        XCTAssertLessThan(PillShelfGeometry.height(ducked: true, bottomSafeArea: 300),
+                          PillShelfGeometry.openHeight)
     }
 
     /// A keyboard (or any bottom inset taller than the shelf) already clears it.

@@ -12,7 +12,7 @@ import SwiftUI
 // (`docs/design/yeti-theme/yeti-pill-shelf.html`): an opaque band across the
 // bottom of the tab content that the content stops at, so nothing busy is ever
 // behind the pill's glass. Scrolling down tips the pill into the shelf through
-// its hang slot and the shelf folds to a 16pt lip, giving the page the room;
+// its hang slot and the shelf folds to a 16pt lip above the home indicator, giving the page the room;
 // scrolling up, reaching the top, stopping for a second, or tapping the slot
 // opens the shelf and pops the pill back.
 //
@@ -299,7 +299,7 @@ struct PillShelfBand: View {
         if overlayActive, let duck {
             let ducked = duck.isDucked
             band
-                .frame(height: PillShelfGeometry.height(ducked: ducked))
+                .frame(height: PillShelfGeometry.height(ducked: ducked, bottomSafeArea: duck.bottomSafeArea))
                 .animation(PillShelfMotion.shelf(ducked: ducked, reduceMotion: reduceMotion),
                            value: ducked)
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
@@ -400,7 +400,7 @@ struct PillShelfOverlay: View {
     /// The hang slot in the lip. Rides the lip as the shelf moves; shows only
     /// while the pill is tucked, and is then the button that brings it back.
     private func slot(ducked: Bool) -> some View {
-        let height = PillShelfGeometry.height(ducked: ducked)
+        let height = PillShelfGeometry.height(ducked: ducked, bottomSafeArea: duck.bottomSafeArea)
         // The slot's center, above the physical bottom edge.
         let center = height - PillDuckMetrics.slotTopInset - PillDuckMetrics.slotSize.height / 2
         let hit = PillDuckMetrics.slotHitSize

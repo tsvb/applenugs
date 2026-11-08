@@ -184,17 +184,25 @@ enum PillDuckPolicy {
 enum PillShelfGeometry {
     /// Open: the 48pt pill, 14pt under it, 14pt over it to the lip.
     static let openHeight: CGFloat = 76
-    /// Closed: a lip and the hang slot, inside the home-indicator band.
-    static let closedHeight: CGFloat = 16
+    /// Closed: a 16pt lip holding the hang slot, sitting ABOVE the
+    /// home-indicator band. (The mockup drew it 16pt from the physical edge,
+    /// but on the device the home indicator then lands on the slot, hiding it
+    /// and putting its tap target in the system's edge-gesture zone.)
+    static let closedLip: CGFloat = 16
+    /// The band never counts for more than this, so a keyboard (or any tall
+    /// bottom inset) can't push the closed lip up past the open shelf.
+    static let maxIndicatorBand: CGFloat = 40
 
-    static func height(ducked: Bool) -> CGFloat {
-        ducked ? closedHeight : openHeight
+    static func height(ducked: Bool, bottomSafeArea: CGFloat) -> CGFloat {
+        guard ducked else { return openHeight }
+        let band = min(max(0, bottomSafeArea), maxIndicatorBand)
+        return min(openHeight, band + closedLip)
     }
 
     /// The bottom margin content needs ON TOP of its own bottom safe area to
-    /// come to rest at the shelf's lip. Never negative: a closed shelf is
-    /// lower than the home-indicator band, and content keeps that band.
+    /// come to rest at the shelf's lip. Never negative: a bottom inset taller
+    /// than the shelf (a keyboard) already clears it.
     static func contentClearance(ducked: Bool, bottomSafeArea: CGFloat) -> CGFloat {
-        max(0, height(ducked: ducked) - max(0, bottomSafeArea))
+        max(0, height(ducked: ducked, bottomSafeArea: bottomSafeArea) - max(0, bottomSafeArea))
     }
 }
