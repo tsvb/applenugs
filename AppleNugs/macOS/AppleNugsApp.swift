@@ -128,10 +128,14 @@ struct AppleNugsApp: App {
 
                 Divider()
 
-                // Confirms first, like the ⋯ menu and the dashboard's Clear;
-                // RootView hosts the dialog.
-                Button("Clear Queue") { ui.clearQueueConfirmationRequested = true }
-                    .disabled(app.player.queue.isEmpty)
+                // Confirms first, like the ⋯ menu and the dashboard's Clear —
+                // but with an AppKit alert, not a SwiftUI dialog: a menu
+                // command has no view of its own, and borrowing one window's
+                // root fails whenever that window is closed, hidden or busy.
+                Button("Clear Queue") {
+                    ClearQueueAlert.present { app.player.clear() }
+                }
+                .disabled(app.player.queue.isEmpty)
             }
             CommandGroup(after: .sidebar) {
                 Button("Search") { ui.requestSearchFocus() }

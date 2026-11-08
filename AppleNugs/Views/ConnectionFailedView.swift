@@ -35,7 +35,7 @@ struct ConnectionFailedView: View {
                     .buttonStyle(.borderedProminent)
                 // The whole point of downloads is being reachable right here.
                 if hasDownloads {
-                    Button("Listen Offline", action: onListenOffline)
+                    Button("Listen offline", action: onListenOffline)
                 }
                 Button("Sign out", action: onSignOut)
             }

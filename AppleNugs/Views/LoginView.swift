@@ -92,6 +92,8 @@ struct LoginContent: View {
             .controlSize(.large)
             .frame(maxWidth: 300)
             .padding(.top, 24)
+            // Not `.disabled` (see the guard above), so say the state instead.
+            .accessibilityValue(isLoggingIn ? "Opening nugs.net" : "")
             .accessibilityIdentifier("login.signIn")
 
             VStack(spacing: 6) {

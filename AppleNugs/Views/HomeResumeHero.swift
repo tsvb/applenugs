@@ -137,8 +137,21 @@ struct YetiHomeHero: View {
         }
         .contentShape(RoundedRectangle(cornerRadius: BlisterCard.cornerRadius, style: .continuous))
         .onTapGesture(perform: onOpen)
+        // The pill's pattern: a container, so the play sticker and the meta
+        // links stay their own elements, that itself says what's playing and
+        // carries the open action. The action, label and hint all come AFTER
+        // `.accessibilityElement(children: .contain)` — applied before it they
+        // land on the pre-container element and are dropped.
         .accessibilityElement(children: .contain)
         .accessibilityAction(named: "Open now playing", onOpen)
+        .accessibilityLabel(accessibilityLabelText)
+        .accessibilityHint("Opens full-screen now playing")
+    }
+
+    private var accessibilityLabelText: String {
+        let title = track.title ?? "Unknown track"
+        guard let artist = track.artist else { return "Now playing: \(title)" }
+        return "Now playing: \(title), \(artist)"
     }
 }
 

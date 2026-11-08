@@ -140,8 +140,10 @@ final class AppModel {
 
     /// Sign in on nugs.net's own page in a system browser sheet — the app's
     /// only sign-in (it never sees a password). A user-cancelled sheet is not
-    /// surfaced as an error.
+    /// surfaced as an error. A second call while one is in flight is a no-op:
+    /// the views guard the double tap too, but the model owns the rule.
     func loginWithBrowser() async {
+        guard !isLoggingIn else { return }
         isLoggingIn = true
         loginError = nil
         defer { isLoggingIn = false }

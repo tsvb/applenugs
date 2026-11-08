@@ -67,13 +67,6 @@ final class UIState {
         navPath.append(route)
     }
 
-    // --- clear queue (Playback ▸ Clear Queue) ----------------------------------
-
-    /// Set by the macOS Playback menu's Clear Queue. A `Commands` builder has
-    /// no view to present a confirmation from, so the menu raises this flag
-    /// and the main window's root (`RootView`) hosts the dialog.
-    var clearQueueConfirmationRequested = false
-
     // --- toasts (queue-op confirmations, same as the web layout) ---------------
 
     /// A transient message. `kind` only changes how Yeti draws it (a check or

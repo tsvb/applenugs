@@ -19,8 +19,7 @@ struct RootView: View {
     @State private var confirmingStatsReset = false
 
     var body: some View {
-        @Bindable var ui = ui
-        return Group {
+        Group {
             switch app.sessionState {
             case .unknown:
                 ProgressView()
@@ -36,13 +35,6 @@ struct RootView: View {
         }
         .providesArtColor(app: app, theme: theme)
         .nowPlayingMetaLinks(app: app, ui: ui)
-        // Playback ▸ Clear Queue asks here: a `Commands` builder has no view
-        // to present from. On the Group, not in `mainLayout`, because a
-        // launch-restored queue can be non-empty while the connection screen
-        // shows, and the menu item is gated only on the queue.
-        .clearQueueConfirmation(isPresented: $ui.clearQueueConfirmationRequested) {
-            app.player.clear()
-        }
         .task { await app.bootstrap() }
         .onAppear { KeyboardShortcuts.install(app: app, ui: ui) }
     }
