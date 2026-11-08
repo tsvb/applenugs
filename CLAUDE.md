@@ -80,8 +80,12 @@ polish (`25c1f9b`) → two review-fix commits. A Debug build of tasks 1–8 is o
 great". Gate script + sim screenshot script live in the session scratchpad (gone with it): rebuild them from the
 plan's "Shared rules" if needed. **Next, in order:** (1) the Duo pill SHELF (`docs/design/yeti-theme/yeti-pill-shelf.html`,
 awaiting Tim's OK on the motion) — design guard: ignore scroll deltas while the shelf animates, or a fold at the
-bottom of a page reads as a scroll up and bounces the pill back; (2) stage (d) Yeti-only + Mac foil focus, (3) stage
-(e) delete the five themes. The whole-branch review listed the collapse hazards for (d)/(e): ~8 `tintIfSet(plainVoice ? x : nil)`
+bottom of a page reads as a scroll up and bounces the pill back — Tim APPROVED the motion ("the pink swipe looks
+really good… it's fun"), being built; (2) stage (d) Yeti-only + Mac foil focus, (3) stage (e) delete the five themes —
+spec `docs/superpowers/specs/2026-11-07-yeti-only-design.md` (local), approved: Yeti on launch with NO migration
+(Tim: "no one's really using this app… it's only on my phone" — he is the only user; never design for other
+users' saved state here), foil focus on our own controls only, the art-color pipeline deleted, ONE `Theme` token
+struct kept. (4) A new app icon — Tim chose the BLISTER PACK direction; concepts in `docs/design/yeti-icon/`. The whole-branch review listed the collapse hazards for (d)/(e): ~8 `tintIfSet(plainVoice ? x : nil)`
 sites, ~20 per-view `plainVoice`/`stickers` computed properties, `.stickers`-before-`.equalizerRows` precedence
 checks (DashboardPanel queue slot, `titleBlock`, CrateHeader), `card ? X : 0` paddings in `StandardNowPlayingScreen`,
 two resume cards (`HomeView.resumeCard` + `YetiResumeCard`), duplicate helpers `yetiShowAction` (AlbumDetailView) ≡
