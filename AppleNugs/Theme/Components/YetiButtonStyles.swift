@@ -85,3 +85,52 @@ private struct YetiButtonBody: View {
             .animation(.easeOut(duration: 0.12), value: configuration.isPressed)
     }
 }
+
+// MARK: - Icon buttons
+
+/// Yeti's round icon button (`.ib` in the surfaces sheet): a 36pt disc with a
+/// 1pt frost ring around a snow glyph, the show page's Play next / Queue /
+/// Save on iPhone. `ringed: false` is `.ib.bare`, the glyph alone: the show
+/// page's Downloaded state, a filled snow disc at `glyphSize` 26. Pair it with
+/// `.labelStyle(.iconOnly)` so a `Label` keeps its title for accessibility.
+struct YetiIconButtonStyle: ButtonStyle {
+    var ringed = true
+    var glyphSize: CGFloat = 16
+
+    func makeBody(configuration: Configuration) -> some View {
+        YetiIconButtonBody(configuration: configuration, ringed: ringed, glyphSize: glyphSize)
+    }
+}
+
+extension ButtonStyle where Self == YetiIconButtonStyle {
+    static var yetiIcon: YetiIconButtonStyle { YetiIconButtonStyle() }
+}
+
+private struct YetiIconButtonBody: View {
+    @Environment(\.theme) private var theme
+    @Environment(\.isEnabled) private var isEnabled
+
+    let configuration: ButtonStyleConfiguration
+    let ringed: Bool
+    let glyphSize: CGFloat
+
+    static let side: CGFloat = 36
+
+    var body: some View {
+        configuration.label
+            .font(.system(size: glyphSize, weight: .semibold))
+            .foregroundStyle(theme.palette.textPrimary)
+            .frame(width: Self.side, height: Self.side)
+            .background {
+                Circle().fill(theme.palette.raised.opacity(configuration.isPressed ? 1 : 0))
+            }
+            .overlay {
+                if ringed {
+                    Circle().strokeBorder(theme.palette.hairline, lineWidth: 1)
+                }
+            }
+            .contentShape(Circle())
+            .opacity(isEnabled ? 1 : 0.5)
+            .animation(.easeOut(duration: 0.12), value: configuration.isPressed)
+    }
+}

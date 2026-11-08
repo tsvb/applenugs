@@ -18,6 +18,8 @@ struct CrateList: View {
     @State private var filter = ""
     @FocusState private var filterFocused: Bool
 
+    private var plainVoice: Bool { theme.caps.contains(.plainVoice) }
+
     /// Derived state, not computed in `body`: filtering + grouping + sorting a
     /// catalog hundreds deep is too heavy to redo on every body evaluation
     /// (theme switches, favorites toggles, playback ticks). Rebuilt only when
@@ -81,10 +83,16 @@ struct CrateList: View {
             Image(systemName: "magnifyingglass")
                 .font(.system(size: 12, weight: .medium))
                 .foregroundStyle(theme.palette.textSecondary)
-            TextField(placeholder, text: $filter)
+            TextField(placeholder, text: $filter,
+                      prompt: plainVoice
+                        ? Text(placeholder).foregroundStyle(theme.palette.textIdle)
+                        : nil)
                 .textFieldStyle(.plain)
-                .font(theme.type.body(13))
+                .font(theme.type.body(plainVoice ? 15 : 13))
                 .foregroundStyle(theme.palette.textPrimary)
+                // The root tint is snow under Yeti; the caret is focus, and
+                // focus is foil.
+                .tintIfSet(plainVoice ? theme.palette.accent : nil)
                 .focused($filterFocused)
                 .submitLabel(.done)
             if !filter.isEmpty {
@@ -97,14 +105,19 @@ struct CrateList: View {
                 .accessibilityLabel("Clear filter")
             }
         }
-        .padding(.horizontal, 10)
+        .padding(.horizontal, plainVoice ? 12 : 10)
         .padding(.vertical, 7)
+        // Yeti's `.field`: a 40pt shelf field, radius 12, no keyline.
+        .frame(minHeight: plainVoice ? 40 : nil)
         .background {
-            RoundedRectangle(cornerRadius: 8, style: .continuous)
+            let radius: CGFloat = plainVoice ? 12 : 8
+            RoundedRectangle(cornerRadius: radius, style: .continuous)
                 .fill(theme.palette.raised)
                 .overlay {
-                    RoundedRectangle(cornerRadius: 8, style: .continuous)
-                        .strokeBorder(theme.palette.hairline, lineWidth: 1)
+                    if !plainVoice {
+                        RoundedRectangle(cornerRadius: radius, style: .continuous)
+                            .strokeBorder(theme.palette.hairline, lineWidth: 1)
+                    }
                 }
         }
         .padding(.horizontal, 16)
@@ -152,7 +165,7 @@ struct CrateList: View {
                                     .themedListRow()
                             }
                         } header: {
-                            Text(header(section.month))
+                            monthHeader(section.month)
                         }
                     }
                 }
@@ -162,6 +175,19 @@ struct CrateList: View {
             .scrollContentBackground(.hidden)
             .scrollDismissesKeyboard(.immediately)
             .reportsScrollForPillDuck()
+        }
+    }
+
+    /// Month headers. Yeti (`.plainVoice`): the barker's heavy slush 15
+    /// (`.month`), sentence case; every other theme keeps the system header.
+    @ViewBuilder
+    private func monthHeader(_ month: Date?) -> some View {
+        if theme.caps.contains(.plainVoice) {
+            Text(header(month))
+                .font(theme.type.section(15))
+                .foregroundStyle(theme.palette.textSecondary)
+        } else {
+            Text(header(month))
         }
     }
 

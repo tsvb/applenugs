@@ -84,6 +84,15 @@ extension View {
         return self
         #endif
     }
+
+    /// `.tint(color)` only when there is one, so a `nil` leaves the inherited
+    /// root tint in place rather than resetting it (the five themes' controls
+    /// must keep exactly the tint they inherit today). Yeti passes foil where
+    /// time moves, against its snow root tint.
+    @ViewBuilder
+    func tintIfSet(_ color: Color?) -> some View {
+        if let color { tint(color) } else { self }
+    }
 }
 
 // MARK: - Procedural paper grain (no bundled asset)

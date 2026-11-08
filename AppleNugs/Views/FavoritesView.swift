@@ -56,6 +56,14 @@ struct FavoritesView: View {
                             RoundedRectangle(cornerRadius: 9, style: .continuous)
                                 .fill(theme.palette.raised)
                         }
+                        // Yeti: chips on the shelf with a frost keyline, as
+                        // on Home.
+                        .overlay {
+                            if theme.caps.contains(.plainVoice) {
+                                RoundedRectangle(cornerRadius: 9, style: .continuous)
+                                    .strokeBorder(theme.palette.hairline, lineWidth: 1)
+                            }
+                        }
                         .contentShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
                     }
                     .buttonStyle(.plain)
@@ -123,7 +131,18 @@ struct FavoritesView: View {
                      eventStart: nil, has4K: false)
     }
 
+    @ViewBuilder
     private var emptyState: some View {
+        if theme.caps.contains(.blisterPack) {
+            // Yeti: the empty pack.
+            EmptyPackMessage(title: "Nothing saved yet",
+                             message: "Star an artist, show, or video to keep it here.")
+        } else {
+            classicEmptyState
+        }
+    }
+
+    private var classicEmptyState: some View {
         VStack(spacing: 8) {
             Image(systemName: "star")
                 .font(.system(size: 34))

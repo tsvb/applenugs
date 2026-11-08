@@ -12,10 +12,16 @@ struct DownloadsView: View {
     var body: some View {
         Group {
             if app.downloads.manifest.shows.isEmpty {
-                ContentUnavailableView {
-                    Label("Nothing downloaded", systemImage: "arrow.down.circle")
-                } description: {
-                    Text("Download a show from its page to keep it for offline listening.")
+                if theme.caps.contains(.blisterPack) {
+                    // Yeti: the empty pack, nothing boxed up yet.
+                    EmptyPackMessage(title: theme.copy.downloadsEmptyTitle,
+                                     message: Self.emptyMessage)
+                } else {
+                    ContentUnavailableView {
+                        Label(theme.copy.downloadsEmptyTitle, systemImage: "arrow.down.circle")
+                    } description: {
+                        Text(Self.emptyMessage)
+                    }
                 }
             } else {
                 VStack(spacing: 0) {
@@ -39,6 +45,8 @@ struct DownloadsView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(theme.palette.base)
     }
+
+    private static let emptyMessage = "Download a show from its page to keep it for offline listening."
 
     /// "N shows · X GB" — the manifest is the single source of truth, so the
     /// line always matches what the list renders.
@@ -76,7 +84,9 @@ struct DownloadsView: View {
 
                 Image(systemName: "play.circle")
                     .font(.system(size: 22))
-                    .foregroundStyle(theme.palette.accent)
+                    // A play glyph isn't time moving: snow under Yeti.
+                    .foregroundStyle(theme.caps.contains(.plainVoice) ? theme.palette.textPrimary
+                                                                      : theme.palette.accent)
             }
             .contentShape(Rectangle())
         }

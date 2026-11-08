@@ -156,11 +156,22 @@ struct CoverArt: View {
         .aspectRatio(1, contentMode: .fit)
         .frame(maxWidth: .infinity)
         .clipShape(RoundedRectangle(cornerRadius: 6))
+        // Yeti: a cover sits flat on the shelf with a 1pt frost keyline (the
+        // bubble is only for what's playing) — the show page and `ShowCard`.
+        .overlay {
+            if plain {
+                RoundedRectangle(cornerRadius: 6).strokeBorder(theme.palette.hairline, lineWidth: 1)
+            }
+        }
     }
+
+    private var plain: Bool { theme.caps.contains(.plainVoice) }
 
     private var placeholder: some View {
         Rectangle()
             .fill(theme.palette.raised)
-            .overlay(Image(systemName: "music.note").foregroundStyle(theme.palette.accent.opacity(0.7)))
+            // A placeholder isn't time moving: slush under Yeti.
+            .overlay(Image(systemName: "music.note")
+                .foregroundStyle(plain ? theme.palette.textSecondary : theme.palette.accent.opacity(0.7)))
     }
 }

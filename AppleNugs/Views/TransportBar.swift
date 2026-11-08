@@ -292,16 +292,6 @@ struct TransportBar: View {
     }
 }
 
-private extension View {
-    /// `.tint(color)` only when there is one, so a `nil` leaves the inherited
-    /// root tint in place rather than resetting it (the five themes' sliders
-    /// must keep exactly the tint they inherit today).
-    @ViewBuilder
-    func tintIfSet(_ color: Color?) -> some View {
-        if let color { tint(color) } else { self }
-    }
-}
-
 /// Shared now-playing → FavShow bridge used by both the standard transport and
 /// the faceplate. A track is favoritable only when it carries a `showId`
 /// (i.e. it was queued from a show, not a single-track search hit).

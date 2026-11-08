@@ -15,15 +15,24 @@ struct CrateRow: View {
             HStack(spacing: 9) {
                 Text("\(index)")
                     .font(theme.type.numeric(11))
-                    .foregroundStyle(theme.palette.textSecondary)
+                    // `.crate li .ix` is lamp-off idle under Yeti.
+                    .foregroundStyle(theme.caps.contains(.plainVoice) ? theme.palette.textIdle
+                                                                      : theme.palette.textSecondary)
                     .frame(width: 22, alignment: .trailing)
                 CrateThumb(url: item.imageURL, kind: item.kind)
                 Text(item.title)
                     .font(theme.type.body(13))
                     .foregroundStyle(theme.palette.textPrimary)
                     .lineLimit(1)
-                if item.isLive { badge("LIVE") }
-                if item.has4K { badge("4K") }
+                if theme.caps.contains(.stickers) {
+                    // Yeti: Live is an offer (a label sticker), 4K a fact (a
+                    // plain tag); never an accent fill.
+                    if item.isLive { LabelSticker("Live") }
+                    if item.has4K { PlainTag("4K") }
+                } else {
+                    if item.isLive { badge("LIVE") }
+                    if item.has4K { badge("4K") }
+                }
                 Spacer(minLength: 8)
                 if let dateText = item.dateText {
                     Text(dateText)
