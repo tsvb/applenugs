@@ -137,6 +137,12 @@ Pushing is Tim's call.
    stay; Signal keeps its six constant rows (restyle only); system traffic lights stay. Every new copy line
    on `yeti-surfaces.html` is cleared as not-lyrics. `yeti-decisions.html` is the walkthrough Tim answered
    (needs a real browser — the Claude browser pane renders local files with scripts disabled).
+   **Tim, after living with theme #6 on his Duo (2026-11-07): "this looks great, make this the default
+   experience"** = Yeti becomes the ONLY design (stage d, then e) — confirmed over "Yeti default, keep the
+   picker". Also: the Duo's own pill overlay (vertical tab bar) crowds busy content, so the pill gets its
+   OWN SHELF — content stops above it instead of running under it, and when the pill ducks the shelf
+   folds shut with a Yeti-style motion and content eases into the freed space (chosen over moving the
+   pill to the top, or keeping it floating over a fade). Design that motion as a mockup before building.
    **Stage (c) spec:** `docs/superpowers/specs/2026-11-07-yeti-theme-six-design.md` (local-only; awaiting
    Tim's review as of 2026-11-07). Its load-bearing decisions: gating by four caps (`.blisterPack`,
    `.stickers`, `.foilSweep`, `.plainVoice`), never `theme.id`; under `.plainVoice` the ROOT TINT is snow
