@@ -72,8 +72,12 @@ struct YetiSegmentedControl<Value: Hashable>: View {
                 .minimumScaleFactor(0.8)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .contentShape(Rectangle())
+                // The thumb's shape: the segment's own box, which the thumb fills.
+                .foilFocusOutline(RoundedRectangle(cornerRadius: 8, style: .continuous))
         }
         .buttonStyle(.plain)
+        // The label draws the foil focus outline (macOS); no system ring too.
+        .macFocusEffectDisabled()
         .accessibilityAddTraits(on ? .isSelected : [])
         .accessibilityRemoveTraits(on ? [] : .isSelected)
     }

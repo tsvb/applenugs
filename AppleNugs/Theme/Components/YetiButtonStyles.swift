@@ -81,6 +81,7 @@ private struct YetiButtonBody: View {
                 }
             }
             .contentShape(Capsule())
+            .foilFocusOutline(Capsule())
             .opacity(isEnabled ? 1 : 0.5)
             .animation(.easeOut(duration: 0.12), value: configuration.isPressed)
     }
@@ -130,7 +131,67 @@ private struct YetiIconButtonBody: View {
                 }
             }
             .contentShape(Circle())
+            .foilFocusOutline(Circle())
             .opacity(isEnabled ? 1 : 0.5)
             .animation(.easeOut(duration: 0.12), value: configuration.isPressed)
     }
+}
+
+// MARK: - Keyboard focus (macOS)
+
+extension View {
+    /// The design sheet's `:focus-visible`: on macOS, while the enclosing
+    /// focusable control (the button this sits inside) has keyboard focus, a
+    /// 2pt foil (`palette.accent`) outline 3pt outside `shape`, in place of the
+    /// system focus ring. Apply it inside a button's style or label, where
+    /// `\.isFocused` reflects that button. An overlay only — it never changes
+    /// the control's size. iOS: no change.
+    ///
+    /// Our own controls only; system controls (text fields, lists, menus,
+    /// sliders) keep the system ring.
+    func foilFocusOutline<S: InsettableShape>(_ shape: S) -> some View {
+        modifier(FoilFocusOutline(shape: shape))
+    }
+
+    /// `.focusEffectDisabled()` on macOS only, for a `.plain` button whose
+    /// label draws `foilFocusOutline` — so the foil outline replaces the
+    /// system ring instead of joining it. iOS keeps its focus effects.
+    @ViewBuilder
+    func macFocusEffectDisabled(_ disabled: Bool = true) -> some View {
+        #if os(macOS)
+        focusEffectDisabled(disabled)
+        #else
+        self
+        #endif
+    }
+}
+
+private struct FoilFocusOutline<S: InsettableShape>: ViewModifier {
+    let shape: S
+
+    #if os(macOS)
+    @Environment(\.theme) private var theme
+    @Environment(\.isFocused) private var isFocused
+
+    /// CSS `outline: 2px; outline-offset: 3px` — the stroke spans 3...5pt
+    /// outside the control's edge.
+    static var width: CGFloat { 2 }
+    static var offset: CGFloat { 3 }
+
+    func body(content: Content) -> some View {
+        content
+            .focusEffectDisabled()
+            .overlay {
+                if isFocused {
+                    shape
+                        .inset(by: -(Self.offset + Self.width))
+                        .strokeBorder(theme.palette.accent, lineWidth: Self.width)
+                        .allowsHitTesting(false)
+                        .accessibilityHidden(true)
+                }
+            }
+    }
+    #else
+    func body(content: Content) -> some View { content }
+    #endif
 }

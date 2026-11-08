@@ -206,7 +206,10 @@ struct YetiResumeCard: View {
                     .stickerLift(BlisterCard.lift, in: shape)
             }
             .contentShape(shape)
+            // The whole card is the button, so the card takes the outline.
+            .foilFocusOutline(shape)
         }
         .buttonStyle(.plain)
+        .macFocusEffectDisabled()
     }
 }

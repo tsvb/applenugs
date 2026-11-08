@@ -14,20 +14,6 @@ struct AppleNugsApp: App {
     @StateObject private var updaterModel: UpdaterViewModel
 
     init() {
-        // Launch-arg theme selection for seeded screenshots, like the iOS entry
-        // point. Only under -UITEST, where ThemeManager never persists, so the
-        // user's saved theme survives the run.
-        #if DEBUG
-        if AppModel.isUITestRun,
-           let i = ProcessInfo.processInfo.arguments.firstIndex(of: "-UITestTheme"),
-           ProcessInfo.processInfo.arguments.indices.contains(i + 1),
-           let id = ThemeID(rawValue: ProcessInfo.processInfo.arguments[i + 1]) {
-            let themes = ThemeManager()
-            themes.selected = id
-            _themes = State(initialValue: themes)
-        }
-        #endif
-
         // Size the shared HTTP cache so the nugs CDN's cover art and video
         // posters are reused across scroll and navigation instead of re-fetched
         // — AsyncImage loads through URLSession.shared → URLCache.shared, which
@@ -98,19 +84,6 @@ struct AppleNugsApp: App {
                     updaterController?.checkForUpdates(nil)
                 }
                 .disabled(!updaterModel.canCheckForUpdates)
-            }
-            CommandGroup(after: .toolbar) {
-                Picker("Theme", selection: Binding(
-                    get: { themes.selected },
-                    set: { newValue in
-                        withAnimation(.easeInOut(duration: 0.35)) { themes.selected = newValue }
-                    }
-                )) {
-                    ForEach(ThemeID.allCases) { id in
-                        Text(id.displayName).tag(id)
-                    }
-                }
-                Divider()
             }
             CommandMenu("Playback") {
                 Button(app.player.isPlaying ? "Pause" : "Play") {

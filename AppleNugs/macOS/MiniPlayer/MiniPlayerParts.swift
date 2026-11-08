@@ -204,6 +204,7 @@ struct MiniPlayerTransportTriad: View {
                 PlaySticker(isPlaying: player.isPlaying,
                             isBuffering: player.isBuffering,
                             size: .s46)
+                    .foilFocusOutline(Circle())
             } else {
                 ZStack {
                     switch style {
@@ -224,6 +225,8 @@ struct MiniPlayerTransportTriad: View {
             }
         }
         .buttonStyle(.plain)
+        // The sticker draws its own foil focus outline; no system ring too.
+        .macFocusEffectDisabled(style == .sticker)
         .disabled(player.current == nil)
         .help("Play / pause (space)")
         .accessibilityLabel(player.isPlaying ? "Pause" : "Play")

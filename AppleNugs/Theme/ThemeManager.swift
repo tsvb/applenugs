@@ -1,35 +1,12 @@
 import Observation
 import SwiftUI
 
-/// Owns the selected theme and persists it to UserDefaults — the same idiom
-/// PlayerService uses for volume. The derived `theme` value is what views read.
-///
-/// Under `-UITEST` (DEBUG only) the choice is never written, so a seeded launch
-/// that opens in another theme (`-UITestTheme`, or a pick in the picker during
-/// the run) can't clobber the user's persisted preference — the same rule as
-/// `PlaybackStateStore` and `ListeningStatsStore`.
+/// Yeti is the only design: the manager always yields `Theme.yeti`. Nothing is
+/// read from or written to UserDefaults any more — the old `selectedTheme` key
+/// is simply never consulted again (Tim is the only user; no migration). The
+/// class itself goes when the five old themes are deleted.
 @MainActor
 @Observable
 final class ThemeManager {
-    private static let key = "selectedTheme"
-
-    var selected: ThemeID {
-        didSet {
-            theme = Theme.make(selected)
-            #if DEBUG
-            // `AppModel.isUITestRun` only exists in DEBUG, hence the `#if`.
-            guard !AppModel.isUITestRun else { return }
-            #endif
-            UserDefaults.standard.set(selected.rawValue, forKey: Self.key)
-        }
-    }
-
-    private(set) var theme: Theme
-
-    init() {
-        let stored = UserDefaults.standard.string(forKey: Self.key)
-        let id = stored.flatMap(ThemeID.init(rawValue:)) ?? .tapeRoom
-        selected = id
-        theme = Theme.make(id)
-    }
+    let theme: Theme = .yeti
 }

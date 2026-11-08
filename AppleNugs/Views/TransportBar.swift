@@ -193,9 +193,12 @@ struct TransportBar: View {
                 PlaySticker(isPlaying: player.isPlaying,
                             isBuffering: player.isBuffering,
                             size: .s34)
+                    .foilFocusOutline(Circle())
             }
             // `.borderless` (the cluster's style) would decorate the sticker.
             .buttonStyle(.plain)
+            // The sticker draws its own foil focus outline; no system ring too.
+            .macFocusEffectDisabled()
             .disabled(player.current == nil)
             .help("Play / pause (space)")
             .accessibilityLabel(player.isPlaying ? "Pause" : "Play")

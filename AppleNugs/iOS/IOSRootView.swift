@@ -16,7 +16,6 @@ import UIKit
 struct IOSRootView: View {
     @Environment(AppModel.self) private var app
     @Environment(UIState.self) private var ui
-    @Environment(ThemeManager.self) private var themes
     @Environment(\.theme) private var theme
 
     @State private var artProvider = ArtColorProvider()
@@ -278,17 +277,6 @@ struct IOSRootView: View {
             if case .loggedIn(let plan) = app.sessionState, let plan {
                 Text(plan)
             }
-            Picker("Theme", selection: Binding(
-                get: { themes.selected },
-                set: { newValue in
-                    withAnimation(.easeInOut(duration: 0.35)) { themes.selected = newValue }
-                }
-            )) {
-                ForEach(ThemeID.allCases) { id in
-                    Text(id.displayName).tag(id)
-                }
-            }
-            .pickerStyle(.menu)
             #if DEBUG
             Divider()
             Button("Network Probe (Debug)") { probeShown = true }
