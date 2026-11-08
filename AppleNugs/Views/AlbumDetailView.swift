@@ -29,7 +29,6 @@ struct AlbumDetailView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
         }
-        .reportsScrollForPillDuck()
         .background(theme.palette.base)
         .navigationTitle(album?.title ?? titleHint ?? "Album")
         .compactNavigationTitle()

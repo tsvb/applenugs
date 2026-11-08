@@ -59,7 +59,6 @@ struct VideoDetailView: View {
             .padding(20)
             .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .reportsScrollForPillDuck()
         .background(theme.palette.base)
         .navigationTitle(detail?.title ?? titleHint ?? "Video")
         .compactNavigationTitle()

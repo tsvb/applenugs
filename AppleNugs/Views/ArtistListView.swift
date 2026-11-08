@@ -101,7 +101,6 @@ struct ArtistListView: View {
             }
             .listStyle(.inset)
             .scrollContentBackground(.hidden)
-            .reportsScrollForPillDuck()
         }
         .background(theme.palette.base)
         .navigationTitle("Artists")

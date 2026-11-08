@@ -33,7 +33,12 @@ Native **macOS + iOS SwiftUI** player for nugs.net, shipped to users as **Yeti �
   tile overflows short canvases (the Duo's landscape inner display, and portrait iPhones by ~15pt).
   (2) **The pill sheds controls by measured WIDTH** (`PillLayout.controls(slot:width:hasLeadingSlot:trailingReserve:)`,
   90pt text floor), because on the Duo's outer display a vertical tab bar leaves a ~290pt accessory that
-  still reports `.expanded`. (3) The iOS full-screen cover hosts `NowPlayingArrangement`; the pure
+  still reports `.expanded`. **The Duo's pill is Apple's `tabViewBottomAccessory`, exactly like every other
+  iPhone, vertical tab bar or not** (`NowPlayingAccessory` in `IOSRootView`): the system's scroll edge effect
+  handles content under the bars (the tab stacks set `.scrollEdgeEffectStyle(.soft, for: .bottom)` — with a
+  vertical bar `.automatic` drew none and content ran crisp under the pill; iPhones render unchanged), and on the folded Duo the pill does not tuck away on scroll — accepted.
+  No custom overlay, shelf or duck, and no fork on `\.toolbarVerticalEdge` (Tim, 2026-11-07: follow the
+  system; the `feedback-system-guidelines-first` memory). (3) The iOS full-screen cover hosts `NowPlayingArrangement`; the pure
   `NowPlayingColumns` policy picks compact → player alone, regular + wider-than-tall → iOS 27.1
   `ArrangementView` (player + `DashboardPanel(showsNowPlaying: false)`), regular + upright → an explicit
   HStack with a 220–260pt queue column (ArrangementView's horizontal split refuses tall canvases). It
@@ -81,7 +86,7 @@ great". Gate script + sim screenshot script live in the session scratchpad (gone
 plan's "Shared rules" if needed. **Next, in order:** (1) the Duo pill SHELF (`docs/design/yeti-theme/yeti-pill-shelf.html`,
 awaiting Tim's OK on the motion) — design guard: ignore scroll deltas while the shelf animates, or a fold at the
 bottom of a page reads as a scroll up and bounces the pill back — Tim APPROVED the motion ("the pink swipe looks
-really good… it's fun"), being built; (2) stage (d) Yeti-only + Mac foil focus, (3) stage (e) delete the five themes —
+really good… it's fun"), BUILT (`17f0f12`, `3ccfb93`) — then **REVERSED the same day**: on his Duo the system's vertical tab rail crossed the shelf's lip, and Tim chose **FULLY SYSTEM** ("I would rather follow the system guidelines than run anything that needs like custom stuff"): the Duo uses Apple's `tabViewBottomAccessory` like every iPhone, the system's scroll edge effect handles content under it, and the custom overlay, duck, shelf, `PillDuck*` and `-UITestPillTucked` are removed. Accepted trade: on the folded Duo the pill no longer tucks away on scroll. Don't rebuild a custom pill overlay/shelf/rail; see the `feedback-system-guidelines-first` memory. (`yeti-pill-shelf.html`, `yeti-rail.html` are history.) (2) stage (d) — DONE `f1503dc` Yeti-only + Mac foil focus, (3) stage (e) delete the five themes —
 spec `docs/superpowers/specs/2026-11-07-yeti-only-design.md` (local), approved: Yeti on launch with NO migration
 (Tim: "no one's really using this app… it's only on my phone" — he is the only user; never design for other
 users' saved state here), foil focus on our own controls only, the art-color pipeline deleted, ONE `Theme` token
@@ -100,7 +105,7 @@ Mac Playback ▸ Clear Queue `NSAlert` in each window state, VoiceOver on the he
 
 **Where the code is.** Worktree `.claude/worktrees/iphone-duo` (stay in it; don't cd to the main checkout).
 - **`main` == `origin/main` == `e6ab835`** — everything above is LANDED: the iPhone Duo work (PR #5) and the
-  pill duck + Yeti compliance/rename/encrypted downloads/perf + the theme design (PR #6, merged 2026-11-07,
+  pill duck (since REMOVED — the Duo uses the system accessory, see Conventions) + Yeti compliance/rename/encrypted downloads/perf + the theme design (PR #6, merged 2026-11-07,
   CI green on `xcode-27`, fast-forward — every hash in this file is on `main`). 307 tests.
 - **Listening stats LANDED on top (2026-11-07)** — `listening-stats` rebuilt on this base as
   `listening-stats-rebased` (Tim's feature commit replayed as-is, plus a fix crediting background
@@ -134,7 +139,7 @@ Pushing is Tim's call.
 3. **DECISION (Tim, 2026-11-07): Yeti becomes the ONLY design, on macOS and iOS — the five themes go**
    (reverses the Aug-2026 "keep all themes" call). Staged plan proposed: (a) land the branches; (b) design pass
    for surfaces the mockup doesn't cover (video, search, downloads, login/connection-failed, Duo two-column +
-   pill-duck overlay, Mac Now Playing window, sheets, toasts); (c) add Yeti as theme #6 through the existing
+   pill-duck overlay [history: overlay since removed, system accessory], Mac Now Playing window, sheets, toasts); (c) add Yeti as theme #6 through the existing
    token system and verify on device; (d) make it the only theme (remove pickers, force dark); (e) delete the
    five themes, transport variants, art-color pipeline, wash/grain, ThemeID/ThemeManager (~2,300 lines); keep
    ONE token struct as the design system. The Home "nice list" ledger is `ListeningLedger` (landed
@@ -165,7 +170,7 @@ Pushing is Tim's call.
    (needs a real browser — the Claude browser pane renders local files with scripts disabled).
    **Tim, after living with theme #6 on his Duo (2026-11-07): "this looks great, make this the default
    experience"** = Yeti becomes the ONLY design (stage d, then e) — confirmed over "Yeti default, keep the
-   picker". Also: the Duo's own pill overlay (vertical tab bar) crowds busy content, so the pill gets its
+   picker". Also (HISTORY — built, then REVERSED 2026-11-07 for the system accessory; see Conventions): the Duo's own pill overlay (vertical tab bar) crowds busy content, so the pill gets its
    OWN SHELF — content stops above it instead of running under it, and when the pill ducks the shelf
    folds shut with a Yeti-style motion and content eases into the freed space (chosen over moving the
    pill to the top, or keeping it floating over a fade). Design that motion as a mockup before building.
@@ -242,7 +247,9 @@ disclaimers · `2db580f` encrypted downloads. **302 tests.** Rules that fail sil
 `pill-duck` in the same worktree; spec `docs/superpowers/specs/2026-11-05-pill-duck-on-scroll-design.md`;
 probe verdict: the system accessory can't be animated (toggling `isEnabled` pops/crossfades AND reflows the
 content 38–56pt), so where `\.toolbarVerticalEdge != nil` (iOS 27.1+) the pill becomes our own glass overlay
-with a constant bottom content margin. (2) nightstand/tent — spec
+with a constant bottom content margin. **[HISTORY — REVERSED 2026-11-07: the overlay, its duck and the later
+shelf are removed; the Duo uses the system `tabViewBottomAccessory` like every iPhone. See Conventions.]**
+(2) nightstand/tent — spec
 `docs/superpowers/specs/2026-11-05-duo-nightstand-tent-design.md`: propped-open player (art + title +
 clock above the fold, dims at night), tent-pose landscape player (auto-opens; app otherwise stays portrait),
 and an interactive StandBy Now Playing widget (first widget extension + App Group). No posture enum exists —

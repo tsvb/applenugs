@@ -33,13 +33,9 @@ struct DownloadsView: View {
                     }
                     .listStyle(.inset)
                     .scrollContentBackground(.hidden)
-                    // The footer below the list must clear the iPhone Duo
-                    // overlay pill too, so the VStack is padded instead.
-                    .reportsScrollForPillDuck(insetsContent: false)
 
                     storageFooter
                 }
-                .clearsPillOverlay()
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
