@@ -23,9 +23,8 @@ enum NowPlayingColumns {
         case columns(queueWidth: CGFloat)
     }
 
-    /// The narrowest player column. Every player is made to fit this: the
-    /// Standard transport row and The Receiver's knurled row scale as a unit
-    /// below their natural widths, Click Wheel's pad already does.
+    /// The narrowest player column. The player is made to fit this: its
+    /// transport row scales as a unit below its natural width.
     static let minPlayerWidth: CGFloat = 300
     /// The queue column's range. Below the minimum, track titles in Up Next
     /// truncate to a few words; above the maximum the extra width is better

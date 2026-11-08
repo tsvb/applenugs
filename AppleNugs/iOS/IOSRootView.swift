@@ -227,13 +227,14 @@ struct IOSRootView: View {
                 .toolbar {
                     ToolbarItem(placement: .topBarTrailing) { accountMenu }
                 }
-                // System API, not custom chrome: the default (`.automatic`)
-                // drew no bottom edge effect under the accessory where the tab
-                // bar is vertical (iPhone Duo, folded), so content ran crisp
-                // through and below the pill. `.soft` is what horizontal-bar
-                // iPhones already get; they render unchanged.
-                .scrollEdgeEffectStyle(.soft, for: .bottom)
         }
+        // System API, not custom chrome: the default (`.automatic`) drew no
+        // bottom edge effect under the accessory where the tab bar is vertical
+        // (iPhone Duo, folded), so content ran crisp through and below the
+        // pill. `.soft` is what horizontal-bar iPhones already get; they render
+        // unchanged. On the NavigationStack, not its root, so it reaches every
+        // pushed screen (artist, show, video) as well.
+        .scrollEdgeEffectStyle(.soft, for: .bottom)
         .overlay(alignment: .bottom) { toastOverlay }
     }
 
