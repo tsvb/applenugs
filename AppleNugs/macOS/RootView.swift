@@ -19,7 +19,8 @@ struct RootView: View {
     @State private var confirmingStatsReset = false
 
     var body: some View {
-        Group {
+        @Bindable var ui = ui
+        return Group {
             switch app.sessionState {
             case .unknown:
                 ProgressView()
@@ -35,24 +36,27 @@ struct RootView: View {
         }
         .providesArtColor(app: app, theme: theme)
         .nowPlayingMetaLinks(app: app, ui: ui)
+        // Playback ▸ Clear Queue asks here: a `Commands` builder has no view
+        // to present from. On the Group, not in `mainLayout`, because a
+        // launch-restored queue can be non-empty while the connection screen
+        // shows, and the menu item is gated only on the queue.
+        .clearQueueConfirmation(isPresented: $ui.clearQueueConfirmationRequested) {
+            app.player.clear()
+        }
         .task { await app.bootstrap() }
         .onAppear { KeyboardShortcuts.install(app: app, ui: ui) }
     }
 
     private func connectionFailedView(_ message: String) -> some View {
-        ContentUnavailableView {
-            Label("Couldn't reach nugs.net", systemImage: "wifi.exclamationmark")
-        } description: {
-            Text(message)
-        } actions: {
-            Button("Retry") { Task { await app.retryBootstrap() } }
-                .buttonStyle(.borderedProminent)
-            // The whole point of downloads is being reachable right here.
-            if !app.downloads.manifest.shows.isEmpty {
-                Button("Listen Offline") { offlineShown = true }
-            }
-            Button("Sign Out") { app.logout() }
-        }
+        let hasDownloads = !app.downloads.manifest.shows.isEmpty
+        return ConnectionFailedView(
+            message: message,
+            hasDownloads: hasDownloads,
+            canPlayOffline: hasDownloads && OfflineAccessPolicy.allowsOfflinePlay(
+                lastVerifiedAt: OfflineVerification.lastVerifiedAt(), now: Date()),
+            onRetry: { Task { await app.retryBootstrap() } },
+            onListenOffline: { offlineShown = true },
+            onSignOut: { app.logout() })
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .sheet(isPresented: $offlineShown) {
             NavigationStack {
@@ -225,7 +229,7 @@ struct RootView: View {
                 confirmingStatsReset = true
             }
             Divider()
-            Button("Log Out") { app.logout() }
+            Button("Sign Out") { app.logout() }
         } label: {
             Label("Account", systemImage: "person.circle")
         }
@@ -242,12 +246,7 @@ struct RootView: View {
     @ViewBuilder
     private var toastOverlay: some View {
         if let toast = ui.toast {
-            Text(toast)
-                .font(.callout.weight(.medium))
-                .padding(.horizontal, 14)
-                .padding(.vertical, 8)
-                .background(.regularMaterial, in: Capsule())
-                .shadow(radius: 4)
+            ToastCapsule(text: toast.text, kind: toast.kind)
                 .padding(.bottom, 78)  // float above the transport bar
                 .transition(.opacity)
                 .allowsHitTesting(false)

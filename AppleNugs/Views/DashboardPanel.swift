@@ -24,6 +24,9 @@ struct DashboardPanel: View {
     /// Signal section's constant-row-set rule is untouched.
     var showsNowPlaying: Bool = true
 
+    /// The "Clear" button asks first, like the ⋯ menu (ruling P2).
+    @State private var confirmingClear = false
+
     private var player: PlayerService { app.player }
     private var plainVoice: Bool { theme.caps.contains(.plainVoice) }
 
@@ -195,10 +198,13 @@ struct DashboardPanel: View {
                 sectionHeader(theme.copy.dashHeaders.upNext)
                 Spacer()
                 if !player.queue.isEmpty {
-                    Button("Clear") { player.clear() }
+                    Button("Clear") { confirmingClear = true }
                         .buttonStyle(.plain)
                         .font(.caption)
                         .foregroundStyle(theme.palette.textSecondary)
+                        .clearQueueConfirmation(isPresented: $confirmingClear) {
+                            player.clear()
+                        }
                 }
             }
             if player.queue.isEmpty {
@@ -297,17 +303,29 @@ private struct PlaybackErrorLine: View {
 
     let message: String
 
+    /// The offline-expiry error's "why" line (`OfflineAccessPolicy.detail`),
+    /// on every theme. Part of this conditional error block — never a Signal
+    /// row, so the Signal section's constant row set is untouched.
+    private var detail: String? { OfflineAccessPolicy.detail(forError: message) }
+
     var body: some View {
         if theme.caps.contains(.plainVoice) {
             HStack(alignment: .firstTextBaseline, spacing: 8) {
                 Image(systemName: "exclamationmark.triangle")
                     .foregroundStyle(theme.palette.textSecondary)
                     .accessibilityHidden(true)
-                Text(message)
-                    .fontWeight(.semibold)
-                    .foregroundStyle(theme.palette.textPrimary)
-                    .lineLimit(2)
-                    .fixedSize(horizontal: false, vertical: true)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(message)
+                        .fontWeight(.semibold)
+                        .foregroundStyle(theme.palette.textPrimary)
+                        .lineLimit(2)
+                        .fixedSize(horizontal: false, vertical: true)
+                    if let detail {
+                        Text(detail)
+                            .foregroundStyle(theme.palette.textSecondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
             }
             .font(.caption)
             .padding(.horizontal, 10)
@@ -320,11 +338,22 @@ private struct PlaybackErrorLine: View {
             }
             .accessibilityElement(children: .combine)
         } else {
-            Label(message, systemImage: "exclamationmark.triangle")
-                .font(.caption)
-                .foregroundStyle(.red)
-                .lineLimit(2)
-                .fixedSize(horizontal: false, vertical: true)
+            Label {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(message)
+                        .lineLimit(2)
+                        .fixedSize(horizontal: false, vertical: true)
+                    if let detail {
+                        Text(detail)
+                            .foregroundStyle(theme.palette.textSecondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+            } icon: {
+                Image(systemName: "exclamationmark.triangle")
+            }
+            .font(.caption)
+            .foregroundStyle(.red)
         }
     }
 }

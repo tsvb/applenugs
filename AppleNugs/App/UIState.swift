@@ -67,13 +67,28 @@ final class UIState {
         navPath.append(route)
     }
 
+    // --- clear queue (Playback ▸ Clear Queue) ----------------------------------
+
+    /// Set by the macOS Playback menu's Clear Queue. A `Commands` builder has
+    /// no view to present a confirmation from, so the menu raises this flag
+    /// and the main window's root (`RootView`) hosts the dialog.
+    var clearQueueConfirmationRequested = false
+
     // --- toasts (queue-op confirmations, same as the web layout) ---------------
 
-    private(set) var toast: String?
+    /// A transient message. `kind` only changes how Yeti draws it (a check or
+    /// a warning mark); every other theme renders both kinds the same.
+    struct Toast: Equatable {
+        enum Kind: Equatable { case success, failure }
+        let text: String
+        let kind: Kind
+    }
+
+    private(set) var toast: Toast?
     private var toastTask: Task<Void, Never>?
 
-    func showToast(_ text: String) {
-        toast = text
+    func showToast(_ text: String, kind: Toast.Kind = .success) {
+        toast = Toast(text: text, kind: kind)
         toastTask?.cancel()
         toastTask = Task {
             try? await Task.sleep(for: .seconds(1.8))

@@ -126,10 +126,7 @@ struct StandardNowPlayingScreen: View {
                 #endif
                 .presentationBackground(theme.palette.base)
         }
-        .confirmationDialog("Clear the queue?", isPresented: $confirmClear, titleVisibility: .visible) {
-            Button("Clear Queue", role: .destructive) { app.player.clear() }
-            Button("Cancel", role: .cancel) {}
-        }
+        .clearQueueConfirmation(isPresented: $confirmClear) { app.player.clear() }
     }
 
     /// The five themes' title + meta under the artwork. (Yeti prints both on

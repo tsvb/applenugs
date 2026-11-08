@@ -106,19 +106,15 @@ struct IOSRootView: View {
     }
 
     private func connectionFailedView(_ message: String) -> some View {
-        ContentUnavailableView {
-            Label("Couldn't reach nugs.net", systemImage: "wifi.exclamationmark")
-        } description: {
-            Text(message)
-        } actions: {
-            Button("Retry") { Task { await app.retryBootstrap() } }
-                .buttonStyle(.borderedProminent)
-            // The whole point of downloads is being reachable right here.
-            if !app.downloads.manifest.shows.isEmpty {
-                Button("Listen Offline") { offlineShown = true }
-            }
-            Button("Sign Out") { app.logout() }
-        }
+        let hasDownloads = !app.downloads.manifest.shows.isEmpty
+        return ConnectionFailedView(
+            message: message,
+            hasDownloads: hasDownloads,
+            canPlayOffline: hasDownloads && OfflineAccessPolicy.allowsOfflinePlay(
+                lastVerifiedAt: OfflineVerification.lastVerifiedAt(), now: Date()),
+            onRetry: { Task { await app.retryBootstrap() } },
+            onListenOffline: { offlineShown = true },
+            onSignOut: { app.logout() })
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .sheet(isPresented: $offlineShown) {
             NavigationStack {
@@ -289,7 +285,7 @@ struct IOSRootView: View {
                 confirmingStatsReset = true
             }
             Divider()
-            Button("Log Out") { app.logout() }
+            Button("Sign Out") { app.logout() }
             // iOS has no About panel, so the disclaimer the Mac carries in
             // Credits.rtf lives here: non-interactive rows, like the plan above.
             // Two short lines rather than one long one — menu rows truncate.
@@ -320,12 +316,7 @@ struct IOSRootView: View {
     @ViewBuilder
     private var toastOverlay: some View {
         if let toast = ui.toast {
-            Text(toast)
-                .font(.callout.weight(.medium))
-                .padding(.horizontal, 14)
-                .padding(.vertical, 8)
-                .background(.regularMaterial, in: Capsule())
-                .shadow(radius: 4)
+            ToastCapsule(text: toast.text, kind: toast.kind)
                 // This overlay is attached to the NavigationStack itself, one
                 // level above `content()` (see `tabStack` above) — but the
                 // NavigationStack is still a Tab's content, and it's *being*

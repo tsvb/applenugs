@@ -17,7 +17,7 @@ enum DeepLinkRouter {
             case .video: try await openVideo(link, app: app, ui: ui)
             }
         } catch {
-            ui.showToast("Couldn't open that show on nugs")
+            ui.showToast("Couldn't open that show on nugs", kind: .failure)
         }
     }
 
@@ -25,7 +25,7 @@ enum DeepLinkRouter {
 
     private static func openAudio(_ link: DeepLink, app: AppModel, ui: UIState) async throws {
         guard let containerId = try await resolveContainerId(link, app: app) else {
-            ui.showToast("That show isn't on nugs")
+            ui.showToast("That show isn't on nugs", kind: .failure)
             return
         }
         // Do the fallible fetch + queue build BEFORE touching navigation, so a
@@ -101,7 +101,7 @@ enum DeepLinkRouter {
     /// would miss. Page through (bounded) until the date is found or the list ends.
     private static func openVideo(_ link: DeepLink, app: AppModel, ui: UIState) async throws {
         guard let artistId = try await artistId(matching: link.artist, app: app) else {
-            ui.showToast("That show isn't on nugs"); return
+            ui.showToast("That show isn't on nugs", kind: .failure); return
         }
         let pageSize = 100
         let maxPages = 10                                 // safety cap (≤1000 videos)
@@ -116,7 +116,7 @@ enum DeepLinkRouter {
             if page.count < pageSize { break }            // last page
             offset += page.count
         }
-        ui.showToast("No video for that show on nugs")
+        ui.showToast("No video for that show on nugs", kind: .failure)
     }
 
     // MARK: - helpers

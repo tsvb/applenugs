@@ -128,7 +128,9 @@ struct AppleNugsApp: App {
 
                 Divider()
 
-                Button("Clear Queue") { app.player.clear() }
+                // Confirms first, like the ⋯ menu and the dashboard's Clear;
+                // RootView hosts the dialog.
+                Button("Clear Queue") { ui.clearQueueConfirmationRequested = true }
                     .disabled(app.player.queue.isEmpty)
             }
             CommandGroup(after: .sidebar) {

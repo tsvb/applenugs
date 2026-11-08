@@ -13,6 +13,15 @@ enum OfflineAccessPolicy {
     static let futureTolerance: TimeInterval = 24 * 60 * 60
 
     static let expiredMessage = "Go online to keep listening offline"
+    /// The second line under `expiredMessage`, wherever it is shown: why.
+    static let expiredDetail =
+        "Offline play needs nugs.net to confirm your subscription at least once every 30 days."
+
+    /// The explanatory line to print under a playback error, if it has one.
+    /// Only the offline-expiry error does; every other message stands alone.
+    static func detail(forError message: String) -> String? {
+        message == expiredMessage ? expiredDetail : nil
+    }
 
     static func allowsOfflinePlay(lastVerifiedAt: Date?, now: Date) -> Bool {
         guard let lastVerifiedAt else { return false }

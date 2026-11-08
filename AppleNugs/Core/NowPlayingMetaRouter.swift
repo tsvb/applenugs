@@ -37,7 +37,7 @@ enum NowPlayingMetaRouter {
             inFlight = Task {
                 await previous?.value
                 guard let entry = try? await app.artist(named: name) else {
-                    ui.showToast("Couldn't find that artist on nugs")
+                    ui.showToast("Couldn't find that artist on nugs", kind: .failure)
                     return
                 }
                 raiseMainWindowIfNeeded()
