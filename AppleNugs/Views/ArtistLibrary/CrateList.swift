@@ -20,7 +20,7 @@ struct CrateList: View {
 
     /// Derived state, not computed in `body`: filtering + grouping + sorting a
     /// catalog hundreds deep is too heavy to redo on every body evaluation
-    /// (theme switches, favorites toggles, playback ticks). Rebuilt only when
+    /// (favorites toggles, playback ticks). Rebuilt only when
     /// the inputs actually change. The old outline re-grouped all 483 shows on
     /// every render.
     @State private var sections: [(month: Date?, items: [CrateItem])] = []

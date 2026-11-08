@@ -14,7 +14,7 @@ struct ArtistListView: View {
 
     /// A–Z sections, derived state: filtering + grouping + locale-aware
     /// sorting over a catalog hundreds deep is too heavy to redo on every
-    /// body evaluation (favorites toggles, theme switches, toasts) — it
+    /// body evaluation (favorites toggles, toasts) — it
     /// rebuilds only when the inputs actually change (load, keystroke).
     @State private var sections: [(letter: String, artists: [ArtistEntry])] = []
 
@@ -116,7 +116,7 @@ struct ArtistListView: View {
                     systemImage: "exclamationmark.triangle",
                     description: Text(error))
             } else if sections.isEmpty && !artists.isEmpty {
-                ContentUnavailableView(theme.copy.searchNoResults(filter) ?? "",
+                ContentUnavailableView(theme.copy.searchNoResults(filter),
                                        systemImage: "magnifyingglass")
             }
         }

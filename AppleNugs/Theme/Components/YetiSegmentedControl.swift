@@ -33,11 +33,6 @@ struct YetiSegmentedControl<Value: Hashable>: View {
     @Environment(\.theme) private var theme
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
-    /// The selected segment: a lighter shelf than `palette.raised` (#18203A),
-    /// as the sheet draws it. A constant here rather than a Palette field —
-    /// nothing else in the design uses it.
-    static var thumbFill: Color { Color(hex: 0x2A355A) }
-
     private static var height: CGFloat { 34 }
     private static var inset: CGFloat { 3 }
 
@@ -88,7 +83,7 @@ struct YetiSegmentedControl<Value: Hashable>: View {
             let count = CGFloat(max(options.count, 1))
             let width = geo.size.width / count
             RoundedRectangle(cornerRadius: 8, style: .continuous)
-                .fill(Self.thumbFill)
+                .fill(theme.palette.segmentThumb)
                 .shadow(color: .black.opacity(0.45), radius: 1, y: 1)
                 .frame(width: width, height: geo.size.height)
                 .offset(x: width * CGFloat(selectedIndex))

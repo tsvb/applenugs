@@ -14,7 +14,7 @@ import Foundation
 /// ANY combination of nil / present / zero inputs, `rows(...)` returns the same
 /// `rowCount` rows in the same `Kind` order. Unknown values degrade to
 /// `unknown`; a row never disappears. Height then falls out of the row count
-/// and the theme's own fonts, so it is automatically right in all five themes
+/// and the theme's own fonts, so it is automatically right at any type size
 /// and under iOS Dynamic Type — no reserved heights, no magic numbers.
 ///
 /// Deliberately Foundation-only (no SwiftUI, no AVFoundation) and taking loose

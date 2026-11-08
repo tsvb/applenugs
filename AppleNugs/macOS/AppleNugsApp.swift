@@ -5,7 +5,6 @@ import Sparkle
 struct AppleNugsApp: App {
     @State private var app = AppModel()
     @State private var ui = UIState()
-    @State private var themes = ThemeManager()
     #if DEBUG
     @NSApplicationDelegateAdaptor(UITestAppDelegate.self) private var uiTestDelegate
     #endif
@@ -42,8 +41,6 @@ struct AppleNugsApp: App {
             RootView()
                 .environment(app)
                 .environment(ui)
-                .environment(themes)
-                .environment(\.theme, themes.theme)
                 // Window minimum width is managed by WindowMinSizeUpdater in
                 // RootView — it sets NSWindow.minSize directly so it correctly
                 // accounts for the inspector column (250pt) when it is open.
@@ -134,9 +131,7 @@ struct AppleNugsApp: App {
             NowPlayingScreen()
                 .environment(app)
                 .environment(ui)
-                .environment(themes)
-                .environment(\.theme, themes.theme)
-                .themed(themes.theme)
+                .themed(.yeti)
                 // A separate scene root with its own environment, so the meta
                 // link interceptor has to be installed here too.
                 .nowPlayingMetaLinks(app: app, ui: ui)

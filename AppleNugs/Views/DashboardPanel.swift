@@ -65,11 +65,11 @@ struct DashboardPanel: View {
     @ViewBuilder
     private var nowPlayingSection: some View {
         VStack(alignment: .leading, spacing: 6) {
-            sectionHeader(theme.copy.dashHeaders.now)
+            sectionHeader(theme.copy.dashNow)
             #if os(iOS)
             legacyNowPlayingBlock
             #else
-            // The Mac inspector gets the per-theme miniplayer. iOS keeps the
+            // The Mac inspector gets the miniplayer. iOS keeps the
             // text block above: it reaches this panel as a sheet from the
             // full-screen players, which already carry their own transport.
             DashboardMiniPlayer()
@@ -151,7 +151,7 @@ struct DashboardPanel: View {
                 // sticker holds its frame when a known lossy pick hides it,
                 // so the header never changes height.
                 HStack {
-                    sectionHeader(theme.copy.dashHeaders.quality)
+                    sectionHeader(theme.copy.dashQuality)
                     Spacer(minLength: 8)
                     PriceSticker(player: player, size: Self.headerStickerSize)
                 }
@@ -183,7 +183,7 @@ struct DashboardPanel: View {
     private var queueSection: some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack {
-                sectionHeader(theme.copy.dashHeaders.upNext)
+                sectionHeader(theme.copy.dashUpNext)
                 Spacer()
                 if !player.queue.isEmpty {
                     Button("Clear") { confirmingClear = true }

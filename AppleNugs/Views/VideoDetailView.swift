@@ -497,7 +497,7 @@ struct PayPerViewPanel: View {
         let shape = RoundedRectangle(cornerRadius: 14, style: .continuous)
         return VStack(alignment: .leading, spacing: 16) {
             shape
-                .fill(theme.palette.labelPaper ?? theme.palette.raised)
+                .fill(theme.palette.cardStock)
                 .overlay { shape.strokeBorder(theme.palette.hairline, lineWidth: 1) }
                 .aspectRatio(16.0/9.0, contentMode: .fit)
                 .overlay {
@@ -553,7 +553,7 @@ struct VideoErrorMessage: View {
         .multilineTextAlignment(.center)
         .padding(16)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background { if overPlayer { Color(hex: 0x05070D) } }
+        .background { if overPlayer { theme.palette.videoErrorBackdrop } }
         .accessibilityElement(children: .combine)
     }
 }

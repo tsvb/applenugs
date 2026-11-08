@@ -3,10 +3,12 @@ import SwiftUI
 // MARK: - Environment keys
 
 private struct ThemeKey: EnvironmentKey {
-    static let defaultValue = Theme.tapeRoom
+    static let defaultValue = Theme.yeti
 }
 
 extension EnvironmentValues {
+    /// The design's tokens. Its default is `Theme.yeti`, the only design, so
+    /// nothing has to inject it.
     var theme: Theme {
         get { self[ThemeKey.self] }
         set { self[ThemeKey.self] = newValue }
@@ -16,18 +18,22 @@ extension EnvironmentValues {
 // MARK: - Root modifier
 
 /// Recolors the bulk of the app from one place: tint, default text color,
-/// window-ish background, default font, dark scheme, and a crossfade on switch.
+/// window-ish background, default font, dark scheme.
+///
+/// The tint is snow (`textPrimary`), so system-tinted controls (prominent
+/// buttons, the selected tab, toggles, links, untinted sliders) never paint an
+/// accent fill; the accent is applied explicitly, only where time moves
+/// (scrub sliders, the pill ring, progress).
 private struct ThemedRoot: ViewModifier {
     let theme: Theme
 
     func body(content: Content) -> some View {
         content
-            .tint(theme.rootTint)
+            .tint(theme.palette.textPrimary)
             .foregroundStyle(theme.palette.textPrimary)
             .background(theme.palette.base)
             .environment(\.font, theme.type.body(13))
             .preferredColorScheme(.dark)
-            .animation(.easeInOut(duration: 0.35), value: theme.id)
     }
 }
 

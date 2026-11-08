@@ -20,7 +20,7 @@ struct MonogramTile: View {
         // accent letters would be pink type on the bubble, the very fill the
         // design keeps for time.
         RoundedRectangle(cornerRadius: size * 0.18, style: .continuous)
-            .fill(theme.palette.labelPaper ?? theme.palette.raised)
+            .fill(theme.palette.cardStock)
             .overlay {
                 Text(initials)
                     .font(theme.type.section(size * 0.4))

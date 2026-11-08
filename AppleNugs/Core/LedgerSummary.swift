@@ -21,7 +21,7 @@ enum LedgerSummary {
     }
 
     /// A number and its unit, kept apart so a ledger can set them in two
-    /// weights (`.plainVoice`'s "**41** plays", "**62** h", "**112** hours
+    /// weights (the ledger's "**41** plays", "**62** h", "**112** hours
     /// listened"). Read together they say exactly what the joined string says.
     struct Figure: Equatable {
         let value: String
@@ -121,7 +121,7 @@ enum LedgerSummary {
         plays == 1 ? "1 play" : "\(plays) plays"
     }
 
-    // --- split figures (`.plainVoice`'s columns and totals line) -------------
+    // --- split figures (the ledger's columns and totals line) ----------------
 
     /// The totals line's hours: the same number as `totalHoursText`, with the
     /// unit spelled out. "1 hour listened", and "<1 hour listened" below one —

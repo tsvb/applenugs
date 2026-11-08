@@ -1,8 +1,8 @@
 import SwiftUI
 
 // Yeti's two button shapes. Primaries are snow with night ink and secondaries
-// are frost-outlined with a snow label, never an accent fill: under Yeti the
-// root tint is snow (`Theme.rootTint`), and a snow-tinted
+// are frost-outlined with a snow label, never an accent fill: the root tint is
+// snow (`ThemedRoot`), and a snow-tinted
 // `.borderedProminent` would still draw a white label on the snow capsule.
 //
 // Colors come from the theme's tokens: snow = `textPrimary`, night ink =
@@ -187,9 +187,9 @@ extension View {
     /// label draws `foilFocusOutline` — so the foil outline replaces the
     /// system ring instead of joining it. iOS keeps its focus effects.
     @ViewBuilder
-    func macFocusEffectDisabled(_ disabled: Bool = true) -> some View {
+    func macFocusEffectDisabled() -> some View {
         #if os(macOS)
-        focusEffectDisabled(disabled)
+        focusEffectDisabled()
         #else
         self
         #endif

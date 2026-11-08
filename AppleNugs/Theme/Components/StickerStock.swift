@@ -1,14 +1,14 @@
 import SwiftUI
 
 // Yeti's sticker stock: the sale-yellow paper every sticker is printed on
-// (price, play, row, label), with night ink (`palette.labelInk`) on top. Pink
+// (price, play, row, label), with night ink (`palette.stickerInk`) on top. Pink
 // is never printed on it. Translated from the design sheet's `.stock` rule:
 //
 //     radial-gradient(circle at 34% 30%, #FBF1A6, #F2E27A 55%, #E3D267)
 //
-// The three stops are palette-adjacent constants here rather than `Palette`
-// fields (spec "Tokens"): new fields would force values onto the five themes
-// that stage (e) deletes. The middle stop is Yeti's `losslessBadge`/`playState`.
+// The three stops are `Palette`'s `stickerHighlight` / `stickerSale` /
+// `stickerEdge`; the gradient is built statically (no environment), so it
+// reads them from `Theme.yeti`.
 
 /// The sale-yellow radial fill in `shape`, under an optional drop-shadow lift.
 /// The gradient is laid out from the view's own size, so one stock serves a
@@ -17,9 +17,9 @@ struct StickerStock<S: InsettableShape>: View {
     let shape: S
     var lift: StickerLift = .none
 
-    static var highlight: Color { Color(hex: 0xFBF1A6) }
-    static var sale: Color { Color(hex: 0xF2E27A) }
-    static var edge: Color { Color(hex: 0xE3D267) }
+    static var highlight: Color { Theme.yeti.palette.stickerHighlight }
+    static var sale: Color { Theme.yeti.palette.stickerSale }
+    static var edge: Color { Theme.yeti.palette.stickerEdge }
 
     var body: some View {
         GeometryReader { geo in
@@ -97,10 +97,4 @@ extension View {
             .accessibilityHidden(true)
         }
     }
-}
-
-extension Theme {
-    /// Night ink printed on sticker stock. Yeti sets `labelInk`; the fallback
-    /// keeps a sticker legible should one ever render under a theme without it.
-    var stickerInk: Color { palette.labelInk ?? Color(hex: 0x0F1424) }
 }

@@ -50,7 +50,7 @@ struct PriceSticker: View {
     }
 
     private func sticker(_ label: PriceStickerLabel) -> some View {
-        let ink = theme.stickerInk
+        let ink = theme.palette.stickerInk
         let type = size.type
         return ZStack {
             StickerStock(shape: Circle(), lift: .price)

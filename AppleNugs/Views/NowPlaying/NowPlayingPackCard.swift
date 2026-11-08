@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Yeti's now-playing card (`.blisterPack`): the cover sealed in the bubble on
+/// The now-playing card (the blister pack): the cover sealed in the bubble on
 /// card stock, the price sticker on the bubble's corner, and the title printed
 /// on the card at nameplate size with the meta line under it. Translated from
 /// the design sheet's `.np .card` / `.name h2.plate` / `.name .meta`.
@@ -114,7 +114,7 @@ struct NowPlayingNameplate: View {
     }
 }
 
-/// Every number the `.blisterPack` now-playing layout uses, in one place so the
+/// Every number the blister-pack now-playing layout uses, in one place so the
 /// height budget can be checked offscreen with the exact same constants.
 ///
 /// Budget at the Duo's flat inner-display column (433×635pt) with a two-line

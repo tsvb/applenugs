@@ -41,7 +41,7 @@ struct RowSticker: View {
             HStack(alignment: .bottom, spacing: d * 0.07) {
                 ForEach(Self.stair.indices, id: \.self) { i in
                     RoundedRectangle(cornerRadius: 1)
-                        .fill(theme.stickerInk)
+                        .fill(theme.palette.stickerInk)
                         .frame(width: d * 0.1,
                                height: stairHeight * (isPlaying ? Self.stair[i] : Self.flat))
                 }

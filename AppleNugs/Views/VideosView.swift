@@ -92,8 +92,8 @@ struct VideosView: View {
         }
     }
 
-    /// `.prog`: a frost track with the accent fill. Under Yeti the accent is
-    /// foil, and that is right here: resume progress moves through time.
+    /// `.prog`: a frost track with the accent fill. The accent is foil, and
+    /// that is right here: resume progress moves through time.
     private func resumeBar(_ progress: VideoProgress) -> some View {
         GeometryReader { geo in
             ZStack(alignment: .leading) {

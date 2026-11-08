@@ -1,6 +1,6 @@
 import SwiftUI
 
-// Home's "what's playing" heroes under Yeti, plus the progress rule every Home
+// Home's "what's playing" heroes, plus the progress rule every Home
 // hero shares. Shared code: `HomeView` mounts the iPhone hero on iOS and the
 // flat resume card on macOS, but both views take plain values (no
 // `PlayerService`), so either compiles anywhere and an offscreen render can
@@ -35,8 +35,7 @@ struct OpenNowPlayingAction: Equatable, Sendable {
 // MARK: - Progress rule
 
 /// The hero's thin progress rule: a hairline track with the elapsed part in
-/// the theme's accent (foil under Yeti — set explicitly, since Yeti's root
-/// tint is snow).
+/// the accent (foil — set explicitly, since the root tint is snow).
 ///
 /// A LEAF view: the ~4Hz playback-time dependency registers here, not on the
 /// whole editorial landing page or the hero around it (CLAUDE.md, the
@@ -200,7 +199,7 @@ struct YetiResumeCard: View {
             .padding(.horizontal, 22)
             .background {
                 shape
-                    .fill(theme.palette.labelPaper ?? theme.palette.raised)
+                    .fill(theme.palette.cardStock)
                     .overlay { shape.strokeBorder(theme.palette.hairline, lineWidth: 1) }
                     .stickerLift(BlisterCard.lift, in: shape)
             }

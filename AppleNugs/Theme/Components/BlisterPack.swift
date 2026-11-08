@@ -12,9 +12,9 @@ import SwiftUI
 // upright column) the bubble shrinks first and the nameplate keeps its lines.
 // It is never a rigid tile.
 //
-// The glass colors are palette-adjacent constants (Yeti-only, spec "Tokens");
-// the card stock, keyline and the night showing through the hang slot come
-// from the theme.
+// The glass colors are `Palette` tokens read through `BlisterGlass`; the card
+// stock, keyline and the night showing through the hang slot come from the
+// environment's theme.
 
 // MARK: - Pack
 
@@ -216,7 +216,7 @@ enum BlisterPackStyle: Sendable {
 
 // MARK: - Card
 
-/// The backing card: `labelPaper` stock, a 1pt frost keyline, a soft drop
+/// The backing card: `cardStock`, a 1pt frost keyline, a soft drop
 /// shadow, and the punched hang slot at the top showing the night behind.
 /// Fills the frame it is given.
 struct BlisterCard: View {
@@ -232,7 +232,7 @@ struct BlisterCard: View {
     var body: some View {
         let shape = RoundedRectangle(cornerRadius: Self.cornerRadius, style: .continuous)
         shape
-            .fill(theme.palette.labelPaper ?? theme.palette.raised)
+            .fill(theme.palette.cardStock)
             // `inset 0 0 0 1px var(--frost)`
             .overlay { shape.strokeBorder(theme.palette.hairline, lineWidth: 1) }
             .overlay(alignment: .top) {
@@ -480,17 +480,18 @@ struct PackArt: View {
 
 // MARK: - Glass constants and drawing helpers
 
-/// Palette-adjacent colors for the plastic (Yeti-only; spec "Tokens").
+/// The plastic's colors, from `Palette` (the bubble's drawing helpers are
+/// environment-free, so they read `Theme.yeti`).
 enum BlisterGlass {
     /// rgba(233,238,247,·): snow, as light on plastic.
-    static var snow: Color { Color(hex: 0xE9EEF7) }
+    static var snow: Color { Theme.yeti.palette.textPrimary }
     /// rgba(225,233,250,·): the bubble's glass tint.
-    static var glass: Color { Color(hex: 0xE1E9FA) }
+    static var glass: Color { Theme.yeti.palette.bubbleGlass }
     /// rgba(4,7,16,·): the shade pooling in the plastic.
-    static var shade: Color { Color(hex: 0x040710) }
+    static var shade: Color { Theme.yeti.palette.bubbleShade }
     /// rgba(190,210,255,·) → rgba(15,20,36,·): the glaze over the art.
-    static var glazeTop: Color { Color(hex: 0xBED2FF) }
-    static var glazeBottom: Color { Color(hex: 0x0F1424) }
+    static var glazeTop: Color { Theme.yeti.palette.bubbleGlaze }
+    static var glazeBottom: Color { Theme.yeti.palette.base }
 }
 
 /// CSS `linear-gradient(<angle>deg, …)` endpoints for a box: the gradient

@@ -5,7 +5,6 @@ import SwiftUI
 struct AppleNugsiOSApp: App {
     @State private var app = AppModel()
     @State private var ui: UIState
-    @State private var themes = ThemeManager()
     @Environment(\.scenePhase) private var scenePhase
     // Portrait-locked app, rotatable fullscreen video (see OrientationGate).
     @UIApplicationDelegateAdaptor(OrientationGate.self) private var orientationGate
@@ -43,8 +42,6 @@ struct AppleNugsiOSApp: App {
             IOSRootView()
                 .environment(app)
                 .environment(ui)
-                .environment(themes)
-                .environment(\.theme, themes.theme)
         }
         .onChange(of: scenePhase) { _, phase in
             switch phase {

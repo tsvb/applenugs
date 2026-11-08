@@ -15,7 +15,7 @@ struct LabelSticker: View {
     var body: some View {
         let shape = RoundedRectangle(cornerRadius: 5, style: .continuous)
         TagText(text: text)
-            .foregroundStyle(theme.stickerInk)
+            .foregroundStyle(theme.palette.stickerInk)
             .background { StickerStock(shape: shape, lift: .tag) }
             .rotationEffect(.degrees(-4))
     }
@@ -35,7 +35,7 @@ struct PlainTag: View {
             .foregroundStyle(theme.palette.textPrimary)
             .background {
                 // rgba(15,20,36,.74): night ink; inset 1px rgba(233,238,247,.3): snow.
-                shape.fill(theme.stickerInk.opacity(0.74))
+                shape.fill(theme.palette.stickerInk.opacity(0.74))
                 shape.strokeBorder(theme.palette.textPrimary.opacity(0.3), lineWidth: 1)
             }
     }

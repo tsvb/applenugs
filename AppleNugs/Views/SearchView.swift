@@ -87,7 +87,7 @@ struct SearchView: View {
                 description: Text(error))
         } else if let results, let searchedQuery {
             if results.isEmpty {
-                ContentUnavailableView(theme.copy.searchNoResults(searchedQuery) ?? "",
+                ContentUnavailableView(theme.copy.searchNoResults(searchedQuery),
                                        systemImage: "magnifyingglass")
             } else {
                 resultsList(results)

@@ -48,7 +48,7 @@ struct PlaySticker: View {
     var size: Size = .s64
 
     var body: some View {
-        let ink = theme.stickerInk
+        let ink = theme.palette.stickerInk
         ZStack {
             StickerStock(shape: Circle(), lift: .play)
             if isBuffering {
