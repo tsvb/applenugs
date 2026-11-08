@@ -1,10 +1,7 @@
 import SwiftUI
 
-/// The Dashboard inspector's now-playing surface: a compact player carrying the
-/// active theme's personality.
-///
-/// Dispatches on `theme.transport` exactly as `TransportBar`'s now-playing block
-/// and `NowPlayingScreen` do — host views are never forked per theme.
+/// The Dashboard inspector's now-playing surface: the idle line, or the
+/// compact player (`MiniPlayerStandard`) once something is loaded.
 struct DashboardMiniPlayer: View {
     @Environment(AppModel.self) private var app
     @Environment(\.theme) private var theme
@@ -19,17 +16,7 @@ struct DashboardMiniPlayer: View {
                 .lineLimit(2)
                 .fixedSize(horizontal: false, vertical: true)
         } else {
-            variant
-        }
-    }
-
-    @ViewBuilder
-    private var variant: some View {
-        switch theme.transport {
-        case .standard, .jCard: MiniPlayerStandard()
-        case .tapeLabel:        MiniPlayerCassette()
-        case .faceplate:        MiniPlayerFaceplate()
-        case .clickWheel:       MiniPlayerClickWheel()
+            MiniPlayerStandard()
         }
     }
 }

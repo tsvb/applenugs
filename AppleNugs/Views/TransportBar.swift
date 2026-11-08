@@ -21,11 +21,7 @@ struct TransportBar: View {
 
     var body: some View {
         #if os(macOS)
-        if theme.transport == .faceplate {
-            FaceplateTransport()
-        } else {
-            standardBar
-        }
+        standardBar
         #else
         // iOS uses NowPlayingPill in the tab accessory; nothing docks here.
         EmptyView()
@@ -124,19 +120,8 @@ struct TransportBar: View {
 
     // --- blocks ------------------------------------------------------------------
 
-    @ViewBuilder
     private var nowPlayingBlock: some View {
-        switch theme.transport {
-        case .tapeLabel:
-            TapeLabelCard()
-        case .jCard:
-            JCardStrip()
-        case .standard, .faceplate, .clickWheel:
-            // Faceplate has its own whole-bar treatment on the Mac; Click
-            // Wheel's circular pad is an iOS full-screen idea — on the Mac
-            // bar both fall back to the standard block in their own tokens.
-            StandardNowPlaying()
-        }
+        StandardNowPlaying()
     }
 
     private var controls: some View {
@@ -295,8 +280,8 @@ struct TransportBar: View {
     }
 }
 
-/// Shared now-playing → FavShow bridge used by both the standard transport and
-/// the faceplate. A track is favoritable only when it carries a `showId`
+/// Shared now-playing → FavShow bridge used by the transport bar and the
+/// now-playing screens. A track is favoritable only when it carries a `showId`
 /// (i.e. it was queued from a show, not a single-track search hit).
 @MainActor
 enum NowPlayingFavorite {

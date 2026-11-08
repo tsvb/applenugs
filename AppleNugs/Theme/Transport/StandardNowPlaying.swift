@@ -1,8 +1,7 @@
 import SwiftUI
 
-/// The original now-playing block, token-styled. Used by Soundboard and as the
-/// fallback for The Receiver until its faceplate ships; Yeti (`.plainVoice`)
-/// draws its own variant with an art chip.
+/// The Mac transport bar's now-playing block, token-styled. Yeti
+/// (`.plainVoice`) draws its own variant with an art chip.
 struct StandardNowPlaying: View {
     @Environment(AppModel.self) private var app
     @Environment(\.theme) private var theme

@@ -23,9 +23,8 @@ import Foundation
 enum SignalReadout {
 
     /// The one placeholder for every unknown scalar. Matches the em-dash the
-    /// rest of the app already uses for "no value yet" (FaceplateTransport,
-    /// ClickWheelScreen, TouchFaceplate, CrateItem); `--:--` stays reserved for
-    /// clocks.
+    /// rest of the app already uses for "no value yet" (e.g. CrateItem);
+    /// `--:--` stays reserved for clocks.
     static let unknown = "—"
 
     /// Row identity. The `ForEach` keys on this rather than on the label,

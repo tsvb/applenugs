@@ -5,7 +5,7 @@ import SwiftUI
 /// on the card at nameplate size with the meta line under it. Translated from
 /// the design sheet's `.np .card` / `.name h2.plate` / `.name .meta`.
 ///
-/// Hosted by `StandardNowPlayingScreen` in place of its artwork + title block —
+/// Hosted by `NowPlayingScreen` in place of its artwork + title block —
 /// iPhone full screen, the Duo's player column, the Mac Now Playing window.
 /// Takes plain values (no `PlayerService`), so it has no playback-time input at
 /// all and an offscreen render can build it as-is.

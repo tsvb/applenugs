@@ -413,7 +413,7 @@ private struct ElapsedTimeLine: View {
         // Always rendered. `duration` is zeroed on every track change, so
         // hiding the line while it's unknown made the block above the Signal
         // section shrink and grow on each track — the same defect one section
-        // up. `--:--` is the clock placeholder used by MiniPlayerClock.
+        // up. `--:--` is the clock placeholder used by MiniPlayerScrubTrack.
         let known = app.player.duration > 0
         Text(known
              ? "\(TransportBar.format(seconds: app.player.currentTime)) / \(TransportBar.format(seconds: app.player.duration))"

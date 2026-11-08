@@ -1,22 +1,17 @@
 import SwiftUI
 
-/// The compact miniplayer for Soundboard (`.standard`) and Shoebox (`.jCard`),
-/// and Yeti (`.standard` + `.blisterPack`).
+/// The Dashboard inspector's compact miniplayer.
 ///
-/// One view, not two: their differences are token reads — a J-card spine rule,
-/// tracked small caps, an outline play button instead of a filled one — in the
-/// same spirit as `DashboardPanel.sectionHeader` branching on
-/// `.condensedHeaders`. Yeti's are capability reads: the art in a small blister
-/// bubble with the title beside it (foil sweep on a new track) and the venue
-/// on its own line below (`.blisterPack`), and the play sticker as the triad's
-/// middle button (`.stickers`).
+/// Yeti's differences from the token-styled baseline are capability reads:
+/// the art in a small blister bubble with the title beside it (foil sweep on a
+/// new track) and the venue on its own line below (`.blisterPack`), and the
+/// play sticker as the triad's middle button (`.stickers`).
 struct MiniPlayerStandard: View {
     @Environment(AppModel.self) private var app
     @Environment(\.theme) private var theme
     @Environment(\.artColor) private var artColor
 
     private var player: PlayerService { app.player }
-    private var isJCard: Bool { theme.transport == .jCard }
     private var pack: Bool { theme.caps.contains(.blisterPack) }
 
     var body: some View {
@@ -30,7 +25,7 @@ struct MiniPlayerStandard: View {
             if theme.caps.contains(.stickers) {
                 MiniPlayerTransportTriad(style: .sticker, glyphSize: 18, playDiameter: 46)
             } else {
-                MiniPlayerTransportTriad(style: isJCard ? .outline : .filled)
+                MiniPlayerTransportTriad(style: .filled)
             }
         }
         .padding(10)
@@ -85,12 +80,6 @@ struct MiniPlayerStandard: View {
                     size: 56)
                 .accessibilityHidden(true)
 
-            if isJCard {
-                Rectangle()
-                    .fill(theme.palette.hairline)
-                    .frame(width: 1, height: 40)
-            }
-
             VStack(alignment: .leading, spacing: 3) {
                 Text(player.current?.title ?? "Unknown track")
                     .font(theme.type.title(15))
@@ -107,21 +96,10 @@ struct MiniPlayerStandard: View {
 
     /// One field of the meta line. Nothing renders when the field is absent, so
     /// the block keeps the height it had when these were `if let` Texts.
-    @ViewBuilder
     private func meta(fields: [NowPlayingMetaLine.Field]) -> some View {
-        let line = NowPlayingMetaText(track: player.current, fields: fields,
-                                      casing: isJCard ? .upper : .asIs)
-        if isJCard {
-            line
-                .font(theme.type.numeric(9))
-                .tracking(0.9)
-                .lineLimit(1)
-                .truncationMode(.tail)
-        } else {
-            line
-                .font(.caption)
-                .lineLimit(1)
-                .truncationMode(.tail)
-        }
+        NowPlayingMetaText(track: player.current, fields: fields)
+            .font(.caption)
+            .lineLimit(1)
+            .truncationMode(.tail)
     }
 }

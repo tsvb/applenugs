@@ -7,29 +7,9 @@ enum NowPlayingWindow {
     static let id = "now-playing"
 }
 
-/// Full-screen now-playing, presented from a tap on the compact transport bar.
-/// Themes with the faceplate transport (The Receiver) get the TouchFaceplate;
-/// everything else gets the standard layout below, tinted by theme tokens.
+/// Full-screen now-playing: the iOS full-screen cover (inside
+/// `NowPlayingArrangement`) and the macOS Now Playing window.
 struct NowPlayingScreen: View {
-    @Environment(\.theme) private var theme
-
-    var body: some View {
-        Group {
-            switch theme.transport {
-            case .faceplate:
-                TouchFaceplate()
-            case .clickWheel:
-                ClickWheelScreen()
-            case .standard, .tapeLabel, .jCard:
-                StandardNowPlayingScreen()
-            }
-        }
-    }
-}
-
-// MARK: - Standard layout
-
-struct StandardNowPlayingScreen: View {
     @Environment(AppModel.self) private var app
     @Environment(\.theme) private var theme
     @Environment(\.artColor) private var artColor
@@ -68,13 +48,6 @@ struct StandardNowPlayingScreen: View {
             } else {
                 artwork
                     .padding(.horizontal, 36)
-            }
-
-            // Tape Room: the label card's "tape counter" under-rule rides
-            // directly beneath the reel (in addition to the scrubber below).
-            if theme.transport == .tapeLabel {
-                tapeCounter
-                    .padding(.horizontal, 72)
             }
 
             if !card {
@@ -147,22 +120,11 @@ struct StandardNowPlayingScreen: View {
                     .multilineTextAlignment(.center)
             }
             if let track = player.current {
-                // Shoebox liner-note treatment: typed-out tracked caps,
-                // as on its J-card spine.
-                if theme.transport == .jCard {
-                    NowPlayingMetaText(track: track, casing: .upper)
-                        .font(theme.type.numeric(11))
-                        .tracking(0.9)
-                        .foregroundStyle(theme.palette.textSecondary)
-                        .lineLimit(2)
-                        .multilineTextAlignment(.center)
-                } else {
-                    NowPlayingMetaText(track: track)
-                        .font(theme.type.title(14))
-                        .foregroundStyle(theme.palette.textSecondary)
-                        .lineLimit(2)
-                        .multilineTextAlignment(.center)
-                }
+                NowPlayingMetaText(track: track)
+                    .font(theme.type.title(14))
+                    .foregroundStyle(theme.palette.textSecondary)
+                    .lineLimit(2)
+                    .multilineTextAlignment(.center)
             }
         }
         .padding(.horizontal, 24)
@@ -295,23 +257,6 @@ struct StandardNowPlayingScreen: View {
             .font(theme.type.numeric(11))
             .foregroundStyle(theme.palette.textSecondary)
         }
-    }
-
-    private var tapeCounter: some View {
-        GeometryReader { geo in
-            ZStack(alignment: .leading) {
-                Capsule().fill(theme.palette.hairline)
-                Capsule().fill(theme.palette.accent)
-                    .frame(width: geo.size.width * counterProgress)
-            }
-        }
-        .frame(height: 2)
-        .accessibilityHidden(true)
-    }
-
-    private var counterProgress: CGFloat {
-        guard player.duration > 0 else { return 0 }
-        return min(max(CGFloat(player.currentTime / player.duration), 0), 1)
     }
 
     private var sliderMax: Double { max(player.duration, 1) }

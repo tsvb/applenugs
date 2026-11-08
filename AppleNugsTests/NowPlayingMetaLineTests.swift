@@ -88,8 +88,8 @@ final class NowPlayingMetaLineTests: XCTestCase {
 
     // MARK: - fields
 
-    /// MiniPlayerFaceplate, MiniPlayerClickWheel and ClickWheelScreen render the
-    /// artist alone; asking for one field must not leave a separator behind.
+    /// The Mac miniplayer renders the artist alone; asking for one field must
+    /// not leave a separator behind.
     func testRestrictingToASingleFieldDropsTheOther() {
         let s = Line.segments(artist: "Goose", show: "The Anthem", showId: "42",
                               fields: [.artist])
