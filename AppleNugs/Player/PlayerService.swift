@@ -606,11 +606,11 @@ final class PlayerService {
         // Video now owns playback — a pending interruption-resume must not
         // fire underneath it once the interruption ends.
         pausedByInterruption = false
-        let wasPlaying = isPlaying
-        if wasPlaying { pause() }
-        // Silence the engine whatever `isPlaying` says: the flag can trail the
+        // Ask the engine too, not just `isPlaying`: the flag can trail the
         // player (a head item we haven't adopted yet), and a stale false must
-        // not leave audio running under the video.
+        // neither leave audio running under the video nor forget to resume it.
+        let wasPlaying = isPlaying || player.rate != 0
+        if wasPlaying { pause() }
         player.pause()
         return wasPlaying
     }
@@ -658,10 +658,12 @@ final class PlayerService {
 
     // --- playback engine --------------------------------------------------------
 
-    private func startAt(_ i: Int) {
-        // Every startAt caller is the listener choosing a track (play, enqueue
-        // or play-next into an idle queue, jump, next, previous).
-        takePlaybackFromVideo()
+    /// `deliberate`: the listener chose this track (play, enqueue or play-next
+    /// into an idle queue, jump, next, previous), so audio takes playback back
+    /// from a video. The one automatic caller — a track ending with no
+    /// successor preloaded — passes false and stays silent under a video.
+    private func startAt(_ i: Int, deliberate: Bool = true) {
+        if deliberate { takePlaybackFromVideo() }
         pendingSeekPosition = nil
         index = i
         ended = false
@@ -912,7 +914,7 @@ final class PlayerService {
         } else if hasNext {
             // No preload ready (resolution in flight, or it failed) — fall
             // back to a full load and accept the small gap.
-            startAt(index + 1)
+            startAt(index + 1, deliberate: false)
         } else {
             ended = true  // queue finished — next enqueue/play-next restarts playback
             commitListening()

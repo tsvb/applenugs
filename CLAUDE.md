@@ -66,11 +66,12 @@ Native **macOS + iOS SwiftUI** player for nugs.net, shipped to users as **Yeti �
   fixed-geometry cluster uses `NowPlayingFit.scale` + `scaleEffect` + a matching `.frame` —
   `scaleEffect` alone keeps the old footprint.
 - **Audio/video arbiter: only one plays, the last one DELIBERATELY started wins** (2026-11-08 fix for
-  audio and video playing over each other). `VideoPlayerService` claims via `PlayerService.pauseForExternalAudio()`
-  (which now silences the engine unconditionally, not only when `isPlaying`); while `suspendedForVideo`,
+  audio and video playing over each other). `VideoPlayerService` calls `PlayerService.pauseForExternalAudio()`
+  on EVERY claim, even one it thinks it already holds; that silences the engine unconditionally and reads
+  "was playing" from `isPlaying || player.rate != 0`, not the flag alone. While `suspendedForVideo`,
   `PlayerService.startPlayback()` REFUSES to start, so an automatic start (a stream resolve or retry landing
   after the video took over) can't play underneath. Deliberate audio starts — `startAt` (play/enqueue/jump/
-  next/previous), `resume`, `togglePlayPause`, the gapless `next()` — call `takePlaybackFromVideo()` first,
+  next/previous; `itemDidEnd`'s auto-advance passes `deliberate: false`), `resume`, `togglePlayPause`, the gapless `next()` — call `takePlaybackFromVideo()` first,
   which fires the `yieldExternalOwner` hook → `VideoPlayerService.yieldToAudio()` (pause the video, hand
   back with `resume: false`). Any new audio entry point that means "the listener pressed play" must call
   `takePlaybackFromVideo()`; one that doesn't will be silently swallowed while a video owns playback.

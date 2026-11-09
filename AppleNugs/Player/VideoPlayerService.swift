@@ -252,13 +252,19 @@ final class VideoPlayerService {
         pushNowPlayingInfo()
     }
 
-    /// Take over system Now Playing + remote commands from audio, unless we
-    /// already own them. Captures whether audio was playing so it can be resumed
-    /// on relinquish; guarding on `ownsNowPlaying` stops a re-entrant claim from
-    /// overwriting that captured state and stranding audio paused.
+    /// Take over system Now Playing + remote commands from audio. Audio is
+    /// silenced on EVERY claim, even one we think we already hold — a video
+    /// starting must never leave audio running, whatever our bookkeeping says.
+    /// Whether audio was playing is OR-ed into `resumeAudioOnStop`, so a
+    /// re-entrant claim (which finds audio already paused) can't overwrite the
+    /// state captured by the first one and strand audio paused.
     private func claimArbiterIfNeeded() {
-        guard !ownsNowPlaying else { return }
-        resumeAudioOnStop = audio.pauseForExternalAudio()
+        let audioWasPlaying = audio.pauseForExternalAudio()
+        guard !ownsNowPlaying else {
+            resumeAudioOnStop = resumeAudioOnStop || audioWasPlaying
+            return
+        }
+        resumeAudioOnStop = audioWasPlaying
         claimNowPlaying()
     }
 
