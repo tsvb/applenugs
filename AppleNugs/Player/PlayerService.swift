@@ -175,6 +175,15 @@ final class PlayerService {
     /// audio and video never both drive the system playback UI.
     private var suspendedForVideo = false
 
+    /// Set by the video player: asks it to step aside (pause and hand Now
+    /// Playing back) when the listener deliberately starts audio while a video
+    /// owns playback. Deliberate starts are the public transport entry points
+    /// (see `takePlaybackFromVideo`); automatic ones — a resolve or retry
+    /// finishing, a removed track's slot refilling — never call it, and
+    /// `startPlayback()` refuses them while suspended, so audio can't start
+    /// underneath a playing video.
+    var yieldExternalOwner: (@MainActor () -> Void)?
+
     /// True only between an audio-session interruption pausing playback and
     /// that interruption ending — the gate that keeps `.shouldResume` from
     /// restarting audio the user paused themselves (iOS only; inert on macOS).
@@ -491,6 +500,7 @@ final class PlayerService {
             // Settle while the head is still this track: once it advances,
             // its playhead can no longer be read.
             settleListening()
+            takePlaybackFromVideo()
             player.advanceToNextItem()
             adoptPreload(p)
             isPlaying = startPlayback()
@@ -522,6 +532,11 @@ final class PlayerService {
     /// an ongoing call.
     @discardableResult
     private func startPlayback() -> Bool {
+        // A video owns playback: an automatic start (a stream resolve or retry
+        // landing after the video took over) must not play underneath it. The
+        // item stays loaded, so the video's hand-back can resume it. Deliberate
+        // starts called `takePlaybackFromVideo()` first and are never blocked.
+        guard !suspendedForVideo else { return false }
         #if os(iOS)
         do {
             try AVAudioSession.sharedInstance().setActive(true)
@@ -539,10 +554,14 @@ final class PlayerService {
             // A restored (or finished) queue with nothing loaded yet —
             // (re)start the current track; pendingSeekPosition resumes
             // where the last session left off.
-            if current != nil { startCurrent() }
+            if current != nil {
+                takePlaybackFromVideo()
+                startCurrent()
+            }
             return
         }
         if player.timeControlStatus == .paused {
+            takePlaybackFromVideo()
             rebaseListening()
             isPlaying = startPlayback()
         } else {
@@ -555,6 +574,7 @@ final class PlayerService {
     }
 
     func resume() {
+        takePlaybackFromVideo()
         guard player.currentItem != nil else {
             if current != nil { startCurrent() }
             return
@@ -588,7 +608,21 @@ final class PlayerService {
         pausedByInterruption = false
         let wasPlaying = isPlaying
         if wasPlaying { pause() }
+        // Silence the engine whatever `isPlaying` says: the flag can trail the
+        // player (a head item we haven't adopted yet), and a stale false must
+        // not leave audio running under the video.
+        player.pause()
         return wasPlaying
+    }
+
+    /// The listener deliberately started audio: if a video owns playback, ask
+    /// it to pause and hand playback back (without resuming us — we're about
+    /// to start). Clears the suspension so the start goes through.
+    private func takePlaybackFromVideo() {
+        guard suspendedForVideo else { return }
+        yieldExternalOwner?()
+        // The video's hand-back clears this; make sure even without a hook.
+        suspendedForVideo = false
     }
 
     /// Counterpart to `pauseForExternalAudio`: the external (video) owner has
@@ -625,6 +659,9 @@ final class PlayerService {
     // --- playback engine --------------------------------------------------------
 
     private func startAt(_ i: Int) {
+        // Every startAt caller is the listener choosing a track (play, enqueue
+        // or play-next into an idle queue, jump, next, previous).
+        takePlaybackFromVideo()
         pendingSeekPosition = nil
         index = i
         ended = false
