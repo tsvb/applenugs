@@ -195,22 +195,35 @@ enum BlisterPackStyle: Sendable {
     var metrics: Metrics {
         switch self {
         case .regular:
-            // `.np .card { padding: 34px 26px 20px }` in a 350pt card.
+            // `.np .card { padding: 34px 26px 20px }` in a 350pt card — bar
+            // the top, which clears the hang slot (see `topPadding`).
             return Metrics(bubble: .regular,
-                           cardPadding: EdgeInsets(top: 34, leading: 26, bottom: 20, trailing: 26),
+                           cardPadding: EdgeInsets(top: Self.topPadding(.regular, clear: 8),
+                                                   leading: 26, bottom: 20, trailing: 26),
                            gap: 18, idealBubble: 298)
         case .hero:
             // `.hero-card { padding: 32px 18px 16px }`, `.hero-card .bubble
             // { width: 186px }`, `.hero-card .name { margin-top: 16px }`.
             return Metrics(bubble: .regular,
-                           cardPadding: EdgeInsets(top: 32, leading: 18, bottom: 16, trailing: 18),
+                           cardPadding: EdgeInsets(top: Self.topPadding(.regular, clear: 8),
+                                                   leading: 18, bottom: 16, trailing: 18),
                            gap: 16, idealBubble: 186)
         case .small:
             // `.card.pack.sm { width: 156px; padding: 30px 16px 16px }`.
             return Metrics(bubble: .small,
-                           cardPadding: EdgeInsets(top: 30, leading: 16, bottom: 16, trailing: 16),
+                           cardPadding: EdgeInsets(top: Self.topPadding(.small, clear: 6),
+                                                   leading: 16, bottom: 16, trailing: 16),
                            gap: 14, idealBubble: 124)
         }
+    }
+
+    /// The card's top padding, derived rather than copied from the sheet. The
+    /// bubble's outer halo ring is drawn OUTSIDE its frame (`haloOuter` wide),
+    /// and the sheet's 30–34pt tops left that ring touching — on the hero,
+    /// overlapping — the hang slot. So: the slot's bottom edge, then `clear`
+    /// points of bare card stock, then the halo, then the bubble.
+    private static func topPadding(_ bubble: BlisterBubbleMetrics, clear: CGFloat) -> CGFloat {
+        BlisterCard.slotBottom + clear + bubble.haloOuter
     }
 }
 
@@ -224,6 +237,13 @@ struct BlisterCard: View {
 
     /// `.card { border-radius: 22px }`
     static let cornerRadius: CGFloat = 22
+    /// The hang slot's inset from the card's top edge (the sheet's 13, raised
+    /// 2pt to give the bubble's halo room below it).
+    nonisolated static let slotTop: CGFloat = 11
+    /// Where the slot ends, light catch included — what the bubble's halo
+    /// must clear (`BlisterPackStyle.topPadding`).
+    nonisolated static let slotBottom: CGFloat = slotTop + HangSlot.height + HangSlot.lightCatch
+
     /// `0 18px 30px -22px rgba(0,0,0,.8)`
     static let lift = StickerLift(layers: [
         .init(opacity: 0.8, y: 18, blur: 30, spread: -22),
@@ -236,7 +256,7 @@ struct BlisterCard: View {
             // `inset 0 0 0 1px var(--frost)`
             .overlay { shape.strokeBorder(theme.palette.hairline, lineWidth: 1) }
             .overlay(alignment: .top) {
-                HangSlot().padding(.top, 13)
+                HangSlot().padding(.top, Self.slotTop)
             }
             .stickerLift(Self.lift, in: shape)
             .accessibilityHidden(true)
@@ -246,8 +266,13 @@ struct BlisterCard: View {
 /// `.card::before`: a 46×12 capsule punched through the card, showing the
 /// night (`palette.base`), with a dark inner lip at the top and a faint light
 /// catch on the card just below it.
-private struct HangSlot: View {
+struct HangSlot: View {
     @Environment(\.theme) private var theme
+
+    nonisolated static let width: CGFloat = 46
+    nonisolated static let height: CGFloat = 12
+    /// The 1pt light catch drawn just below the slot.
+    nonisolated static let lightCatch: CGFloat = 1
 
     var body: some View {
         let shape = Capsule()
@@ -257,9 +282,10 @@ private struct HangSlot: View {
             .overlay { InnerShadow(shape: shape, color: .black.opacity(0.6), x: 0, y: 2, blur: 3) }
             // `0 1px 0 rgba(233,238,247,.08)`: the card's edge catching light.
             .background {
-                OuterShadow(shape: shape, color: BlisterGlass.snow.opacity(0.08), y: 1, blur: 0, spread: 0)
+                OuterShadow(shape: shape, color: BlisterGlass.snow.opacity(0.08),
+                            y: Self.lightCatch, blur: 0, spread: 0)
             }
-            .frame(width: 46, height: 12)
+            .frame(width: Self.width, height: Self.height)
     }
 }
 
