@@ -102,9 +102,15 @@ Native **macOS + iOS SwiftUI** player for nugs.net, shipped to users as **Yeti �
   (the store seam is neutral so `VideoPlayerService` could become a second caller). Reset lives in the
   account menu behind a `.confirmationDialog` (verified presenting from the macOS toolbar `Menu`).
 
-## START HERE — state as of 2026-11-07 (handoff for a new session)
+## START HERE — state as of 2026-11-08 (handoff for a new session)
 
-**YETI IS THE ONLY DESIGN — stages (d) and (e) BUILT (2026-11-07, branch `yeti-design`, NOT pushed, 330 tests,
+**LANDED ON `main` 2026-11-08** (fast-forward of `yeti-design`, Tim's call): everything below, plus three
+fixes Tim found living with it on his Duo — audio and video no longer play over each other (`8ed1f93`,
+`f77d049`; see Conventions → arbiter), and the bubble's halo clears the hang slot (`ef97eb2`; the card's top
+padding is DERIVED from the slot + clearance + halo — don't copy the sheet's 30–34pt tops back). Both fixes
+are on Tim's Duo; he confirmed the hang slot ("looks great"), the audio/video fix is awaiting his check.
+
+**YETI IS THE ONLY DESIGN — stages (d) and (e) BUILT (2026-11-07, branch `yeti-design`, 330 tests,
 gate green at e4).** (d) `f1503dc` Yeti-only + the macOS foil focus outline; then the app icon (`8969457`,
 "The bubble") and the Duo pill back on the system accessory (`a114586`); (e) e1 `653769c` transport +
 miniplayer variants deleted, e2 `cb040e4` art-color pipeline + wash + grain deleted, e3 `8bf351d` every
