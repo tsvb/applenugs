@@ -1,0 +1,149 @@
+{
+  "fill": {
+    "linear-gradient": [
+      "srgb:0.08235,0.10980,0.20000,1.00000",
+      "srgb:0.04314,0.05882,0.10980,1.00000"
+    ]
+  },
+  "fill-specializations": [
+    {
+      "value": {
+        "linear-gradient": [
+          "srgb:0.08235,0.10980,0.20000,1.00000",
+          "srgb:0.04314,0.05882,0.10980,1.00000"
+        ]
+      }
+    },
+    {
+      "appearance": "dark",
+      "value": "automatic"
+    }
+  ],
+  "groups": [
+    {
+      "layers": [
+        {
+          "glass": false,
+          "hidden": false,
+          "image-name": "foil.svg",
+          "name": "Foil glint"
+        }
+      ],
+      "name": "Foil",
+      "shadow": {
+        "kind": "none",
+        "opacity": 0.5
+      },
+      "specular": false,
+      "translucency": {
+        "enabled": false,
+        "value": 0.5
+      }
+    },
+    {
+      "layers": [
+        {
+          "glass": true,
+          "hidden": false,
+          "image-name": "rim.svg",
+          "name": "Rim"
+        },
+        {
+          "glass": false,
+          "hidden": false,
+          "image-name": "film.svg",
+          "name": "Film"
+        }
+      ],
+      "name": "Bubble",
+      "shadow": {
+        "kind": "none",
+        "opacity": 0.5
+      },
+      "specular": true,
+      "translucency": {
+        "enabled": false,
+        "value": 0.5
+      }
+    },
+    {
+      "layers": [
+        {
+          "glass": false,
+          "hidden": false,
+          "image-name": "bars.svg",
+          "name": "Bars"
+        },
+        {
+          "fill-specializations": [
+            {
+              "appearance": "tinted",
+              "value": {
+                "solid": "srgb:1.00000,1.00000,1.00000,1.00000"
+              }
+            }
+          ],
+          "glass": false,
+          "hidden": false,
+          "image-name": "disc.svg",
+          "name": "Disc"
+        }
+      ],
+      "name": "Sticker",
+      "shadow": {
+        "kind": "neutral",
+        "opacity": 0.5
+      },
+      "specular": false,
+      "translucency": {
+        "enabled": false,
+        "value": 0.5
+      }
+    },
+    {
+      "layers": [
+        {
+          "glass": false,
+          "hidden": false,
+          "image-name": "interior.svg",
+          "name": "Interior"
+        },
+        {
+          "glass": false,
+          "hidden": false,
+          "image-name": "flange.svg",
+          "name": "Flange"
+        },
+        {
+          "glass": false,
+          "hidden": false,
+          "hidden-specializations": [
+            {
+              "appearance": "dark",
+              "value": true
+            },
+            {
+              "appearance": "tinted",
+              "value": true
+            }
+          ],
+          "image-name": "glow.svg",
+          "name": "Glow"
+        }
+      ],
+      "name": "Card",
+      "shadow": {
+        "kind": "neutral",
+        "opacity": 0.6
+      },
+      "specular": false,
+      "translucency": {
+        "enabled": false,
+        "value": 0.5
+      }
+    }
+  ],
+  "supported-platforms": {
+    "squares": "shared"
+  }
+}

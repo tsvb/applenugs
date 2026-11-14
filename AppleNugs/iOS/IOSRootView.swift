@@ -9,16 +9,11 @@ import UIKit
 /// because the accessory belongs to the TabView: it rides above pushed detail
 /// screens for free. The old inset decorated each stack's *root* view, so the
 /// bar vanished the moment anything was pushed.
-///
-/// The one exception is a vertical tab bar (iPhone Duo): there the pill is
-/// mounted as a TabView overlay that ducks on scroll — see `NowPlayingAccessory`.
 struct IOSRootView: View {
     @Environment(AppModel.self) private var app
     @Environment(UIState.self) private var ui
-    @Environment(ThemeManager.self) private var themes
     @Environment(\.theme) private var theme
 
-    @State private var artProvider = ArtColorProvider()
     // Starts presented under -UITestShowNowPlaying so layout screenshots can
     // reach the full-screen player without a tap (simctl cannot tap).
     @State private var nowPlayingPresented =
@@ -27,9 +22,6 @@ struct IOSRootView: View {
     @State private var offlineShown = false
     /// The pill's expanded panel. Owned here, not by the pill — see the sheet.
     @State private var panelShown = false
-    /// The pill's duck on iPhone Duo (see PillDuck.swift). Written by the
-    /// scroll roots, read only by `PillDuckOverlay` — never by this body.
-    @State private var pillDuck = PillDuck()
     #if DEBUG
     /// The DEBUG Network Probe sheet (account menu). Starts presented under
     /// -UITestShowNetworkProbe so it can be screenshotted without a tap.
@@ -39,19 +31,6 @@ struct IOSRootView: View {
     /// Guards the listening-stats reset. There is no event log behind those
     /// tallies, so the wipe is unrecoverable — it does not happen on one tap.
     @State private var confirmingStatsReset = false
-
-    /// The accent the chrome should use right now: the live art color when the
-    /// active theme is art-driven, else nil (so static themes are untouched).
-    private var activeArtColor: Color? {
-        theme.consumesArtColor ? artProvider.color : nil
-    }
-
-    /// Refires the extractor when the track changes, when its art finishes
-    /// loading, or when the theme's appetite for art changes.
-    private var artTaskID: String {
-        let track = app.player.current?.id.uuidString ?? "none"
-        return "\(track)|\(app.player.nowPlayingImage != nil)|\(theme.consumesArtColor)"
-    }
 
     var body: some View {
         Group {
@@ -68,18 +47,10 @@ struct IOSRootView: View {
                 connectionFailedView(message)
             }
         }
-        .themed(theme, art: activeArtColor)
-        .environment(\.artColor, activeArtColor)
-        .environment(pillDuck)
+        .themed(theme)
         // One scene, so one install point; the cover, the panel and the
         // dashboard sheet nested inside them all inherit it.
         .nowPlayingMetaLinks(app: app, ui: ui)
-        .task(id: artTaskID) {
-            artProvider.update(
-                image: app.player.nowPlayingImage,
-                key: app.player.current?.artworkPath,
-                enabled: theme.consumesArtColor)
-        }
         .task { await app.bootstrap() }
         // Deep links (applenugs://show/…). Parse here; AppModel acts now if the
         // session is up, or stashes for the drain below. The now-playing cover
@@ -106,19 +77,15 @@ struct IOSRootView: View {
     }
 
     private func connectionFailedView(_ message: String) -> some View {
-        ContentUnavailableView {
-            Label("Couldn't reach nugs.net", systemImage: "wifi.exclamationmark")
-        } description: {
-            Text(message)
-        } actions: {
-            Button("Retry") { Task { await app.retryBootstrap() } }
-                .buttonStyle(.borderedProminent)
-            // The whole point of downloads is being reachable right here.
-            if !app.downloads.manifest.shows.isEmpty {
-                Button("Listen Offline") { offlineShown = true }
-            }
-            Button("Sign Out") { app.logout() }
-        }
+        let hasDownloads = !app.downloads.manifest.shows.isEmpty
+        return ConnectionFailedView(
+            message: message,
+            hasDownloads: hasDownloads,
+            canPlayOffline: hasDownloads && OfflineAccessPolicy.allowsOfflinePlay(
+                lastVerifiedAt: OfflineVerification.lastVerifiedAt(), now: Date()),
+            onRetry: { Task { await app.retryBootstrap() } },
+            onListenOffline: { offlineShown = true },
+            onSignOut: { app.logout() })
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .sheet(isPresented: $offlineShown) {
             NavigationStack {
@@ -185,6 +152,11 @@ struct IOSRootView: View {
             app: app,
             onTap: { nowPlayingPresented = true },
             onExpand: { panelShown = true }))
+        // The Home hero (Yeti) opens the same cover the pill's tap does —
+        // one presentation, one owner.
+        .environment(\.openNowPlaying, OpenNowPlayingAction { [presented = $nowPlayingPresented] in
+            presented.wrappedValue = true
+        })
         .dismissesOnNavigation($nowPlayingPresented, ui: ui)
         .fullScreenCover(isPresented: $nowPlayingPresented) {
             // On iPhone Duo's inner display the player sits beside its queue;
@@ -256,6 +228,13 @@ struct IOSRootView: View {
                     ToolbarItem(placement: .topBarTrailing) { accountMenu }
                 }
         }
+        // System API, not custom chrome: the default (`.automatic`) drew no
+        // bottom edge effect under the accessory where the tab bar is vertical
+        // (iPhone Duo, folded), so content ran crisp through and below the
+        // pill. `.soft` is what horizontal-bar iPhones already get; they render
+        // unchanged. On the NavigationStack, not its root, so it reaches every
+        // pushed screen (artist, show, video) as well.
+        .scrollEdgeEffectStyle(.soft, for: .bottom)
         .overlay(alignment: .bottom) { toastOverlay }
     }
 
@@ -264,17 +243,6 @@ struct IOSRootView: View {
             if case .loggedIn(let plan) = app.sessionState, let plan {
                 Text(plan)
             }
-            Picker("Theme", selection: Binding(
-                get: { themes.selected },
-                set: { newValue in
-                    withAnimation(.easeInOut(duration: 0.35)) { themes.selected = newValue }
-                }
-            )) {
-                ForEach(ThemeID.allCases) { id in
-                    Text(id.displayName).tag(id)
-                }
-            }
-            .pickerStyle(.menu)
             #if DEBUG
             Divider()
             Button("Network Probe (Debug)") { probeShown = true }
@@ -284,7 +252,7 @@ struct IOSRootView: View {
                 confirmingStatsReset = true
             }
             Divider()
-            Button("Log Out") { app.logout() }
+            Button("Sign Out") { app.logout() }
             // iOS has no About panel, so the disclaimer the Mac carries in
             // Credits.rtf lives here: non-interactive rows, like the plan above.
             // Two short lines rather than one long one — menu rows truncate.
@@ -315,12 +283,7 @@ struct IOSRootView: View {
     @ViewBuilder
     private var toastOverlay: some View {
         if let toast = ui.toast {
-            Text(toast)
-                .font(.callout.weight(.medium))
-                .padding(.horizontal, 14)
-                .padding(.vertical, 8)
-                .background(.regularMaterial, in: Capsule())
-                .shadow(radius: 4)
+            ToastCapsule(text: toast.text, kind: toast.kind)
                 // This overlay is attached to the NavigationStack itself, one
                 // level above `content()` (see `tabStack` above) — but the
                 // NavigationStack is still a Tab's content, and it's *being*
@@ -334,100 +297,36 @@ struct IOSRootView: View {
                 // same overlay by construction, so the same safe area and
                 // padding apply there too, but that specific case wasn't
                 // exercised with a live tap (see the report for why).
-                // Where the pill is hand-mounted over a vertical tab bar
-                // instead (iPhone Duo) nothing excludes it from the safe area,
-                // so `ToastPillClearance` adds the pill's rise above it.
-                .modifier(ToastPillClearance())
+                .padding(.bottom, 8)
                 .transition(.opacity)
                 .allowsHitTesting(false)
         }
     }
 }
 
-/// Hosts `NowPlayingPill` on the `TabView`: in the system bottom accessory
-/// everywhere the tab bar is horizontal, and as our own ducking overlay where
-/// it is laid out vertically (iPhone Duo — see PillDuck.swift).
-///
-/// `\.toolbarVerticalEdge` is iOS 27.1+, so reading it needs a type of its own
-/// behind `#available`; below 27.1 there is no vertical tab bar to detect.
-private struct NowPlayingAccessory: ViewModifier {
-    let app: AppModel
-    let onTap: () -> Void
-    let onExpand: () -> Void
-
-    func body(content: Content) -> some View {
-        if #available(iOS 27.1, *) {
-            content.modifier(VerticalBarReader(app: app, onTap: onTap, onExpand: onExpand))
-        } else {
-            content.modifier(PillMount(verticalBar: false, app: app,
-                                       onTap: onTap, onExpand: onExpand))
-        }
-    }
-}
-
-/// Reads the tab bar's orientation at the TabView (verified to report there,
-/// in tab content, and in the pill): `.trailing` on iPhone Duo wherever the bar
-/// runs down the side, nil everywhere else — including the Duo's inner display
-/// whenever its bar is horizontal.
-@available(iOS 27.1, *)
-private struct VerticalBarReader: ViewModifier {
-    @Environment(\.toolbarVerticalEdge) private var verticalEdge
-    let app: AppModel
-    let onTap: () -> Void
-    let onExpand: () -> Void
-
-    func body(content: Content) -> some View {
-        content.modifier(PillMount(verticalBar: verticalEdge != nil, app: app,
-                                   onTap: onTap, onExpand: onExpand))
-    }
-}
-
-/// One modifier chain for both mounts, so the gate flipping (a fold, or
-/// playback starting) never changes the TabView's identity.
+/// Hosts `NowPlayingPill` in the `TabView`'s bottom accessory — on every
+/// iPhone, including iPhone Duo where the tab bar runs down the side. Tim's
+/// call (2026-11-07): follow the system, not a custom overlay. The system's
+/// scroll edge effect handles content under the bars, and `PillLayout` sheds
+/// controls by measured width for the Duo's narrow (~290pt, still
+/// `.expanded`) accessory. Don't fork the mount on `\.toolbarVerticalEdge`
+/// again — see CLAUDE.md.
 ///
 /// `tabViewBottomAccessory(isEnabled:content:)` is the overload that hides the
 /// accessory entirely when nothing is playing; it is iOS 26.1+, which is why
 /// the deployment target is 26.1 rather than 26.0. The content-only overload
 /// (26.0) has no way to reclaim the slot, so an idle player would leave a 48pt
 /// gap above the tab bar.
-///
-/// With a vertical bar the accessory is switched OFF and the pill is mounted
-/// in the overlay instead. Toggling the accessory can't duck it: it pops (or
-/// crossfades in place) and reflows the content's bottom safe area each time.
-private struct PillMount: ViewModifier {
-    let verticalBar: Bool
+private struct NowPlayingAccessory: ViewModifier {
     let app: AppModel
     let onTap: () -> Void
     let onExpand: () -> Void
 
     func body(content: Content) -> some View {
-        let playing = app.player.current != nil
-        let overlay = verticalBar && playing
         content
-            .tabViewBottomAccessory(isEnabled: playing && !verticalBar) {
+            .tabViewBottomAccessory(isEnabled: app.player.current != nil) {
                 NowPlayingPill(onTap: onTap, onExpand: onExpand)
             }
             .tabBarMinimizeBehavior(.onScrollDown)
-            // Centered in the content column: the TabView's trailing safe area
-            // already excludes the vertical bar.
-            .overlay(alignment: .bottom) {
-                if overlay {
-                    PillDuckOverlay(onTap: onTap, onExpand: onExpand)
-                }
-            }
-            .environment(\.pillOverlayActive, overlay)
-    }
-}
-
-/// The toast's 8pt bottom gap, plus — while the pill is the hand-mounted
-/// overlay (iPhone Duo, vertical tab bar) — the pill's rise above the safe
-/// area, so the toast sits 8pt above the pill as it does above the accessory.
-/// Deliberately not duck-aware: a toast that hopped down whenever the pill
-/// ducked would move under the reader. Exactly 8 on every other device.
-private struct ToastPillClearance: ViewModifier {
-    @Environment(\.pillOverlayActive) private var overlayActive
-
-    func body(content: Content) -> some View {
-        content.padding(.bottom, 8 + (overlayActive ? PillDuckMetrics.contentClearance : 0))
     }
 }

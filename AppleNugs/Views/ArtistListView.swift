@@ -14,7 +14,7 @@ struct ArtistListView: View {
 
     /// A–Z sections, derived state: filtering + grouping + locale-aware
     /// sorting over a catalog hundreds deep is too heavy to redo on every
-    /// body evaluation (favorites toggles, theme switches, toasts) — it
+    /// body evaluation (favorites toggles, toasts) — it
     /// rebuilds only when the inputs actually change (load, keystroke).
     @State private var sections: [(letter: String, artists: [ArtistEntry])] = []
 
@@ -59,12 +59,19 @@ struct ArtistListView: View {
                     Section {
                         ForEach(section.artists) { artist in
                             NavigationLink(value: Route.artist(artist)) {
+                                // The `.alist` rows of the first sheet's "Pill
+                                // over an artist list": names only (Tim's
+                                // ruling 2: no show counts), heavy 17 on frost
+                                // rules, under heavy slush letter headers.
                                 Text(artist.name)
-                                    .font(theme.type.body(14))
+                                    .font(theme.type.title(17))
                                     .foregroundStyle(theme.palette.textPrimary)
-                                    .padding(.vertical, 1)
+                                    .lineLimit(1)
+                                    .padding(.vertical, 4)
                             }
-                            .listRowSeparator(.hidden)
+                            // Each row is ruled in frost (`.alist li`).
+                            .listRowSeparator(.visible)
+                            .listRowSeparatorTint(theme.palette.hairline)
                             .themedListRow()
                             .contextMenu {
                                 let fav = app.favorites.isArtistFavorited(artist.id)
@@ -75,16 +82,16 @@ struct ArtistListView: View {
                             }
                         }
                     } header: {
+                        // `.letter`: heavy slush, untracked. A header isn't
+                        // time moving, so it isn't foil.
                         Text(section.letter)
-                            .font(theme.type.section(12))
-                            .tracking(theme.caps.contains(.condensedHeaders) ? 1.6 : 0.5)
-                            .foregroundStyle(theme.palette.accent)
+                            .font(theme.type.section(17))
+                            .foregroundStyle(theme.palette.textSecondary)
                     }
                 }
             }
             .listStyle(.inset)
             .scrollContentBackground(.hidden)
-            .reportsScrollForPillDuck()
         }
         .background(theme.palette.base)
         .navigationTitle("Artists")
@@ -109,7 +116,8 @@ struct ArtistListView: View {
                     systemImage: "exclamationmark.triangle",
                     description: Text(error))
             } else if sections.isEmpty && !artists.isEmpty {
-                ContentUnavailableView.search(text: filter)
+                ContentUnavailableView(theme.copy.searchNoResults(filter),
+                                       systemImage: "magnifyingglass")
             }
         }
         .task { await load() }
@@ -121,12 +129,15 @@ struct ArtistListView: View {
     private var filterField: some View {
         HStack(spacing: 8) {
             Image(systemName: "magnifyingglass")
-                .font(.system(size: 12, weight: .medium))
+                .font(.system(size: 15, weight: .medium))
                 .foregroundStyle(theme.palette.textSecondary)
-            TextField("Filter artists", text: $filter)
+            TextField("Filter artists", text: $filter,
+                      prompt: Text("Filter artists").foregroundStyle(theme.palette.textIdle))
                 .textFieldStyle(.plain)
-                .font(theme.type.body(13))
+                .font(theme.type.body(16))
                 .foregroundStyle(theme.palette.textPrimary)
+                // The root tint is snow; the caret is focus, and focus is foil.
+                .tint(theme.palette.accent)
                 .focused($filterFocused)
                 .submitLabel(.done)
             if !filter.isEmpty {
@@ -138,14 +149,17 @@ struct ArtistListView: View {
                 .buttonStyle(.plain)
             }
         }
-        .padding(.horizontal, 10)
+        .padding(.horizontal, 12)
         .padding(.vertical, 7)
+        // `.search`: a 38pt shelf field, radius 12, no keyline at rest (the
+        // foil focus ring stays).
+        .frame(minHeight: 38)
         .background {
-            RoundedRectangle(cornerRadius: 9, style: .continuous)
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
                 .fill(theme.palette.raised)
                 .overlay {
-                    RoundedRectangle(cornerRadius: 9, style: .continuous)
-                        .strokeBorder(filterFocused ? theme.palette.accent.opacity(0.7) : theme.palette.hairline,
+                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        .strokeBorder(filterFocused ? theme.palette.accent.opacity(0.7) : .clear,
                                       lineWidth: 1)
                 }
         }

@@ -14,14 +14,9 @@ struct LibraryView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            Picker("Library section", selection: $segment) {
-                ForEach(Segment.allCases) { s in
-                    Text(s.rawValue).tag(s)
-                }
-            }
-            .pickerStyle(.segmented)
-            .padding(.horizontal, 16)
-            .padding(.vertical, 8)
+            segmentPicker
+                .padding(.horizontal, 16)
+                .padding(.vertical, 8)
 
             switch segment {
             case .favorites: FavoritesView()
@@ -35,5 +30,10 @@ struct LibraryView: View {
         // top of the phone's longest list saying it a second time.
         .navigationTitle(segment == .favorites ? "Favorites" : "Downloads")
         .compactNavigationTitle()
+    }
+
+    private var segmentPicker: some View {
+        YetiSegmentedControl("Library section", selection: $segment,
+                             options: Segment.allCases.map { .init(value: $0, title: $0.rawValue) })
     }
 }

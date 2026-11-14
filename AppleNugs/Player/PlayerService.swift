@@ -175,6 +175,15 @@ final class PlayerService {
     /// audio and video never both drive the system playback UI.
     private var suspendedForVideo = false
 
+    /// Set by the video player: asks it to step aside (pause and hand Now
+    /// Playing back) when the listener deliberately starts audio while a video
+    /// owns playback. Deliberate starts are the public transport entry points
+    /// (see `takePlaybackFromVideo`); automatic ones — a resolve or retry
+    /// finishing, a removed track's slot refilling — never call it, and
+    /// `startPlayback()` refuses them while suspended, so audio can't start
+    /// underneath a playing video.
+    var yieldExternalOwner: (@MainActor () -> Void)?
+
     /// True only between an audio-session interruption pausing playback and
     /// that interruption ending — the gate that keeps `.shouldResume` from
     /// restarting audio the user paused themselves (iOS only; inert on macOS).
@@ -491,6 +500,7 @@ final class PlayerService {
             // Settle while the head is still this track: once it advances,
             // its playhead can no longer be read.
             settleListening()
+            takePlaybackFromVideo()
             player.advanceToNextItem()
             adoptPreload(p)
             isPlaying = startPlayback()
@@ -522,6 +532,11 @@ final class PlayerService {
     /// an ongoing call.
     @discardableResult
     private func startPlayback() -> Bool {
+        // A video owns playback: an automatic start (a stream resolve or retry
+        // landing after the video took over) must not play underneath it. The
+        // item stays loaded, so the video's hand-back can resume it. Deliberate
+        // starts called `takePlaybackFromVideo()` first and are never blocked.
+        guard !suspendedForVideo else { return false }
         #if os(iOS)
         do {
             try AVAudioSession.sharedInstance().setActive(true)
@@ -539,10 +554,14 @@ final class PlayerService {
             // A restored (or finished) queue with nothing loaded yet —
             // (re)start the current track; pendingSeekPosition resumes
             // where the last session left off.
-            if current != nil { startCurrent() }
+            if current != nil {
+                takePlaybackFromVideo()
+                startCurrent()
+            }
             return
         }
         if player.timeControlStatus == .paused {
+            takePlaybackFromVideo()
             rebaseListening()
             isPlaying = startPlayback()
         } else {
@@ -555,6 +574,7 @@ final class PlayerService {
     }
 
     func resume() {
+        takePlaybackFromVideo()
         guard player.currentItem != nil else {
             if current != nil { startCurrent() }
             return
@@ -586,9 +606,23 @@ final class PlayerService {
         // Video now owns playback — a pending interruption-resume must not
         // fire underneath it once the interruption ends.
         pausedByInterruption = false
-        let wasPlaying = isPlaying
+        // Ask the engine too, not just `isPlaying`: the flag can trail the
+        // player (a head item we haven't adopted yet), and a stale false must
+        // neither leave audio running under the video nor forget to resume it.
+        let wasPlaying = isPlaying || player.rate != 0
         if wasPlaying { pause() }
+        player.pause()
         return wasPlaying
+    }
+
+    /// The listener deliberately started audio: if a video owns playback, ask
+    /// it to pause and hand playback back (without resuming us — we're about
+    /// to start). Clears the suspension so the start goes through.
+    private func takePlaybackFromVideo() {
+        guard suspendedForVideo else { return }
+        yieldExternalOwner?()
+        // The video's hand-back clears this; make sure even without a hook.
+        suspendedForVideo = false
     }
 
     /// Counterpart to `pauseForExternalAudio`: the external (video) owner has
@@ -624,7 +658,12 @@ final class PlayerService {
 
     // --- playback engine --------------------------------------------------------
 
-    private func startAt(_ i: Int) {
+    /// `deliberate`: the listener chose this track (play, enqueue or play-next
+    /// into an idle queue, jump, next, previous), so audio takes playback back
+    /// from a video. The one automatic caller — a track ending with no
+    /// successor preloaded — passes false and stays silent under a video.
+    private func startAt(_ i: Int, deliberate: Bool = true) {
+        if deliberate { takePlaybackFromVideo() }
         pendingSeekPosition = nil
         index = i
         ended = false
@@ -875,7 +914,7 @@ final class PlayerService {
         } else if hasNext {
             // No preload ready (resolution in flight, or it failed) — fall
             // back to a full load and accept the small gap.
-            startAt(index + 1)
+            startAt(index + 1, deliberate: false)
         } else {
             ended = true  // queue finished — next enqueue/play-next restarts playback
             commitListening()
@@ -1251,9 +1290,8 @@ final class PlayerService {
     // --- artwork --------------------------------------------------------------
 
     /// The cached cover image for the now-playing track, if it has loaded.
-    /// Reused by themed now-playing chips and the album-art color extractor —
-    /// reading the observed cache means views update when art arrives, with no
-    /// extra fetch.
+    /// Reused by the now-playing chips and art tiles — reading the observed
+    /// cache means views update when art arrives, with no extra fetch.
     var nowPlayingImage: PlatformImage? {
         current?.artworkPath.flatMap { artworkCache[$0] }
     }

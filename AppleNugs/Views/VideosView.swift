@@ -46,7 +46,6 @@ struct VideosView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
         }
-        .reportsScrollForPillDuck()
         .background(theme.palette.base)
         .navigationTitle("Videos")
         .compactNavigationTitle()
@@ -55,11 +54,11 @@ struct VideosView: View {
 
     // --- section title (shared idiom) --------------------------------------
 
+    /// Section names come from the copy (the barker voice), set as `.sec h3`,
+    /// heavy 22, like Home's headers.
     private func sectionTitle(_ text: String) -> some View {
-        let condensed = theme.caps.contains(.condensedHeaders)
-        return Text(condensed ? text.uppercased() : text)
-            .font(theme.type.section(17))
-            .tracking(condensed ? 1.4 : 0)
+        Text(text)
+            .font(theme.type.section(22))
             .foregroundStyle(theme.palette.textPrimary)
     }
 
@@ -69,7 +68,7 @@ struct VideosView: View {
 
     private var continueWatchingSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            sectionTitle("Continue Watching")
+            sectionTitle(theme.copy.videosResume)
             ScrollView(.horizontal, showsIndicators: false) {
                 LazyHStack(alignment: .top, spacing: 16) {
                     ForEach(continueWatching) { progress in
@@ -93,6 +92,8 @@ struct VideosView: View {
         }
     }
 
+    /// `.prog`: a frost track with the accent fill. The accent is foil, and
+    /// that is right here: resume progress moves through time.
     private func resumeBar(_ progress: VideoProgress) -> some View {
         GeometryReader { geo in
             ZStack(alignment: .leading) {
@@ -116,7 +117,7 @@ struct VideosView: View {
     // first render.
     private var liveSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            sectionTitle("Live & Upcoming")
+            sectionTitle(theme.copy.videosLive)
             ScrollView(.horizontal, showsIndicators: false) {
                 LazyHStack(alignment: .top, spacing: 16) {
                     ForEach(webcasts) { video in
@@ -131,9 +132,11 @@ struct VideosView: View {
 
     private var recentExclusivesSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            sectionTitle("Recent Exclusives")
-            Text("Recently streamed — replays and free links.")
-                .font(theme.type.body(13))
+            sectionTitle(theme.copy.videosExclusives)
+            // The header already says "Just streamed", so the line drops the
+            // "Recently streamed" lead-in (as the surfaces sheet draws it).
+            Text("Replays and free links.")
+                .font(theme.type.body(14))
                 .foregroundStyle(theme.palette.textSecondary)
                 .padding(.top, -6)
             ScrollView(.horizontal, showsIndicators: false) {
@@ -210,19 +213,11 @@ struct VideosView: View {
 
     // --- empty / error states ----------------------------------------------
 
+    /// The empty pack (`EmptyPackMessage`), the app before anything has
+    /// arrived.
     private var emptyState: some View {
-        VStack(spacing: 8) {
-            Image(systemName: "play.rectangle")
-                .font(.system(size: 34))
-                .foregroundStyle(theme.palette.accent)
-            Text("No videos right now")
-                .font(theme.type.hero(22))
-                .foregroundStyle(theme.palette.textPrimary)
-            Text("Recently added concerts and webcasts will show up here.")
-                .font(theme.type.body(13))
-                .foregroundStyle(theme.palette.textSecondary)
-                .multilineTextAlignment(.center)
-        }
+        EmptyPackMessage(title: "No videos right now",
+                         message: "Recently added concerts and webcasts will show up here.")
     }
 
     private func errorState(_ message: String) -> some View {

@@ -16,12 +16,15 @@ struct MonogramTile: View {
     }
 
     var body: some View {
+        // Printed on card stock in slush (`.mono` in the surfaces sheet):
+        // accent letters would be pink type on the bubble, the very fill the
+        // design keeps for time.
         RoundedRectangle(cornerRadius: size * 0.18, style: .continuous)
-            .fill(theme.palette.raised)
+            .fill(theme.palette.cardStock)
             .overlay {
                 Text(initials)
                     .font(theme.type.section(size * 0.4))
-                    .foregroundStyle(theme.palette.accent)
+                    .foregroundStyle(theme.palette.textSecondary)
             }
             .overlay {
                 RoundedRectangle(cornerRadius: size * 0.18, style: .continuous)

@@ -35,7 +35,8 @@ struct CrateThumb: View {
             .overlay(
                 Image(systemName: kind == .video ? "play.fill" : "music.note")
                     .font(.system(size: 9))
-                    .foregroundStyle(theme.palette.accent.opacity(0.7))
+                    // A placeholder isn't time moving: slush.
+                    .foregroundStyle(theme.palette.textSecondary)
             )
     }
 }

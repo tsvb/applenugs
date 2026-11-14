@@ -29,7 +29,6 @@ struct AlbumDetailView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
         }
-        .reportsScrollForPillDuck()
         .background(theme.palette.base)
         .navigationTitle(album?.title ?? titleHint ?? "Album")
         .compactNavigationTitle()
@@ -49,42 +48,66 @@ struct AlbumDetailView: View {
     // --- sections ---------------------------------------------------------------
 
     private func header(_ album: AlbumDetailModel) -> some View {
-        HStack(alignment: .top, spacing: 14) {
+        // `.show-ios` sets the text against the cover's bottom edge.
+        HStack(alignment: .bottom, spacing: 14) {
             if album.imageURL != nil {
                 CoverArt(url: album.imageURL)
                     .frame(width: 110)
             }
-            VStack(alignment: .leading, spacing: 4) {
-                Text(album.title).font(theme.type.hero(26))
-                Text(album.artistName).font(theme.type.title(18)).foregroundStyle(theme.palette.textSecondary)
-                HStack(spacing: 10) {
-                    if let date = album.dateText {
-                        Text(date).font(theme.type.numeric(12))
-                    }
-                    if let venue = album.venue {
-                        Text(venue)
-                    }
-                    if let runtime = album.totalRunningTime {
-                        Text("\(runtime) · \(album.tracks.count) tracks")
-                            .font(theme.type.numeric(12))
-                            .foregroundStyle(theme.palette.textSecondary)
-                    }
-                }
-                .font(.callout)
-                .foregroundStyle(theme.palette.textSecondary)
-            }
+            headerText(album)
         }
     }
 
+    /// `.show-ios`: the meta stacks instead of sitting side by side
+    /// (where a city wrapped into a ragged column of its own). Title, then
+    /// the artist as a snow link, then "date · venue" on one truncating line,
+    /// then "runtime · N tracks", both in slush 13.5. A missing field drops
+    /// out rather than leaving a blank line.
+    private func headerText(_ album: AlbumDetailModel) -> some View {
+        let place = [album.dateText, album.venue].compactMap { $0 }.joined(separator: " · ")
+        return VStack(alignment: .leading, spacing: 4) {
+            Text(album.title)
+                .font(theme.type.hero(26))
+                .foregroundStyle(theme.palette.textPrimary)
+            artistLink(album.artistName)
+            VStack(alignment: .leading, spacing: 2) {
+                if !place.isEmpty {
+                    Text(place)
+                        .lineLimit(1)
+                        .truncationMode(.tail)
+                }
+                if let runtime = album.totalRunningTime {
+                    Text("\(runtime) · \(album.tracks.count) tracks")
+                        .lineLimit(1)
+                }
+            }
+            .font(theme.type.body(13.5))
+            .foregroundStyle(theme.palette.textSecondary)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    /// The artist, heavy 15 in snow, opening the artist page through the same
+    /// `x-applenugs-meta://` route the now-playing links use (the scene
+    /// root's `.nowPlayingMetaLinks` resolves the name; a miss is a toast).
+    /// A `.link` run in a `Text`, like `NowPlayingMetaText`, carrying its snow
+    /// explicitly so SwiftUI doesn't paint it in the link tint.
+    private func artistLink(_ name: String) -> some View {
+        var run = AttributedString(name)
+        run[AttributeScopes.FoundationAttributes.LinkAttribute.self] =
+            NowPlayingMetaLine.Target.artist(name: name).url
+        run[AttributeScopes.SwiftUIAttributes.ForegroundColorAttribute.self] = theme.palette.textPrimary
+        return Text(run)
+            .font(theme.type.title(15))
+            .lineLimit(1)
+    }
+
+    /// Play all is the one snow primary and the rest are frost rings — round
+    /// icon buttons on iPhone (`.actrow .ib`), frost-outlined labeled buttons
+    /// on the Mac.
     private func actions(_ album: AlbumDetailModel) -> some View {
         HStack(spacing: 8) {
-            Button {
-                app.player.play(queueTracks(album))
-            } label: {
-                Label("Play all", systemImage: "play.fill")
-            }
-            .buttonStyle(.borderedProminent)
-            .disabled(album.tracks.isEmpty)
+            playAllButton(album)
 
             Button {
                 if app.player.playNext(queueTracks(album)) {
@@ -94,6 +117,7 @@ struct AlbumDetailView: View {
                 Label("Play next", systemImage: "text.line.first.and.arrowtriangle.forward")
             }
             .disabled(album.tracks.isEmpty)
+            .yetiPageAction()
 
             Button {
                 if app.player.enqueue(queueTracks(album)) {
@@ -103,6 +127,10 @@ struct AlbumDetailView: View {
                 Label("Queue", systemImage: "plus")
             }
             .disabled(album.tracks.isEmpty)
+            .yetiPageAction()
+
+            // `.actrow .grow`: Save and Download sit at the trailing edge.
+            Spacer(minLength: 0)
 
             // Five labeled buttons overflow iPhone widths; the secondary
             // actions go icon-only there (labels stay for accessibility).
@@ -120,6 +148,16 @@ struct AlbumDetailView: View {
             .labelStyle(.iconOnly)
             #endif
         }
+    }
+
+    private func playAllButton(_ album: AlbumDetailModel) -> some View {
+        Button {
+            app.player.play(queueTracks(album))
+        } label: {
+            Label("Play all", systemImage: "play.fill")
+        }
+        .disabled(album.tracks.isEmpty)
+        .buttonStyle(.yetiPrimary)
     }
 
     /// Offline download state machine: idle → live progress → downloaded
@@ -144,10 +182,14 @@ struct AlbumDetailView: View {
                     Label("Download", systemImage: "arrow.down.circle")
                 }
                 .disabled(album.tracks.isEmpty)
+                .yetiPageAction()
 
             case .downloading(let fraction):
                 HStack(spacing: 6) {
                     ProgressView(value: fraction)
+                        // A download moves through time: foil, explicitly,
+                        // against the snow root tint.
+                        .tint(theme.palette.accent)
                         .frame(width: 44)
                         .accessibilityLabel("Downloading show")
                         .accessibilityValue("\(Int(fraction * 100)) percent")
@@ -167,7 +209,7 @@ struct AlbumDetailView: View {
                 } label: {
                     Label("Downloaded", systemImage: "arrow.down.circle.fill")
                 }
-                .tint(theme.palette.accent)
+                .yetiDownloadedAction()
                 .confirmationDialog("Remove this show's downloaded files?",
                                     isPresented: $confirmRemoveDownload,
                                     titleVisibility: .visible) {
@@ -183,6 +225,7 @@ struct AlbumDetailView: View {
                 } label: {
                     Label("Download failed", systemImage: "exclamationmark.arrow.circlepath")
                 }
+                .yetiPageAction()
                 .alert("Download failed", isPresented: $downloadFailureShown) {
                     Button("Retry") { app.downloads.download(downloadRequest()) }
                     Button("OK", role: .cancel) {}
@@ -215,7 +258,9 @@ struct AlbumDetailView: View {
         } label: {
             Label(fav ? "Saved" : "Save", systemImage: fav ? "star.fill" : "star")
         }
-        .tint(fav ? theme.palette.accent : nil)
+        // A saved show isn't time moving: the star is snow (the frost ring's
+        // glyph), never accent.
+        .yetiPageAction()
         .help(fav ? "Remove from Favorites" : "Save show to Favorites")
     }
 
@@ -243,11 +288,11 @@ struct AlbumDetailView: View {
 
         ForEach(groups, id: \.key) { setNum, rows in
             if showHeaders {
-                let label = TrackEntry.setLabel(setNum)
-                Text(theme.caps.contains(.condensedHeaders) ? label.uppercased() : label)
+                Text(TrackEntry.setLabel(setNum))
                     .font(theme.type.section(15))
-                    .tracking(theme.caps.contains(.condensedHeaders) ? 1.4 : 0)
-                    .foregroundStyle(theme.palette.textPrimary)
+                    // `.setname`: set headers are the barker's heavy slush,
+                    // sentence case.
+                    .foregroundStyle(theme.palette.textSecondary)
                     .padding(.top, 6)
             }
             VStack(spacing: 0) {
@@ -319,8 +364,8 @@ private struct TrackRow: View {
     let enqueue: () -> Void
     let isCurrent: Bool
 
+    @Environment(AppModel.self) private var app
     @Environment(\.theme) private var theme
-    @Environment(\.artColor) private var artColor
     @State private var hovering = false
 
     /// Touch has no hover: on iOS the per-row actions are always visible
@@ -333,18 +378,25 @@ private struct TrackRow: View {
         #endif
     }
 
+    /// The setlist rows (`.setlist li`, `.setlist.ios li`): 44pt on iPhone,
+    /// 36pt on the Mac, each ruled in frost.
+    private var rowHeight: CGFloat {
+        #if os(iOS)
+        44
+        #else
+        36
+        #endif
+    }
+
     var body: some View {
         HStack(spacing: 8) {
             Button(action: play) {
                 HStack(spacing: 8) {
-                    Text("\(track.trackNum).")
-                        .font(theme.type.numeric(12))
-                        .foregroundStyle(theme.palette.textSecondary)
-                        .frame(width: 28, alignment: .trailing)
+                    numberColumn
                     Text(track.title)
-                        .font(theme.type.body(13))
-                        .fontWeight(isCurrent ? .semibold : .regular)
-                        .foregroundStyle(isCurrent ? theme.activeEmphasis(art: artColor) : theme.palette.textPrimary)
+                        .font(theme.type.body(15))
+                        .fontWeight(isCurrent ? .heavy : .regular)
+                        .foregroundStyle(isCurrent ? theme.palette.playState : theme.palette.textPrimary)
                     Spacer(minLength: 8)
                     if let duration = track.durationText {
                         Text(duration)
@@ -367,17 +419,51 @@ private struct TrackRow: View {
                 .help("Add to queue")
             }
             .buttonStyle(.borderless)
+            // `.setlist.ios li .q`: lamp-off idle (the snow root tint would
+            // print them louder than the title).
+            .tint(theme.palette.textIdle)
             .opacity(rowActionsVisible ? 1 : 0)
         }
         .padding(.vertical, 4)
         .padding(.horizontal, 6)
+        .frame(minHeight: rowHeight)
+        .background {
+            if isCurrent {
+                // The playing row's faint sale wash (`.setlist li.playing`),
+                // the Mac setlist rule brought to iPhone too.
+                LinearGradient(stops: [.init(color: theme.palette.playState.opacity(0.07), location: 0),
+                                       .init(color: theme.palette.playState.opacity(0), location: 0.7)],
+                               startPoint: .leading, endPoint: .trailing)
+            }
+        }
         .background(hovering ? theme.palette.raised : .clear,
                     in: RoundedRectangle(cornerRadius: 5))
+        .overlay(alignment: .top) {
+            Rectangle().fill(theme.palette.hairline).frame(height: 1)
+        }
         .onHover { hovering = $0 }
         .contextMenu {
             Button("Play", action: play)
             Button("Play Next", action: playNext)
             Button("Add to Queue", action: enqueue)
         }
+    }
+
+    /// The 28pt number column. The playing row shows the 20pt `RowSticker`
+    /// in place of its number (the stage-c spec's row-sticker table), and
+    /// EVERY row's column is 20pt tall, so the sticker moving to another track
+    /// never resizes a row. `isPlaying` is read only on the playing row, so a
+    /// pause re-renders that one row, not the show page.
+    private var numberColumn: some View {
+        Group {
+            if isCurrent {
+                RowSticker(isPlaying: app.player.isPlaying, size: .s20)
+            } else {
+                Text("\(track.trackNum)")
+                    .font(theme.type.numeric(12))
+                    .foregroundStyle(theme.palette.textIdle)
+            }
+        }
+        .frame(width: 28, height: RowSticker.Size.s20.diameter, alignment: .trailing)
     }
 }

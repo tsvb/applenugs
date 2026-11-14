@@ -20,7 +20,7 @@ struct CrateList: View {
 
     /// Derived state, not computed in `body`: filtering + grouping + sorting a
     /// catalog hundreds deep is too heavy to redo on every body evaluation
-    /// (theme switches, favorites toggles, playback ticks). Rebuilt only when
+    /// (favorites toggles, playback ticks). Rebuilt only when
     /// the inputs actually change. The old outline re-grouped all 483 shows on
     /// every render.
     @State private var sections: [(month: Date?, items: [CrateItem])] = []
@@ -61,17 +61,21 @@ struct CrateList: View {
 
     // MARK: scope
 
+    /// Our own segmented control, and no counts in the labels — the header's
+    /// counts line under the name already carries them.
+    private var scopeControl: some View {
+        YetiSegmentedControl("Scope", selection: $scope, options: [
+            .init(value: .show, title: "Shows"),
+            .init(value: .video, title: "Videos"),
+            .init(value: .album, title: "Albums"),
+        ])
+    }
+
     private var scopePicker: some View {
-        Picker("Scope", selection: $scope) {
-            Text("Shows \(shows.count)").tag(CrateKind.show)
-            Text("Videos \(videos.count)").tag(CrateKind.video)
-            Text("Albums \(albums.count)").tag(CrateKind.album)
-        }
-        .pickerStyle(.segmented)
-        .labelsHidden()
-        .padding(.horizontal, 16)
-        .padding(.top, 4)
-        .padding(.bottom, 8)
+        scopeControl
+            .padding(.horizontal, 16)
+            .padding(.top, 4)
+            .padding(.bottom, 8)
     }
 
     // MARK: filter
@@ -81,10 +85,13 @@ struct CrateList: View {
             Image(systemName: "magnifyingglass")
                 .font(.system(size: 12, weight: .medium))
                 .foregroundStyle(theme.palette.textSecondary)
-            TextField(placeholder, text: $filter)
+            TextField(placeholder, text: $filter,
+                      prompt: Text(placeholder).foregroundStyle(theme.palette.textIdle))
                 .textFieldStyle(.plain)
-                .font(theme.type.body(13))
+                .font(theme.type.body(15))
                 .foregroundStyle(theme.palette.textPrimary)
+                // The root tint is snow; the caret is focus, and focus is foil.
+                .tint(theme.palette.accent)
                 .focused($filterFocused)
                 .submitLabel(.done)
             if !filter.isEmpty {
@@ -97,15 +104,13 @@ struct CrateList: View {
                 .accessibilityLabel("Clear filter")
             }
         }
-        .padding(.horizontal, 10)
+        .padding(.horizontal, 12)
         .padding(.vertical, 7)
+        // The `.field`: a 40pt shelf field, radius 12, no keyline.
+        .frame(minHeight: 40)
         .background {
-            RoundedRectangle(cornerRadius: 8, style: .continuous)
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
                 .fill(theme.palette.raised)
-                .overlay {
-                    RoundedRectangle(cornerRadius: 8, style: .continuous)
-                        .strokeBorder(theme.palette.hairline, lineWidth: 1)
-                }
         }
         .padding(.horizontal, 16)
         .padding(.bottom, 8)
@@ -152,7 +157,7 @@ struct CrateList: View {
                                     .themedListRow()
                             }
                         } header: {
-                            Text(header(section.month))
+                            monthHeader(section.month)
                         }
                     }
                 }
@@ -161,15 +166,16 @@ struct CrateList: View {
             .listStyle(.inset)
             .scrollContentBackground(.hidden)
             .scrollDismissesKeyboard(.immediately)
-            .reportsScrollForPillDuck()
         }
     }
 
-    private func header(_ month: Date?) -> String {
-        let title = CrateSection.monthTitle(month,
-                                            calendar: CrateSection.catalogCalendar,
-                                            locale: .current)
-        return theme.caps.contains(.condensedHeaders) ? title.uppercased() : title
+    /// Month headers: the barker's heavy slush 15 (`.month`), sentence case.
+    private func monthHeader(_ month: Date?) -> some View {
+        Text(CrateSection.monthTitle(month,
+                                     calendar: CrateSection.catalogCalendar,
+                                     locale: .current))
+            .font(theme.type.section(15))
+            .foregroundStyle(theme.palette.textSecondary)
     }
 
     private var loadingFooter: some View {

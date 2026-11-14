@@ -16,15 +16,16 @@ struct SearchView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            TextField("Search shows, artists, songs", text: $query)
-                .textFieldStyle(.roundedBorder)
-                .focused($fieldFocused)
-                .submitLabel(.search)
-                .onSubmit { Task { await run() } }
+            searchField
                 .padding([.horizontal, .top], 16)
                 .padding(.bottom, 10)
 
             resultsBody
+        }
+        // Night under the whole tab (the results list paints its own base;
+        // the empty/initial states otherwise sat on the system black).
+        .background {
+            theme.palette.base.ignoresSafeArea()
         }
         .navigationTitle("Search")
         .compactNavigationTitle()
@@ -49,6 +50,30 @@ struct SearchView: View {
         }
     }
 
+    /// The surfaces sheet's `.field` — one 40pt shelf field, a slush
+    /// magnifier, and a foil caret (focus is foil; the root tint is snow).
+    private var searchField: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "magnifyingglass")
+                .font(.system(size: 15, weight: .medium))
+                .foregroundStyle(theme.palette.textSecondary)
+            TextField("Search shows, artists, songs", text: $query,
+                      prompt: Text("Search shows, artists, songs")
+                        .foregroundStyle(theme.palette.textIdle))
+                .focused($fieldFocused)
+                .submitLabel(.search)
+                .onSubmit { Task { await run() } }
+                .textFieldStyle(.plain)
+                .font(theme.type.body(16))
+                .foregroundStyle(theme.palette.textPrimary)
+                .tint(theme.palette.accent)
+        }
+        .padding(.horizontal, 12)
+        .frame(minHeight: 40)
+        .background(theme.palette.raised,
+                    in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+    }
+
     @ViewBuilder
     private var resultsBody: some View {
         if searching {
@@ -62,7 +87,8 @@ struct SearchView: View {
                 description: Text(error))
         } else if let results, let searchedQuery {
             if results.isEmpty {
-                ContentUnavailableView.search(text: searchedQuery)
+                ContentUnavailableView(theme.copy.searchNoResults(searchedQuery),
+                                       systemImage: "magnifyingglass")
             } else {
                 resultsList(results)
             }
@@ -107,16 +133,23 @@ struct SearchView: View {
             }
         }
         .scrollContentBackground(.hidden)
-        .reportsScrollForPillDuck()
         .background(theme.palette.base)
     }
 
+    /// `.minisec`: the barker's heavy slush 15, sentence case. The headers
+    /// after Artists come from the API (`scHeader`), so an all-caps one is set
+    /// in sentence case here.
     private func sectionHeader(_ text: String) -> some View {
-        let condensed = theme.caps.contains(.condensedHeaders)
-        return Text(condensed ? text.uppercased() : text)
-            .font(theme.type.section(12))
-            .tracking(condensed ? 1.5 : 0)
+        Text(Self.sentenceCased(text))
+            .font(theme.type.section(15))
             .foregroundStyle(theme.palette.textSecondary)
+    }
+
+    /// "SHOWS" → "Shows"; anything already in mixed case is left alone.
+    private static func sentenceCased(_ text: String) -> String {
+        guard text == text.uppercased(), text != text.lowercased(),
+              let first = text.first else { return text }
+        return String(first).uppercased() + text.dropFirst().lowercased()
     }
 
     @ViewBuilder
@@ -158,7 +191,7 @@ struct SearchView: View {
                     app.player.play(single)
                 } label: {
                     HStack(spacing: 6) {
-                        Image(systemName: "play.fill").font(.caption)
+                        songPlayMark
                         Text(item.name)
                         if let artist = item.artistName {
                             Text("— \(artist)").foregroundStyle(theme.palette.textSecondary)
@@ -186,6 +219,20 @@ struct SearchView: View {
                 .accessibilityLabel("Add \(item.name) to queue")
             }
         }
+    }
+
+    /// A song's play mark: an OUTLINED disc in slush, not a sticker — nothing
+    /// is playing yet (the sheet's `.rs` with no stock).
+    private var songPlayMark: some View {
+        ZStack {
+            Circle().strokeBorder(theme.palette.textSecondary, lineWidth: 1.5)
+            Image(systemName: "play.fill")
+                .font(.system(size: 9, weight: .bold))
+                .foregroundStyle(theme.palette.textSecondary)
+                .offset(x: 1)
+        }
+        .frame(width: 22, height: 22)
+        .padding(.trailing, 4)
     }
 
     private func run() async {

@@ -23,16 +23,13 @@ struct FavoritesView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
         }
-        .reportsScrollForPillDuck()
         .background(theme.palette.base)
         .navigationTitle("Favorites")
     }
 
     private func sectionTitle(_ text: String) -> some View {
-        let condensed = theme.caps.contains(.condensedHeaders)
-        return Text(condensed ? text.uppercased() : text)
+        Text(text)
             .font(theme.type.section(17))
-            .tracking(condensed ? 1.4 : 0)
             .foregroundStyle(theme.palette.textPrimary)
     }
 
@@ -55,6 +52,11 @@ struct FavoritesView: View {
                         .background {
                             RoundedRectangle(cornerRadius: 9, style: .continuous)
                                 .fill(theme.palette.raised)
+                        }
+                        // Chips on the shelf with a frost keyline, as on Home.
+                        .overlay {
+                            RoundedRectangle(cornerRadius: 9, style: .continuous)
+                                .strokeBorder(theme.palette.hairline, lineWidth: 1)
                         }
                         .contentShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
                     }
@@ -123,17 +125,9 @@ struct FavoritesView: View {
                      eventStart: nil, has4K: false)
     }
 
+    /// The empty pack.
     private var emptyState: some View {
-        VStack(spacing: 8) {
-            Image(systemName: "star")
-                .font(.system(size: 34))
-                .foregroundStyle(theme.palette.accent)
-            Text("Nothing saved yet")
-                .font(theme.type.hero(22))
-                .foregroundStyle(theme.palette.textPrimary)
-            Text("Star an artist, show, or video to keep it here.")
-                .font(theme.type.body(13))
-                .foregroundStyle(theme.palette.textSecondary)
-        }
+        EmptyPackMessage(title: "Nothing saved yet",
+                         message: "Star an artist, show, or video to keep it here.")
     }
 }

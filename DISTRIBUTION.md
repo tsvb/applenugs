@@ -106,7 +106,7 @@ The project is already configured with everything review checks for:
 
 | Requirement                       | Status                                            |
 | --------------------------------- | ------------------------------------------------- |
-| App icon (all sizes)              | ✅ `Assets.xcassets/AppIcon.appiconset`           |
+| App icon (all sizes)              | ✅ `AppleNugs/AppIcon.icon` (Icon Composer)       |
 | App Sandbox                       | ✅ `com.apple.security.app-sandbox`               |
 | Hardened Runtime                  | ✅ `ENABLE_HARDENED_RUNTIME = YES`                |
 | Privacy manifest                  | ✅ `PrivacyInfo.xcprivacy` (UserDefaults, no data)|

@@ -12,11 +12,9 @@ struct DownloadsView: View {
     var body: some View {
         Group {
             if app.downloads.manifest.shows.isEmpty {
-                ContentUnavailableView {
-                    Label("Nothing downloaded", systemImage: "arrow.down.circle")
-                } description: {
-                    Text("Download a show from its page to keep it for offline listening.")
-                }
+                // The empty pack, nothing boxed up yet.
+                EmptyPackMessage(title: theme.copy.downloadsEmptyTitle,
+                                 message: Self.emptyMessage)
             } else {
                 VStack(spacing: 0) {
                     List {
@@ -27,18 +25,16 @@ struct DownloadsView: View {
                     }
                     .listStyle(.inset)
                     .scrollContentBackground(.hidden)
-                    // The footer below the list must clear the iPhone Duo
-                    // overlay pill too, so the VStack is padded instead.
-                    .reportsScrollForPillDuck(insetsContent: false)
 
                     storageFooter
                 }
-                .clearsPillOverlay()
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(theme.palette.base)
     }
+
+    private static let emptyMessage = "Download a show from its page to keep it for offline listening."
 
     /// "N shows · X GB" — the manifest is the single source of truth, so the
     /// line always matches what the list renders.
@@ -76,7 +72,8 @@ struct DownloadsView: View {
 
                 Image(systemName: "play.circle")
                     .font(.system(size: 22))
-                    .foregroundStyle(theme.palette.accent)
+                    // A play glyph isn't time moving: snow.
+                    .foregroundStyle(theme.palette.textPrimary)
             }
             .contentShape(Rectangle())
         }

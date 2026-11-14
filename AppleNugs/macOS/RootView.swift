@@ -3,7 +3,6 @@ import SwiftUI
 struct RootView: View {
     @Environment(AppModel.self) private var app
     @Environment(UIState.self) private var ui
-    @Environment(ThemeManager.self) private var themes
     @Environment(\.theme) private var theme
 
     @State private var offlineShown = false
@@ -33,26 +32,22 @@ struct RootView: View {
                 connectionFailedView(message)
             }
         }
-        .providesArtColor(app: app, theme: theme)
+        .themed(theme)
         .nowPlayingMetaLinks(app: app, ui: ui)
         .task { await app.bootstrap() }
         .onAppear { KeyboardShortcuts.install(app: app, ui: ui) }
     }
 
     private func connectionFailedView(_ message: String) -> some View {
-        ContentUnavailableView {
-            Label("Couldn't reach nugs.net", systemImage: "wifi.exclamationmark")
-        } description: {
-            Text(message)
-        } actions: {
-            Button("Retry") { Task { await app.retryBootstrap() } }
-                .buttonStyle(.borderedProminent)
-            // The whole point of downloads is being reachable right here.
-            if !app.downloads.manifest.shows.isEmpty {
-                Button("Listen Offline") { offlineShown = true }
-            }
-            Button("Sign Out") { app.logout() }
-        }
+        let hasDownloads = !app.downloads.manifest.shows.isEmpty
+        return ConnectionFailedView(
+            message: message,
+            hasDownloads: hasDownloads,
+            canPlayOffline: hasDownloads && OfflineAccessPolicy.allowsOfflinePlay(
+                lastVerifiedAt: OfflineVerification.lastVerifiedAt(), now: Date()),
+            onRetry: { Task { await app.retryBootstrap() } },
+            onListenOffline: { offlineShown = true },
+            onSignOut: { app.logout() })
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .sheet(isPresented: $offlineShown) {
             NavigationStack {
@@ -205,17 +200,6 @@ struct RootView: View {
             if case .loggedIn(let plan) = app.sessionState, let plan {
                 Text(plan)
             }
-            Picker("Theme", selection: Binding(
-                get: { themes.selected },
-                set: { newValue in
-                    withAnimation(.easeInOut(duration: 0.35)) { themes.selected = newValue }
-                }
-            )) {
-                ForEach(ThemeID.allCases) { id in
-                    Text(id.displayName).tag(id)
-                }
-            }
-            .pickerStyle(.menu)
             #if DEBUG
             Divider()
             Button("Network Probe (Debug)") { probeShown = true }
@@ -225,7 +209,7 @@ struct RootView: View {
                 confirmingStatsReset = true
             }
             Divider()
-            Button("Log Out") { app.logout() }
+            Button("Sign Out") { app.logout() }
         } label: {
             Label("Account", systemImage: "person.circle")
         }
@@ -242,12 +226,7 @@ struct RootView: View {
     @ViewBuilder
     private var toastOverlay: some View {
         if let toast = ui.toast {
-            Text(toast)
-                .font(.callout.weight(.medium))
-                .padding(.horizontal, 14)
-                .padding(.vertical, 8)
-                .background(.regularMaterial, in: Capsule())
-                .shadow(radius: 4)
+            ToastCapsule(text: toast.text, kind: toast.kind)
                 .padding(.bottom, 78)  // float above the transport bar
                 .transition(.opacity)
                 .allowsHitTesting(false)

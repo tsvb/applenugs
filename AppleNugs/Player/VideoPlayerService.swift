@@ -24,8 +24,9 @@ enum VideoQuality: Hashable {
 /// from the audio queue's `AVQueuePlayer`. Starting a video pauses the audio
 /// `PlayerService` (remembering whether it was playing) and claims the system
 /// Now Playing / remote-command center; `stop()` relinquishes both and resumes
-/// audio if it had been playing. Only one of audio/video owns Now Playing at a
-/// time — the arbiter rule.
+/// audio if it had been playing. Starting audio on purpose while a video plays
+/// pauses the video (`yieldToAudio`). Only one of audio/video owns Now Playing
+/// — and plays — at a time: the arbiter rule.
 @MainActor
 @Observable
 final class VideoPlayerService {
@@ -101,6 +102,9 @@ final class VideoPlayerService {
         if let code = UserDefaults.standard.string(forKey: Self.qualityKey) {
             selectedQuality = Self.quality(from: code)
         }
+        // The other half of the arbiter: a deliberate audio start (the pill's
+        // play, a show's Play) while a video owns playback pauses the video.
+        audio.yieldExternalOwner = { [weak self] in self?.yieldToAudio() }
         let interval = CMTime(seconds: 0.5, preferredTimescale: 600)
         timeObserver = player.addPeriodicTimeObserver(
             forInterval: interval, queue: .main) { [weak self] _ in
@@ -248,13 +252,19 @@ final class VideoPlayerService {
         pushNowPlayingInfo()
     }
 
-    /// Take over system Now Playing + remote commands from audio, unless we
-    /// already own them. Captures whether audio was playing so it can be resumed
-    /// on relinquish; guarding on `ownsNowPlaying` stops a re-entrant claim from
-    /// overwriting that captured state and stranding audio paused.
+    /// Take over system Now Playing + remote commands from audio. Audio is
+    /// silenced on EVERY claim, even one we think we already hold — a video
+    /// starting must never leave audio running, whatever our bookkeeping says.
+    /// Whether audio was playing is OR-ed into `resumeAudioOnStop`, so a
+    /// re-entrant claim (which finds audio already paused) can't overwrite the
+    /// state captured by the first one and strand audio paused.
     private func claimArbiterIfNeeded() {
-        guard !ownsNowPlaying else { return }
-        resumeAudioOnStop = audio.pauseForExternalAudio()
+        let audioWasPlaying = audio.pauseForExternalAudio()
+        guard !ownsNowPlaying else {
+            resumeAudioOnStop = resumeAudioOnStop || audioWasPlaying
+            return
+        }
+        resumeAudioOnStop = audioWasPlaying
         claimNowPlaying()
     }
 
@@ -267,6 +277,20 @@ final class VideoPlayerService {
         relinquishNowPlaying()
         audio.endExternalPlayback(resume: resumeAudioOnStop)
         resumeAudioOnStop = false
+    }
+
+    /// The listener started audio on purpose while this video owned playback:
+    /// pause the video and hand Now Playing back WITHOUT resuming audio (it is
+    /// starting itself). The item stays loaded, so the video's own Play
+    /// re-claims and pauses audio again — the last thing started wins.
+    private func yieldToAudio() {
+        guard ownsNowPlaying else { return }
+        player.pause()
+        isPlaying = false
+        recordProgress(force: true)
+        relinquishOnFullScreenExit = false
+        resumeAudioOnStop = false
+        relinquishArbiter()
     }
 
     // --- full screen --------------------------------------------------------

@@ -5,13 +5,12 @@ import SwiftUI
 struct AppleNugsiOSApp: App {
     @State private var app = AppModel()
     @State private var ui: UIState
-    @State private var themes = ThemeManager()
     @Environment(\.scenePhase) private var scenePhase
     // Portrait-locked app, rotatable fullscreen video (see OrientationGate).
     @UIApplicationDelegateAdaptor(OrientationGate.self) private var orientationGate
 
     init() {
-        // Launch-arg tab/theme selection for layout screenshots under -UITEST
+        // Launch-arg tab selection for layout screenshots under -UITEST
         // (simctl cannot tap; XCUITest on iOS is future work).
         let ui = UIState()
         #if DEBUG
@@ -25,13 +24,6 @@ struct AppleNugsiOSApp: App {
             default: break
             }
         }
-        let themes = ThemeManager()
-        if let i = ProcessInfo.processInfo.arguments.firstIndex(of: "-UITestTheme"),
-           ProcessInfo.processInfo.arguments.indices.contains(i + 1),
-           let id = ThemeID(rawValue: ProcessInfo.processInfo.arguments[i + 1]) {
-            themes.selected = id
-        }
-        _themes = State(initialValue: themes)
         #endif
         _ui = State(initialValue: ui)
         // Same CDN-artwork cache sizing as the Mac entry point: AsyncImage
@@ -50,8 +42,6 @@ struct AppleNugsiOSApp: App {
             IOSRootView()
                 .environment(app)
                 .environment(ui)
-                .environment(themes)
-                .environment(\.theme, themes.theme)
         }
         .onChange(of: scenePhase) { _, phase in
             switch phase {

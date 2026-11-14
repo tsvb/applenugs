@@ -1,8 +1,8 @@
 import SwiftUI
 
 /// The pill chevron's destination: everything the 48pt capsule cannot hold —
-/// real scrub numerals with a thumb, the favourite star, AirPlay, the format
-/// badge, and a way into the queue. (A drag-up gesture was tried first, but
+/// real scrub numerals with a thumb, the favorite star, AirPlay, the format
+/// badge (the price sticker), and a way into the queue. (A drag-up gesture was tried first, but
 /// it fought the tab bar's own scroll-to-minimize handling and was replaced
 /// by the chevron tap.)
 ///
@@ -18,20 +18,26 @@ struct ExpandedPlayerPanel: View {
     private var player: PlayerService { app.player }
 
     var body: some View {
-        VStack(spacing: 12) {
+        // The 46pt play sticker in the transport row is taller than the glyph
+        // it replaced, so the stack keeps tight 6pt gaps to hold the whole
+        // panel inside the fixed 250pt detent. No price sticker here (Tim,
+        // 2026-11-07: next to the play sticker its weight competed with it):
+        // the quality is quiet text under the venue instead.
+        VStack(spacing: 6) {
             HStack(spacing: 10) {
                 ArtChip(image: player.nowPlayingImage,
                         fallbackText: player.current?.artist ?? "?",
                         size: 44)
                 VStack(alignment: .leading, spacing: 1) {
                     Text(player.current?.title ?? "Nothing playing")
-                        .font(theme.type.body(15).weight(.semibold))
+                        .font(theme.type.title(17))
                         .foregroundStyle(theme.palette.textPrimary)
                         .lineLimit(1)
                     NowPlayingMetaText(track: player.current, mode: .firstAvailable)
                         .font(theme.type.body(12))
                         .foregroundStyle(theme.palette.textSecondary)
                         .lineLimit(1)
+                    qualityLine
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
 
@@ -40,26 +46,19 @@ struct ExpandedPlayerPanel: View {
 
             PanelScrubRow()
 
-            PillTransportControls(controls: PillLayout.controls(for: .expanded))
+            PillTransportControls(controls: PillLayout.controls(for: .expanded),
+                                  playControl: .sticker(.s46))
                 .font(.title2)
 
             Divider().overlay(theme.palette.hairline)
 
             HStack {
-                RoutePicker(tint: theme.palette.accent)
+                // AirPlay isn't time moving: slush, not foil.
+                RoutePicker(tint: theme.palette.textSecondary)
                     .frame(width: 26, height: 26)
                     .accessibilityLabel("AirPlay")
                 Spacer()
-                if let pick = player.nowPick {
-                    Text(pick.format.badge)
-                        .font(theme.type.numeric(10).weight(.semibold))
-                        .foregroundStyle(theme.palette.textSecondary)
-                }
-                Spacer()
-                Button("Queue") { dashboardShown = true }
-                    .font(theme.type.body(12))
-                    .foregroundStyle(theme.palette.accent)
-                    .accessibilityHint("Opens the queue and stream details")
+                queueButton
             }
         }
         .padding(.horizontal, 18)
@@ -75,13 +74,41 @@ struct ExpandedPlayerPanel: View {
         }
     }
 
+    /// "Lossless 16/44" in quiet slush text, from the same policy as the price
+    /// sticker: presence follows `player.current`, never `nowPick` (which is
+    /// nil'd on every track change), so it reads "Lossless" until the stream
+    /// is known instead of blinking. Always one line tall — a blank line when
+    /// hidden (a stream known to be lossy) — so the panel never reflows.
+    private var qualityLine: some View {
+        let label = PriceStickerLabel(player: player)
+        let text = label.map { [$0.title, $0.spec].compactMap { $0 }.joined(separator: " ") } ?? " "
+        return Text(text)
+            .font(theme.type.numeric(11))
+            .foregroundStyle(theme.palette.textSecondary)
+            .lineLimit(1)
+            .accessibilityLabel(label?.accessibilityLabel ?? "")
+            .accessibilityHidden(label == nil)
+    }
+
+    /// A frost-outlined button (never filled or tinted with the accent).
+    private var queueButton: some View {
+        Button { dashboardShown = true } label: {
+            Label("Queue", systemImage: "list.bullet")
+        }
+        .buttonStyle(.yetiSecondary)
+        .controlSize(.small)
+        .accessibilityHint("Opens the queue and stream details")
+    }
+
     private var favoriteStar: some View {
         let saved = NowPlayingFavorite.isSaved(player.current, favorites: app.favorites)
         return Button {
             NowPlayingFavorite.toggle(player.current, favorites: app.favorites)
         } label: {
             Image(systemName: saved ? "star.fill" : "star")
-                .foregroundStyle(saved ? theme.palette.accent : theme.palette.textSecondary)
+                // A saved show isn't time moving: the filled star is snow,
+                // not an accent fill.
+                .foregroundStyle(saved ? theme.palette.textPrimary : theme.palette.textSecondary)
         }
         .buttonStyle(.plain)
         .disabled(player.current?.showId == nil)

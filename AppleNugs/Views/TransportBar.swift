@@ -1,11 +1,10 @@
 import SwiftUI
 
 /// Bottom transport bar: now-playing block, prev/play/next, seek, volume,
-/// and the current format badge. Mirrors the web Transport component.
+/// and the price sticker. Mirrors the web Transport component.
 struct TransportBar: View {
     @Environment(AppModel.self) private var app
     @Environment(\.theme) private var theme
-    @Environment(\.artColor) private var artColor
 
     #if os(macOS)
     @Environment(\.openWindow) private var openWindow
@@ -20,11 +19,7 @@ struct TransportBar: View {
 
     var body: some View {
         #if os(macOS)
-        if theme.transport == .faceplate {
-            FaceplateTransport()
-        } else {
-            standardBar
-        }
+        standardBar
         #else
         // iOS uses NowPlayingPill in the tab accessory; nothing docks here.
         EmptyView()
@@ -43,7 +38,8 @@ struct TransportBar: View {
 
             volumeBlock
 
-            RoutePicker(tint: theme.palette.accent)
+            // AirPlay isn't time moving: slush, not foil.
+            RoutePicker(tint: theme.palette.textSecondary)
                 .frame(width: 26, height: 26)
                 .help("AirPlay")
 
@@ -59,15 +55,11 @@ struct TransportBar: View {
             .help("Open the Now Playing window")
             .accessibilityLabel("Open the Now Playing window")
 
-            if let pick = player.nowPick {
-                Text(pick.format.badge)
-                    .font(theme.type.numeric(10).weight(.semibold))
-                    .foregroundStyle(badgeColor(for: pick.format))
-                    .padding(.horizontal, 6)
-                    .padding(.vertical, 2)
-                    .background(theme.palette.hairline, in: RoundedRectangle(cornerRadius: 4))
-                    .help(pick.format.qualityLabel)
-            }
+            // The price sticker replaces the format badge. Presence follows
+            // `player.current` (inside the sticker's own init), never
+            // `nowPick`, and it holds its 36pt frame when hidden, so the bar
+            // never reflows at a track boundary.
+            PriceSticker(player: player, size: .s36)
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 10)
@@ -77,21 +69,6 @@ struct TransportBar: View {
 
     private var barBackground: some View {
         theme.palette.raised
-            .overlay { ArtWashBackground(style: theme.washStyle, color: artColor ?? .clear) }
-            .overlay {
-                if theme.textureOpacity > 0 {
-                    PaperGrain().opacity(theme.textureOpacity).allowsHitTesting(false)
-                }
-            }
-    }
-
-    /// Lossless formats get the theme's dedicated lossless tint when it has one;
-    /// everything else rides the accent.
-    private func badgeColor(for format: AudioFormat) -> Color {
-        if format.isLossless, let badge = theme.palette.losslessBadge {
-            return badge
-        }
-        return theme.palette.textSecondary
     }
 
     private var nowPlayingStar: some View {
@@ -101,7 +78,9 @@ struct TransportBar: View {
         } label: {
             Image(systemName: saved ? "star.fill" : "star")
                 .font(.system(size: 13))
-                .foregroundStyle(saved ? theme.palette.accent : theme.palette.textSecondary)
+                // A saved show isn't time moving: the filled star is snow,
+                // not an accent fill.
+                .foregroundStyle(saved ? theme.palette.textPrimary : theme.palette.textSecondary)
         }
         .buttonStyle(.plain)
         .disabled(player.current?.showId == nil)
@@ -112,19 +91,8 @@ struct TransportBar: View {
 
     // --- blocks ------------------------------------------------------------------
 
-    @ViewBuilder
     private var nowPlayingBlock: some View {
-        switch theme.transport {
-        case .tapeLabel:
-            TapeLabelCard()
-        case .jCard:
-            JCardStrip()
-        case .standard, .faceplate, .clickWheel:
-            // Faceplate has its own whole-bar treatment on the Mac; Click
-            // Wheel's circular pad is an iOS full-screen idea — on the Mac
-            // bar both fall back to the standard block in their own tokens.
-            StandardNowPlaying()
-        }
+        StandardNowPlaying()
     }
 
     private var controls: some View {
@@ -147,23 +115,7 @@ struct TransportBar: View {
             .help("Back 15s (←)")
             .accessibilityLabel("Back 15 seconds")
 
-            Button {
-                player.togglePlayPause()
-            } label: {
-                if player.isBuffering {
-                    ProgressView()
-                        .controlSize(.small)
-                        .frame(width: 24)
-                } else {
-                    Image(systemName: player.isPlaying ? "pause.fill" : "play.fill")
-                        .font(.title3)
-                        .frame(width: 24)
-                }
-            }
-            .disabled(player.current == nil)
-            .help("Play / pause (space)")
-            .accessibilityLabel(player.isPlaying ? "Pause" : "Play")
-            .accessibilityValue(player.isBuffering ? "Buffering" : "")
+            playPauseButton
 
             Button {
                 player.seek(by: 30)
@@ -184,6 +136,27 @@ struct TransportBar: View {
             .accessibilityLabel("Next track")
         }
         .buttonStyle(.borderless)
+    }
+
+    /// The 34pt play sticker (its own disc, glyph and spinner, one size in
+    /// every state).
+    private var playPauseButton: some View {
+        Button {
+            player.togglePlayPause()
+        } label: {
+            PlaySticker(isPlaying: player.isPlaying,
+                        isBuffering: player.isBuffering,
+                        size: .s34)
+                .foilFocusOutline(Circle())
+        }
+        // `.borderless` (the cluster's style) would decorate the sticker.
+        .buttonStyle(.plain)
+        // The sticker draws its own foil focus outline; no system ring too.
+        .macFocusEffectDisabled()
+        .disabled(player.current == nil)
+        .help("Play / pause (space)")
+        .accessibilityLabel(player.isPlaying ? "Pause" : "Play")
+        .accessibilityValue(player.isBuffering ? "Buffering" : "")
     }
 
     private var seekBlock: some View {
@@ -210,6 +183,8 @@ struct TransportBar: View {
             }
             .disabled(player.duration <= 0)
             .controlSize(.small)
+            // The root tint is snow; time moving is foil, so say it here.
+            .tint(theme.palette.accent)
             .accessibilityLabel("Playback position")
             .accessibilityValue(Self.format(seconds: scrubbing ? scrubValue : player.currentTime))
 
@@ -241,6 +216,8 @@ struct TransportBar: View {
             Slider(value: $player.volume, in: 0...1)
                 .controlSize(.mini)
                 .frame(width: 90)
+                // Volume isn't time, so it's slush, not foil.
+                .tint(theme.palette.textSecondary)
                 .accessibilityLabel("Volume")
         }
     }
@@ -252,8 +229,8 @@ struct TransportBar: View {
     }
 }
 
-/// Shared now-playing → FavShow bridge used by both the standard transport and
-/// the faceplate. A track is favoritable only when it carries a `showId`
+/// Shared now-playing → FavShow bridge used by the transport bar and the
+/// now-playing screens. A track is favoritable only when it carries a `showId`
 /// (i.e. it was queued from a show, not a single-track search hit).
 @MainActor
 enum NowPlayingFavorite {

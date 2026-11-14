@@ -5,7 +5,6 @@ import Sparkle
 struct AppleNugsApp: App {
     @State private var app = AppModel()
     @State private var ui = UIState()
-    @State private var themes = ThemeManager()
     #if DEBUG
     @NSApplicationDelegateAdaptor(UITestAppDelegate.self) private var uiTestDelegate
     #endif
@@ -42,8 +41,6 @@ struct AppleNugsApp: App {
             RootView()
                 .environment(app)
                 .environment(ui)
-                .environment(themes)
-                .environment(\.theme, themes.theme)
                 // Window minimum width is managed by WindowMinSizeUpdater in
                 // RootView — it sets NSWindow.minSize directly so it correctly
                 // accounts for the inspector column (250pt) when it is open.
@@ -85,19 +82,6 @@ struct AppleNugsApp: App {
                 }
                 .disabled(!updaterModel.canCheckForUpdates)
             }
-            CommandGroup(after: .toolbar) {
-                Picker("Theme", selection: Binding(
-                    get: { themes.selected },
-                    set: { newValue in
-                        withAnimation(.easeInOut(duration: 0.35)) { themes.selected = newValue }
-                    }
-                )) {
-                    ForEach(ThemeID.allCases) { id in
-                        Text(id.displayName).tag(id)
-                    }
-                }
-                Divider()
-            }
             CommandMenu("Playback") {
                 Button(app.player.isPlaying ? "Pause" : "Play") {
                     app.player.togglePlayPause()
@@ -114,8 +98,14 @@ struct AppleNugsApp: App {
 
                 Divider()
 
-                Button("Clear Queue") { app.player.clear() }
-                    .disabled(app.player.queue.isEmpty)
+                // Confirms first, like the ⋯ menu and the dashboard's Clear —
+                // but with an AppKit alert, not a SwiftUI dialog: a menu
+                // command has no view of its own, and borrowing one window's
+                // root fails whenever that window is closed, hidden or busy.
+                Button("Clear Queue") {
+                    ClearQueueAlert.present { app.player.clear() }
+                }
+                .disabled(app.player.queue.isEmpty)
             }
             CommandGroup(after: .sidebar) {
                 Button("Search") { ui.requestSearchFocus() }
@@ -141,9 +131,7 @@ struct AppleNugsApp: App {
             NowPlayingScreen()
                 .environment(app)
                 .environment(ui)
-                .environment(themes)
-                .environment(\.theme, themes.theme)
-                .providesArtColor(app: app, theme: themes.theme)
+                .themed(.yeti)
                 // A separate scene root with its own environment, so the meta
                 // link interceptor has to be installed here too.
                 .nowPlayingMetaLinks(app: app, ui: ui)

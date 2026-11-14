@@ -68,3 +68,16 @@ final class OfflineAccessPolicyTests: XCTestCase {
         XCTAssertNil(OfflineVerification.lastVerifiedAt(in: defaults))
     }
 }
+
+final class OfflineExpiryDetailTests: XCTestCase {
+
+    func testTheExpiryErrorExplainsItself() {
+        XCTAssertEqual(OfflineAccessPolicy.detail(forError: OfflineAccessPolicy.expiredMessage),
+                       "Offline play needs nugs.net to confirm your subscription at least once every 30 days.")
+    }
+
+    func testOtherErrorsStandAlone() {
+        XCTAssertNil(OfflineAccessPolicy.detail(forError: "nugs has no stream for this track."))
+        XCTAssertNil(OfflineAccessPolicy.detail(forError: ""))
+    }
+}

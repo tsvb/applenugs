@@ -24,8 +24,6 @@ final class ListeningStatsStore {
     /// during playback, plus every track change and every pause — would
     /// invalidate the greeting, the resume hero, the favorites strip and the
     /// crate grid, not just the ledger. This flips at most once per install.
-    /// Same class of hazard as the `artColor` read HomeView guards behind
-    /// `#if os(macOS)` for exactly the same reason.
     private(set) var hasAnyPlay = false
 
     /// Latched when `listening.json` exists but could not be read cleanly.

@@ -19,7 +19,6 @@ import SwiftUI
 struct PillProgressRing: View {
     @Environment(AppModel.self) private var app
     @Environment(\.theme) private var theme
-    @Environment(\.artColor) private var artColor
 
     var body: some View {
         // Empty, never full, when the stream reports no duration — see
@@ -46,7 +45,7 @@ struct PillProgressRing: View {
                     // two arcs sit on different radii.
                     .inset(by: PillLayout.ringLineWidth / 2)
                     .trim(from: 0, to: fraction)
-                    .stroke(theme.effectiveAccent(art: artColor),
+                    .stroke(theme.palette.accent,
                             style: StrokeStyle(lineWidth: PillLayout.ringLineWidth,
                                                lineCap: .round))
                     // Trim starts at 3 o'clock; rotate so the arc grows

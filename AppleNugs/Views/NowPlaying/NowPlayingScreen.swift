@@ -7,32 +7,11 @@ enum NowPlayingWindow {
     static let id = "now-playing"
 }
 
-/// Full-screen now-playing, presented from a tap on the compact transport bar.
-/// Themes with the faceplate transport (The Receiver) get the TouchFaceplate;
-/// everything else gets the standard layout below, tinted by theme tokens.
+/// Full-screen now-playing: the iOS full-screen cover (inside
+/// `NowPlayingArrangement`) and the macOS Now Playing window.
 struct NowPlayingScreen: View {
-    @Environment(\.theme) private var theme
-
-    var body: some View {
-        Group {
-            switch theme.transport {
-            case .faceplate:
-                TouchFaceplate()
-            case .clickWheel:
-                ClickWheelScreen()
-            case .standard, .tapeLabel, .jCard:
-                StandardNowPlayingScreen()
-            }
-        }
-    }
-}
-
-// MARK: - Standard layout
-
-struct StandardNowPlayingScreen: View {
     @Environment(AppModel.self) private var app
     @Environment(\.theme) private var theme
-    @Environment(\.artColor) private var artColor
     @Environment(\.dismiss) private var dismiss
     @Environment(UIState.self) private var ui
     @Environment(\.nowPlayingQueueBeside) private var queueBeside
@@ -44,58 +23,29 @@ struct StandardNowPlayingScreen: View {
 
     private var player: PlayerService { app.player }
 
+    /// The card layout: the blister pack carries the art, title and meta, and
+    /// the stack uses the mockup's tight per-row margins
+    /// (`NowPlayingCardMetrics`) rather than a uniform spacing, so the whole
+    /// player fits the Duo's 433×635pt column.
     var body: some View {
-        VStack(spacing: 22) {
+        VStack(spacing: 0) {
             header
 
             Spacer(minLength: 0)
 
-            artwork
-                .padding(.horizontal, 36)
-
-            // Tape Room: the label card's "tape counter" under-rule rides
-            // directly beneath the reel (in addition to the scrubber below).
-            if theme.transport == .tapeLabel {
-                tapeCounter
-                    .padding(.horizontal, 72)
-            }
-
-            VStack(spacing: 5) {
-                HStack(spacing: 8) {
-                    if theme.caps.contains(.equalizerRows) {
-                        EqualizerBars(isPlaying: player.isPlaying)
-                    }
-                    Text(player.current?.title ?? "Nothing playing")
-                        .font(theme.type.hero(22))
-                        .foregroundStyle(theme.palette.textPrimary)
-                        .lineLimit(2)
-                        .multilineTextAlignment(.center)
-                }
-                if let track = player.current {
-                    // Shoebox liner-note treatment: typed-out tracked caps,
-                    // as on its J-card spine.
-                    if theme.transport == .jCard {
-                        NowPlayingMetaText(track: track, casing: .upper)
-                            .font(theme.type.numeric(11))
-                            .tracking(0.9)
-                            .foregroundStyle(theme.palette.textSecondary)
-                            .lineLimit(2)
-                            .multilineTextAlignment(.center)
-                    } else {
-                        NowPlayingMetaText(track: track)
-                            .font(theme.type.title(14))
-                            .foregroundStyle(theme.palette.textSecondary)
-                            .lineLimit(2)
-                            .multilineTextAlignment(.center)
-                    }
-                }
-            }
-            .padding(.horizontal, 24)
+            NowPlayingPackCard(
+                track: player.current,
+                image: player.nowPlayingImage,
+                isPlaying: player.isPlaying,
+                price: PriceStickerLabel(player: player))
+                .padding(.horizontal, NowPlayingCardMetrics.cardInset)
+                .padding(.top, NowPlayingCardMetrics.cardTop)
 
             Spacer(minLength: 0)
 
             seekBlock
                 .padding(.horizontal, 24)
+                .padding(.top, NowPlayingCardMetrics.scrubTop)
 
             // Rigid (five fixed glyphs, a 68pt play button): in a column
             // narrower than the row plus the seek block's 24pt insets — the
@@ -105,24 +55,21 @@ struct StandardNowPlayingScreen: View {
             // and the Mac window at its default 400pt; ~0.82 at a 300pt column.
             transportRow
                 .nowPlayingFitWidth(margin: 24)
+                .padding(.top, NowPlayingCardMetrics.transportTop)
 
             volumeRow
                 .padding(.horizontal, 32)
+                .padding(.top, NowPlayingCardMetrics.volumeTop)
 
             bottomRow
                 .padding(.horizontal, 28)
+                .padding(.top, NowPlayingCardMetrics.bottomTop)
         }
-        .padding(.vertical, 18)
+        .padding(.vertical, NowPlayingCardMetrics.verticalPadding)
         .nowPlayingReadableWidth()
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background {
             theme.palette.base
-                .overlay { ArtWashBackground(style: theme.washStyle, color: artColor ?? .clear) }
-                .overlay {
-                    if theme.textureOpacity > 0 {
-                        PaperGrain().opacity(theme.textureOpacity).allowsHitTesting(false)
-                    }
-                }
                 .ignoresSafeArea()
         }
         .dismissesOnNavigation($dashboardShown, ui: ui)
@@ -133,10 +80,7 @@ struct StandardNowPlayingScreen: View {
                 #endif
                 .presentationBackground(theme.palette.base)
         }
-        .confirmationDialog("Clear the queue?", isPresented: $confirmClear, titleVisibility: .visible) {
-            Button("Clear Queue", role: .destructive) { app.player.clear() }
-            Button("Cancel", role: .cancel) {}
-        }
+        .clearQueueConfirmation(isPresented: $confirmClear) { app.player.clear() }
     }
 
     private var header: some View {
@@ -154,57 +98,34 @@ struct StandardNowPlayingScreen: View {
 
             Spacer()
 
-            // Queue position while loaded; the theme's flavor copy only for
-            // the empty state (its keyboard hints don't apply on iOS anyway).
+            // Queue position while loaded; the flavor copy only for the empty
+            // state. Sentence case, untracked ("Track 3 of 24", ruling 3).
             Text(player.current != nil
-                 ? "TRACK \(player.index + 1) OF \(player.queue.count)"
-                 : theme.copy.nowPlaying.uppercased())
-                .font(theme.type.numeric(11))
-                .tracking(1.6)
+                 ? "Track \(player.index + 1) of \(player.queue.count)"
+                 : theme.copy.nowPlaying)
+                .font(theme.type.body(14))
                 .foregroundStyle(theme.palette.textSecondary)
                 .lineLimit(1)
 
             Spacer()
 
-            star
-                .frame(width: 44, height: 44)
+            // The card layout moves the star to the bottom row (AirPlay / star
+            // / queue, as drawn); the ⋯ queue menu takes its slot here so the
+            // bottom row holds exactly three.
+            // The ZStack keeps the 44pt slot when `moreMenu` is empty (no
+            // queue) — a frame around an empty `if` reserves nothing, and the
+            // centered header line would drift. The plain menu style drops the
+            // macOS pull-down bezel and chevron, which spill past the slot.
+            ZStack {
+                Color.clear
+                moreMenu
+                    .menuStyle(.button)
+                    .buttonStyle(.plain)
+                    .menuIndicator(.hidden)
+            }
+            .frame(width: 44, height: 44)
         }
         .padding(.horizontal, 12)
-    }
-
-    private var artwork: some View {
-        ZStack {
-            if let image = player.nowPlayingImage {
-                Image(platformImage: image)
-                    .resizable()
-                    .aspectRatio(contentMode: .fit)
-            } else {
-                // The monogram scales with the box it is given, capped at its
-                // old fixed 280pt — the same flexibility the real-art Image
-                // above already has. A rigid 280×280 tile can't shrink, which
-                // overflowed the stack: on iPhone Duo's ~669pt-tall landscape
-                // inner display it pushed the header and bottom row off
-                // screen, and even on a portrait iPhone the stack overflowed
-                // its 18pt vertical padding by ~15pt at each end (truncating
-                // the meta line to one row). The ideal size keeps 280 for
-                // unconstrained (nil) proposals.
-                GeometryReader { geo in
-                    MonogramTile(
-                        text: player.current?.artist ?? player.current?.title ?? "?",
-                        size: min(geo.size.width, geo.size.height))
-                        .frame(width: geo.size.width, height: geo.size.height)
-                }
-                .frame(idealWidth: 280, maxWidth: 280, idealHeight: 280, maxHeight: 280)
-            }
-        }
-        .frame(maxWidth: .infinity)
-        .aspectRatio(1, contentMode: .fit)
-        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-        .overlay {
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .strokeBorder(theme.palette.textPrimary.opacity(0.12), lineWidth: 1)
-        }
-        .shadow(color: (artColor ?? theme.palette.accent).opacity(0.35), radius: 28, y: 10)
     }
 
     private var seekBlock: some View {
@@ -224,7 +145,7 @@ struct StandardNowPlayingScreen: View {
                 if editing { scrubValue = player.currentTime } else { player.seek(to: scrubValue) }
                 scrubbing = editing
             }
-            .tint(theme.effectiveAccent(art: artColor))
+            .tint(theme.palette.accent)
             .disabled(player.duration <= 0)
             .accessibilityLabel("Playback position")
             .accessibilityValue(TransportBar.format(seconds: scrubbing ? scrubValue : player.currentTime))
@@ -237,23 +158,6 @@ struct StandardNowPlayingScreen: View {
             .font(theme.type.numeric(11))
             .foregroundStyle(theme.palette.textSecondary)
         }
-    }
-
-    private var tapeCounter: some View {
-        GeometryReader { geo in
-            ZStack(alignment: .leading) {
-                Capsule().fill(theme.palette.hairline)
-                Capsule().fill(theme.palette.accent)
-                    .frame(width: geo.size.width * counterProgress)
-            }
-        }
-        .frame(height: 2)
-        .accessibilityHidden(true)
-    }
-
-    private var counterProgress: CGFloat {
-        guard player.duration > 0 else { return 0 }
-        return min(max(CGFloat(player.currentTime / player.duration), 0), 1)
     }
 
     private var sliderMax: Double { max(player.duration, 1) }
@@ -279,14 +183,11 @@ struct StandardNowPlayingScreen: View {
             .accessibilityLabel("Back 15 seconds")
 
             HapticButton(.transportToggle) { player.togglePlayPause() } label: {
-                if player.isBuffering {
-                    ProgressView()
-                        .frame(width: 68, height: 68)
-                } else {
-                    Image(systemName: player.isPlaying ? "pause.circle.fill" : "play.circle.fill")
-                        .font(.system(size: 68))
-                        .symbolRenderingMode(.hierarchical)
-                }
+                // The sticker keeps the spinner inside its own disc, so the
+                // control never changes size while buffering.
+                PlaySticker(isPlaying: player.isPlaying,
+                            isBuffering: player.isBuffering,
+                            size: .s64)
             }
             .disabled(player.current == nil)
             .accessibilityLabel(player.isPlaying ? "Pause" : "Play")
@@ -312,63 +213,74 @@ struct StandardNowPlayingScreen: View {
         return HStack(spacing: 12) {
             Image(systemName: "speaker.fill").font(.system(size: 12))
             Slider(value: $player.volume, in: 0...1)
-                .tint(theme.effectiveAccent(art: artColor))
+                // Volume isn't time, so it isn't foil.
+                .tint(theme.palette.textSecondary)
                 .accessibilityLabel("Volume")
             Image(systemName: "speaker.wave.3.fill").font(.system(size: 12))
         }
         .foregroundStyle(theme.palette.textSecondary)
     }
 
+    /// The bottom row: AirPlay / star / queue, spread like the sheet's
+    /// `.np-bottom`. No format badge — the price sticker on the bubble's
+    /// corner carries it.
     private var bottomRow: some View {
         HStack {
-            if let pick = player.nowPick {
-                Text(pick.format.badge)
-                    .font(theme.type.numeric(10).weight(.semibold))
-                    .foregroundStyle(theme.palette.textSecondary)
-                    .padding(.horizontal, 6)
-                    .padding(.vertical, 2)
-                    .background(theme.palette.hairline, in: RoundedRectangle(cornerRadius: 4))
-            }
+            RoutePicker(tint: theme.palette.textSecondary)
+                .frame(width: 44, height: 44)
 
             Spacer()
 
-            RoutePicker(tint: theme.effectiveAccent(art: artColor))
+            star
                 .frame(width: 44, height: 44)
 
-            // The queue already sits beside the player on iPhone Duo's inner
-            // display; keep its 44pt slot so the row doesn't shift.
-            if queueBeside {
-                Color.clear
-                    .frame(width: 44, height: 44)
-                    .accessibilityHidden(true)
-            } else {
-                Button {
-                    dashboardShown = true
-                } label: {
-                    Image(systemName: "list.bullet")
-                        .font(.system(size: 17))
-                        .foregroundStyle(theme.palette.textSecondary)
-                        .frame(width: 44, height: 44)
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel("Queue and stream details")
-            }
+            Spacer()
 
-            if !player.queue.isEmpty {
-                Menu {
-                    Button(role: .destructive) {
-                        confirmClear = true
-                    } label: {
-                        Label("Clear Queue", systemImage: "trash")
-                    }
-                } label: {
-                    Image(systemName: "ellipsis.circle")
-                        .font(.system(size: 17))
-                        .foregroundStyle(theme.palette.textSecondary)
-                        .frame(width: 44, height: 44)
-                }
-                .accessibilityLabel("More queue actions")
+            queueButton
+        }
+    }
+
+    /// The queue slot: a button, or — with the queue already beside the
+    /// player on iPhone Duo's inner display — a same-size placeholder so the
+    /// row doesn't shift.
+    @ViewBuilder
+    private var queueButton: some View {
+        if queueBeside {
+            Color.clear
+                .frame(width: 44, height: 44)
+                .accessibilityHidden(true)
+        } else {
+            Button {
+                dashboardShown = true
+            } label: {
+                Image(systemName: "list.bullet")
+                    .font(.system(size: 17))
+                    .foregroundStyle(theme.palette.textSecondary)
+                    .frame(width: 44, height: 44)
             }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Queue and stream details")
+        }
+    }
+
+    /// "More queue actions" (Clear Queue, confirmed). Present while there is a
+    /// queue; nothing otherwise (the header's ZStack keeps the 44pt slot).
+    @ViewBuilder
+    private var moreMenu: some View {
+        if !player.queue.isEmpty {
+            Menu {
+                Button(role: .destructive) {
+                    confirmClear = true
+                } label: {
+                    Label("Clear Queue", systemImage: "trash")
+                }
+            } label: {
+                Image(systemName: "ellipsis.circle")
+                    .font(.system(size: 17))
+                    .foregroundStyle(theme.palette.textSecondary)
+                    .frame(width: 44, height: 44)
+            }
+            .accessibilityLabel("More queue actions")
         }
     }
 
@@ -379,7 +291,9 @@ struct StandardNowPlayingScreen: View {
         } label: {
             Image(systemName: saved ? "star.fill" : "star")
                 .font(.system(size: 17))
-                .foregroundStyle(saved ? theme.palette.accent : theme.palette.textSecondary)
+                // A saved show isn't time moving: the filled star is snow,
+                // not an accent fill.
+                .foregroundStyle(saved ? theme.palette.textPrimary : theme.palette.textSecondary)
         }
         .buttonStyle(.plain)
         .disabled(player.current?.showId == nil)

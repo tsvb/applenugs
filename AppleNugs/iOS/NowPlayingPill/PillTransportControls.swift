@@ -12,6 +12,15 @@ struct PillTransportControls: View {
 
     let controls: [PillLayout.Control]
 
+    /// How the play/pause control draws. The pill always uses `.glyph`; the
+    /// expanded panel passes `.sticker` (the play sticker, which is wider than
+    /// the pill's control slot, so it keeps its own frame).
+    enum PlayControl: Equatable {
+        case glyph
+        case sticker(PlaySticker.Size)
+    }
+    var playControl: PlayControl = .glyph
+
     private var player: PlayerService { app.player }
 
     var body: some View {
@@ -46,7 +55,13 @@ struct PillTransportControls: View {
 
         case .playPause:
             HapticButton(.transportToggle) { player.togglePlayPause() } label: {
-                if player.isBuffering {
+                if case .sticker(let size) = playControl {
+                    // The spinner sits inside the sticker's own disc, so the
+                    // control never changes size while buffering.
+                    PlaySticker(isPlaying: player.isPlaying,
+                                isBuffering: player.isBuffering,
+                                size: size)
+                } else if player.isBuffering {
                     ProgressView()
                         .controlSize(.small)
                         .frame(width: PillLayout.controlWidth)

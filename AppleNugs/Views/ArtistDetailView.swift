@@ -41,6 +41,9 @@ struct ArtistDetailView: View {
         .background(theme.palette.base)
         .navigationTitle(artist.name)
         .compactNavigationTitle()
+        // The header prints the name as a 34pt title right below the bar; the
+        // bar keeps only the back button, as the surfaces sheet draws it.
+        .hidesNavigationBarTitle()
         .overlay {
             if loading && containers.isEmpty {
                 ProgressView()
@@ -156,11 +159,18 @@ struct CoverArt: View {
         .aspectRatio(1, contentMode: .fit)
         .frame(maxWidth: .infinity)
         .clipShape(RoundedRectangle(cornerRadius: 6))
+        // A cover sits flat on the shelf with a 1pt frost keyline (the bubble
+        // is only for what's playing) — the show page and `ShowCard`.
+        .overlay {
+            RoundedRectangle(cornerRadius: 6).strokeBorder(theme.palette.hairline, lineWidth: 1)
+        }
     }
 
     private var placeholder: some View {
         Rectangle()
             .fill(theme.palette.raised)
-            .overlay(Image(systemName: "music.note").foregroundStyle(theme.palette.accent.opacity(0.7)))
+            // A placeholder isn't time moving: slush.
+            .overlay(Image(systemName: "music.note")
+                .foregroundStyle(theme.palette.textSecondary))
     }
 }

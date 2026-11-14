@@ -2,14 +2,14 @@ import Foundation
 
 /// The "artist · show" now-playing subtitle, broken into linkable segments.
 ///
-/// Sixteen surfaces render this line — four transport signatures, four Mac
-/// miniplayers, three full-screen players, the iOS pill and panel, the
-/// inspector, and the Home hero — and eight of them build it by joining the two
+/// Many surfaces render this line — the transport bar, the Mac miniplayer and
+/// Now Playing window, the full-screen player, the iOS pill and panel, the
+/// inspector, and the Home heroes — and several build it by joining the two
 /// fields into one flat string. Making the artist and the show individually
 /// clickable therefore has to happen BELOW the string, not by splitting the
-/// views: several of those surfaces are dimensionally tight (the cassette's
-/// 25:16 ratio, the pill's text budget, the faceplate's fixed-width ticker), and
-/// an HStack of buttons would not truncate the way one Text does.
+/// views: several of those surfaces are dimensionally tight (the pill's text
+/// budget above all), and an HStack of buttons would not truncate the way one
+/// Text does.
 ///
 /// So this type answers "what are the runs, and which of them point somewhere",
 /// and `NowPlayingMetaText` renders them as one `Text(AttributedString)` with a
@@ -30,7 +30,7 @@ enum NowPlayingMetaLine {
 
     enum Field { case artist, show }
 
-    /// Some signatures render the line in tracked small caps.
+    /// `.upper` upper-cases the fields (no caller does today; kept, tested).
     enum Casing { case asIs, upper }
 
     enum Mode {

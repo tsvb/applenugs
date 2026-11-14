@@ -3,7 +3,7 @@ import Foundation
 /// Layout policy for the iOS now-playing pill.
 ///
 /// Deliberately SwiftUI-free so it compiles straight into the host-free
-/// `AppleNugsTests` bundle (the same trick `TapeGeometry` uses). Every number
+/// `AppleNugsTests` bundle (the same trick `NowPlayingFit` uses). Every number
 /// here comes from a real measurement of `tabViewBottomAccessory` on iOS 27,
 /// iPhone 17 Pro: 360x48pt expanded, 284x48pt inline. The system owns that
 /// height — there is no modifier to change it — so the pill has exactly one

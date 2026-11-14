@@ -5,8 +5,8 @@ import SwiftUI
 /// player's resolved pick + AVFoundation decoder instead of header parsing.
 ///
 /// Rendered as a `ScrollView`+`VStack` rather than a `List`: the inspector
-/// content updates every frame during playback (elapsed time, buffer-ahead,
-/// the equalizer animation), and a `List` is `NSTableView`-backed. Live size
+/// content updates every frame during playback (elapsed time, buffer-ahead),
+/// and a `List` is `NSTableView`-backed. Live size
 /// churn inside the inspector's split child re-enters the `NSTableView`
 /// delegate, which on macOS 26 aborts with `_postWindowNeedsUpdateConstraints`
 /// when it collides with a window resize / inspector toggle. A `ScrollView`
@@ -16,13 +16,15 @@ struct DashboardPanel: View {
     @Environment(AppModel.self) private var app
     @Environment(UIState.self) private var ui
     @Environment(\.theme) private var theme
-    @Environment(\.artColor) private var artColor
 
     /// False when the panel sits BESIDE the full-screen player (iPhone Duo's
     /// `NowPlayingArrangement`), where the "Now" section would only repeat the
     /// player next to it. Fixed per instance — never toggled per tick — so the
     /// Signal section's constant-row-set rule is untouched.
     var showsNowPlaying: Bool = true
+
+    /// The "Clear" button asks first, like the ⋯ menu (ruling P2).
+    @State private var confirmingClear = false
 
     private var player: PlayerService { app.player }
 
@@ -38,11 +40,7 @@ struct DashboardPanel: View {
                     // hidden while this column shows. Keep the error alone.
                     // Conditional for the same reason as the Mac branch below:
                     // a real failure is rare, not per-tick churn.
-                    Label(error, systemImage: "exclamationmark.triangle")
-                        .font(.caption)
-                        .foregroundStyle(.red)
-                        .lineLimit(2)
-                        .fixedSize(horizontal: false, vertical: true)
+                    PlaybackErrorLine(message: error)
                 }
                 qualitySection
                 queueSection
@@ -54,14 +52,12 @@ struct DashboardPanel: View {
         .background(theme.palette.base)
     }
 
-    /// Section headers in the theme's display face; condensed themes track them
-    /// out as letterpress small caps.
+    /// Section headers are the design's barker headers: a real section header
+    /// in snow ("Here it comes"), not a small gray label.
     private func sectionHeader(_ text: String) -> some View {
-        let condensed = theme.caps.contains(.condensedHeaders)
-        return Text(condensed ? text.uppercased() : text)
-            .font(theme.type.section(12))
-            .tracking(condensed ? 1.6 : 0)
-            .foregroundStyle(theme.palette.textSecondary)
+        Text(text)
+            .font(theme.type.section(17))
+            .foregroundStyle(theme.palette.textPrimary)
     }
 
     // --- now playing ---------------------------------------------------------
@@ -69,11 +65,11 @@ struct DashboardPanel: View {
     @ViewBuilder
     private var nowPlayingSection: some View {
         VStack(alignment: .leading, spacing: 6) {
-            sectionHeader(theme.copy.dashHeaders.now)
+            sectionHeader(theme.copy.dashNow)
             #if os(iOS)
             legacyNowPlayingBlock
             #else
-            // The Mac inspector gets the per-theme miniplayer. iOS keeps the
+            // The Mac inspector gets the miniplayer. iOS keeps the
             // text block above: it reaches this panel as a sheet from the
             // full-screen players, which already carry their own transport.
             DashboardMiniPlayer()
@@ -85,11 +81,7 @@ struct DashboardPanel: View {
             // error). If it ever does bother us, the fix is to fold the error
             // into the Signal section as an extra row, not to reserve a gap.
             if let error = player.playbackError {
-                Label(error, systemImage: "exclamationmark.triangle")
-                    .font(.caption)
-                    .foregroundStyle(.red)
-                    .lineLimit(2)
-                    .fixedSize(horizontal: false, vertical: true)
+                PlaybackErrorLine(message: error)
             }
             #endif
         }
@@ -102,7 +94,7 @@ struct DashboardPanel: View {
         if let track = player.current {
             VStack(alignment: .leading, spacing: 3) {
                 Text(track.title ?? "Unknown track")
-                    .font(theme.type.title(15))
+                    .font(theme.type.title(20))
                     .lineLimit(1)
                     .truncationMode(.tail)
                 NowPlayingMetaText(track: track, fields: [.artist])
@@ -121,13 +113,8 @@ struct DashboardPanel: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(8)
-            .background(Color.clear.artWash(theme.washStyle, color: artColor))
             if let error = player.playbackError {
-                Label(error, systemImage: "exclamationmark.triangle")
-                    .font(.caption)
-                    .foregroundStyle(.red)
-                    .lineLimit(2)
-                    .fixedSize(horizontal: false, vertical: true)
+                PlaybackErrorLine(message: error)
             }
         } else {
             Text(theme.copy.dashboardIdle)
@@ -159,7 +146,15 @@ struct DashboardPanel: View {
     private var qualitySection: some View {
         if player.current != nil {
             VStack(alignment: .leading, spacing: 6) {
-                sectionHeader(theme.copy.dashHeaders.quality)
+                // The price sticker rides the quality header. This whole
+                // section is already gated on `player.current`, and the
+                // sticker holds its frame when a known lossy pick hides it,
+                // so the header never changes height.
+                HStack {
+                    sectionHeader(theme.copy.dashQuality)
+                    Spacer(minLength: 8)
+                    PriceSticker(player: player, size: Self.headerStickerSize)
+                }
                 VStack(spacing: 5) {
                     ForEach(SignalReadout.rows(format: player.nowPick?.format,
                                                platformId: player.nowPick?.platformId,
@@ -174,19 +169,30 @@ struct DashboardPanel: View {
         }
     }
 
+    /// The design draws the Mac inspector's sticker at 44pt and the iOS
+    /// sheet's at 38pt (the nearest size the sticker comes in is 40).
+    #if os(macOS)
+    private static let headerStickerSize: PriceSticker.Size = .s44
+    #else
+    private static let headerStickerSize: PriceSticker.Size = .s40
+    #endif
+
     // --- queue -------------------------------------------------------------------
 
     @ViewBuilder
     private var queueSection: some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack {
-                sectionHeader(theme.copy.dashHeaders.upNext)
+                sectionHeader(theme.copy.dashUpNext)
                 Spacer()
                 if !player.queue.isEmpty {
-                    Button("Clear") { player.clear() }
+                    Button("Clear") { confirmingClear = true }
                         .buttonStyle(.plain)
                         .font(.caption)
                         .foregroundStyle(theme.palette.textSecondary)
+                        .clearQueueConfirmation(isPresented: $confirmingClear) {
+                            player.clear()
+                        }
                 }
             }
             if player.queue.isEmpty {
@@ -203,6 +209,24 @@ struct DashboardPanel: View {
         }
     }
 
+    /// The row's title. The playing row prints heavy in sale yellow
+    /// (`playState`); the rest keep the inherited text color.
+    @ViewBuilder
+    private func queueTitle(_ track: QueueTrack, isCurrent: Bool) -> some View {
+        let title = Text(track.title ?? "Unknown track")
+            .font(.caption)
+            .lineLimit(1)
+            .truncationMode(.tail)
+        if isCurrent {
+            title
+                .fontWeight(.heavy)
+                .foregroundStyle(theme.palette.playState)
+        } else {
+            title
+                .fontWeight(.regular)
+        }
+    }
+
     private func queueRow(_ i: Int, _ track: QueueTrack) -> some View {
         HStack(spacing: 6) {
             Button {
@@ -210,26 +234,16 @@ struct DashboardPanel: View {
             } label: {
                 HStack(spacing: 6) {
                     if i == player.index {
-                        if theme.caps.contains(.equalizerRows) {
-                            EqualizerBars(isPlaying: player.isPlaying)
-                                .frame(width: 16)
-                        } else {
-                            Image(systemName: player.isPlaying ? "speaker.wave.2.fill" : "pause.fill")
-                                .font(.caption2)
-                                .foregroundStyle(theme.activeEmphasis(art: artColor))
-                                .frame(width: 16)
-                        }
+                        // The static row sticker marks the playing slot.
+                        RowSticker(isPlaying: player.isPlaying, size: .s16)
+                            .frame(width: 16)
                     } else {
                         Text(String(i + 1))
                             .font(theme.type.numeric(10))
                             .foregroundStyle(theme.palette.textSecondary)
                             .frame(width: 16)
                     }
-                    Text(track.title ?? "Unknown track")
-                        .font(.caption)
-                        .lineLimit(1)
-                        .truncationMode(.tail)
-                        .fontWeight(i == player.index ? .semibold : .regular)
+                    queueTitle(track, isCurrent: i == player.index)
                     Spacer(minLength: 0)
                 }
                 .contentShape(Rectangle())
@@ -255,6 +269,49 @@ struct DashboardPanel: View {
 }
 
 // MARK: - rows
+
+/// A playback error, as the dashboard shows it: said in snow with a slush mark
+/// on a shelf block (errors are said, not alarmed). Reads no player state.
+private struct PlaybackErrorLine: View {
+    @Environment(\.theme) private var theme
+
+    let message: String
+
+    /// The offline-expiry error's "why" line (`OfflineAccessPolicy.detail`).
+    /// Part of this conditional error block — never a Signal
+    /// row, so the Signal section's constant row set is untouched.
+    private var detail: String? { OfflineAccessPolicy.detail(forError: message) }
+
+    var body: some View {
+        HStack(alignment: .firstTextBaseline, spacing: 8) {
+            Image(systemName: "exclamationmark.triangle")
+                .foregroundStyle(theme.palette.textSecondary)
+                .accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(message)
+                    .fontWeight(.semibold)
+                    .foregroundStyle(theme.palette.textPrimary)
+                    .lineLimit(2)
+                    .fixedSize(horizontal: false, vertical: true)
+                if let detail {
+                    Text(detail)
+                        .foregroundStyle(theme.palette.textSecondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+        }
+        .font(.caption)
+        .padding(.horizontal, 10)
+        .padding(.vertical, 8)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(theme.palette.raised, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                .strokeBorder(theme.palette.hairline, lineWidth: 1)
+        }
+        .accessibilityElement(children: .combine)
+    }
+}
 
 /// A label/value row. The label keeps its width; the value truncates so the row
 /// can never demand more width than the inspector column.
@@ -311,7 +368,7 @@ private struct ElapsedTimeLine: View {
         // Always rendered. `duration` is zeroed on every track change, so
         // hiding the line while it's unknown made the block above the Signal
         // section shrink and grow on each track — the same defect one section
-        // up. `--:--` is the clock placeholder used by MiniPlayerClock.
+        // up. `--:--` is the clock placeholder used by MiniPlayerScrubTrack.
         let known = app.player.duration > 0
         Text(known
              ? "\(TransportBar.format(seconds: app.player.currentTime)) / \(TransportBar.format(seconds: app.player.duration))"

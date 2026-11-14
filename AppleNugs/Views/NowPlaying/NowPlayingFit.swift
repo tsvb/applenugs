@@ -1,8 +1,8 @@
 import Foundation
 
-/// Uniform scale-to-fit for now-playing parts whose proportions ARE the theme
-/// (Click Wheel's satellite cluster around the wheel): they shrink as a whole
-/// rather than reflow. Pure Foundation so the host-free tests can cover it.
+/// Uniform scale-to-fit for rigid now-playing parts (the transport row, via
+/// `nowPlayingFitWidth`): they shrink as a whole rather than reflow. Pure
+/// Foundation so the host-free tests can cover it.
 enum NowPlayingFit {
 
     /// The largest scale in `0...1` at which `natural` fits inside `available`.

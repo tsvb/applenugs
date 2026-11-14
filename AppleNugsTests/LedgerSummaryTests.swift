@@ -84,4 +84,47 @@ final class LedgerSummaryTests: XCTestCase {
         XCTAssertEqual(LedgerSummary.playsText(1), "1 play")
         XCTAssertEqual(LedgerSummary.playsText(2), "2 plays")
     }
+
+    // --- split figures (Yeti's nice list) ----------------------------------
+
+    func testTotalsSplitIntoValueAndUnit() {
+        let totals = LedgerSummary.totals(sample)
+
+        XCTAssertEqual(totals.hours, .init(value: "164", unit: "hours listened"))
+        XCTAssertEqual(totals.artists, .init(value: "6", unit: "artists"))
+    }
+
+    func testTotalsFigureSingularizesAndKeepsLessThanOne() {
+        XCTAssertEqual(LedgerSummary.totalHoursFigure(seconds: 0),
+                       .init(value: "0", unit: "hours listened"))
+        XCTAssertEqual(LedgerSummary.totalHoursFigure(seconds: 1_800),
+                       .init(value: "<1", unit: "hour listened"))
+        XCTAssertEqual(LedgerSummary.totalHoursFigure(seconds: 3_600),
+                       .init(value: "1", unit: "hour listened"))
+        XCTAssertEqual(LedgerSummary.totalHoursFigure(seconds: 7_200),
+                       .init(value: "2", unit: "hours listened"))
+        XCTAssertEqual(LedgerSummary.artistsFigure(1), .init(value: "1", unit: "artist"))
+        XCTAssertEqual(LedgerSummary.artistsFigure(0), .init(value: "0", unit: "artists"))
+    }
+
+    func testRowFiguresMatchTheJoinedStrings() {
+        let rows = LedgerSummary.top(sample)
+
+        XCTAssertEqual(rows[0].plays, .init(value: "41", unit: "plays"))
+        XCTAssertEqual(rows[0].hours, .init(value: "63", unit: "h"))
+        for row in rows {
+            XCTAssertEqual(row.plays.value + " " + row.plays.unit, row.playsText)
+            XCTAssertEqual(row.hours.value + row.hours.unit, row.hoursText)
+        }
+    }
+
+    func testRowHoursFigureFallsBackToMinutes() {
+        XCTAssertEqual(LedgerSummary.hoursFigure(seconds: 3_600), .init(value: "1", unit: "h"))
+        XCTAssertEqual(LedgerSummary.hoursFigure(seconds: 2_460), .init(value: "41", unit: "m"))
+        XCTAssertEqual(LedgerSummary.hoursFigure(seconds: 5), .init(value: "1", unit: "m"))
+        XCTAssertEqual(LedgerSummary.hoursFigure(seconds: 0), .init(value: "0", unit: "m"))
+        XCTAssertEqual(LedgerSummary.hoursFigure(seconds: .nan), .init(value: "0", unit: "m"))
+        XCTAssertEqual(LedgerSummary.playsFigure(1), .init(value: "1", unit: "play"))
+        XCTAssertEqual(LedgerSummary.playsFigure(0), .init(value: "0", unit: "plays"))
+    }
 }
