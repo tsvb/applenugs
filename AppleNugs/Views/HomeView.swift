@@ -213,9 +213,9 @@ struct HomeView: View {
         .padding(.vertical, 2)
     }
 
-    /// The crate's grid. The Mac keeps the design sheet's `.crategrid`: rows of
-    /// a small monogram and the name, three across a ~800pt Home. iOS gets
-    /// compact TILES instead — monogram above, name below — because rows sized
+    /// The crate's grid. The Mac keeps the design sheet's `.crategrid` layout:
+    /// rows of a small circular photo and the name, three across a ~800pt Home.
+    /// iOS gets compact TILES instead — photo above, name below — because rows sized
     /// for the Mac ran the full width of a phone (one ~350pt bar per artist)
     /// and of the Duo's right column, mostly bare. Tiles put three across a
     /// portrait phone and five across the flat Duo's column.
@@ -273,7 +273,9 @@ struct HomeView: View {
 
     private func crateCell(_ artist: ArtistEntry) -> some View {
         HStack(spacing: 11) {
-            MonogramTile(text: artist.name, size: 36)
+            // The artist's photo in a circle, as on iOS and the Artists list.
+            ArtistPortrait(url: avatars[artist.id], name: artist.name)
+                .frame(width: 36, height: 36)
             Text(artist.name)
                 .font(theme.type.body(14))
                 .foregroundStyle(theme.palette.textPrimary)
@@ -359,13 +361,11 @@ struct HomeView: View {
         } catch {
             sampleError = error.localizedDescription
         }
-        #if os(iOS)
         // Photos are a nicety on top of a crate that already works: a failure
         // leaves the monograms, and reports nothing.
         if !sample.isEmpty {
             avatars = (try? await app.artistAvatars(ids: sample.map(\.id))) ?? [:]
         }
-        #endif
     }
 }
 

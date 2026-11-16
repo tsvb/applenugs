@@ -10,7 +10,7 @@ struct ArtistListView: View {
     @State private var filter = ""
     @State private var loading = false
     @State private var error: String?
-    /// Every artist's photo, by id (iOS). Empty until the walk lands, and for
+    /// Every artist's photo, by id. Empty until the walk lands, and for
     /// good if it fails — rows show the monogram meanwhile.
     @State private var avatars: [String: URL] = [:]
     @FocusState private var filterFocused: Bool
@@ -67,11 +67,9 @@ struct ArtistListView: View {
                                 // ruling 2: no show counts), heavy 17 on frost
                                 // rules, under heavy slush letter headers.
                                 HStack(spacing: 12) {
-                                    #if os(iOS)
                                     // The artist's photo, as on Home's crate.
                                     ArtistPortrait(url: avatars[artist.id], name: artist.name)
                                         .frame(width: Self.portraitSide, height: Self.portraitSide)
-                                    #endif
                                     Text(artist.name)
                                         .font(theme.type.title(17))
                                         .foregroundStyle(theme.palette.textPrimary)
@@ -187,15 +185,18 @@ struct ArtistListView: View {
         } catch {
             self.error = error.localizedDescription
         }
-        #if os(iOS)
         // After the names are on screen: photos are a nicety, never a reason
         // to hold the list back, and a failure reports nothing.
         if !artists.isEmpty, avatars.isEmpty {
             avatars = (try? await app.allArtistAvatars()) ?? [:]
         }
-        #endif
     }
 
-    /// The row's photo: 40pt, a size that reads as a face in a dense list.
+    /// The row's photo: a size that reads as a face in a dense list — 40pt on
+    /// a phone, 32pt in the Mac's tighter rows.
+    #if os(iOS)
     private static let portraitSide: CGFloat = 40
+    #else
+    private static let portraitSide: CGFloat = 32
+    #endif
 }
