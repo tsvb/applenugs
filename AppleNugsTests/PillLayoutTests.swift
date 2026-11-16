@@ -211,4 +211,57 @@ final class PillLayoutTests: XCTestCase {
         XCTAssertEqual(PillLayout.progressFraction(currentTime: -5, duration: 600),
                        0, accuracy: 0.001)
     }
+
+    // --- show line ----------------------------------------------------------
+
+    /// The chevron's lane, as `NowPlayingPill` reserves it.
+    private let chevron: CGFloat = PillLayout.controlWidth + PillLayout.controlSpacing
+
+    private func showLine(_ slot: PillLayout.Slot, _ width: CGFloat,
+                          reserve: CGFloat? = nil) -> Bool {
+        PillLayout.showsShowLine(slot: slot, width: width, hasLeadingSlot: true,
+                                 trailingReserve: reserve ?? chevron)
+    }
+
+    /// A regular iPhone's 360pt pill leaves ~104pt of text: artist only.
+    func testRegularIPhoneIsArtistOnly() {
+        XCTAssertFalse(showLine(.expanded, 360))
+    }
+
+    /// The Duo's folded outer display (~290pt, still `.expanded`) has already
+    /// shed to three controls to keep 90pt of text — nowhere near a show line.
+    func testDuoOuterDisplayIsArtistOnly() {
+        XCTAssertFalse(showLine(.expanded, 290))
+    }
+
+    /// The Duo's inner display: ~815pt pill, ~559pt of text.
+    func testDuoInnerDisplayNamesTheShow() {
+        XCTAssertTrue(showLine(.expanded, 815))
+    }
+
+    /// Five controls (156) + padding (20) + slot and gaps (48) + chevron (32)
+    /// = 256pt of fixed cost, so the show line starts at 476pt.
+    func testShowLineThresholdWithChevron() {
+        XCTAssertFalse(showLine(.expanded, 475.5))
+        XCTAssertTrue(showLine(.expanded, 476))
+    }
+
+    /// No chevron (the offline Downloads sheet) hands its 32pt lane back.
+    func testShowLineThresholdWithoutChevron() {
+        XCTAssertFalse(showLine(.expanded, 443.5, reserve: 0))
+        XCTAssertTrue(showLine(.expanded, 444, reserve: 0))
+    }
+
+    /// Inline has no second line at all, however wide.
+    func testInlineNeverNamesTheShow() {
+        XCTAssertFalse(showLine(.inline, 815))
+    }
+
+    /// Unmeasured answers no rather than guessing.
+    func testUnmeasuredPillIsArtistOnly() {
+        XCTAssertFalse(showLine(.expanded, 0))
+        XCTAssertFalse(showLine(.expanded, -1))
+        XCTAssertFalse(showLine(.expanded, .nan))
+        XCTAssertFalse(showLine(.expanded, .infinity))
+    }
 }

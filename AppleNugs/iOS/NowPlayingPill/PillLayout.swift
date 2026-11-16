@@ -97,6 +97,28 @@ enum PillLayout {
         return floor
     }
 
+    /// The narrowest text column that also carries the show after the artist
+    /// ("Goose · 11/11/26 The Truth, Nashville, TN"). Regular iPhones (~104pt
+    /// with the chevron) and the Duo's folded outer display stay artist-only;
+    /// the Duo's inner display (~560pt) has room to spare.
+    static let minShowLineWidth: CGFloat = 220
+
+    /// Whether the second line names the show as well as the artist.
+    ///
+    /// Budgeted against the controls `controls(slot:width:…)` actually
+    /// chose, less the same `trailingReserve`, so it can never claim width the
+    /// cluster is using. Inline never shows it (it has no second line at all),
+    /// and an unmeasured width answers no rather than guessing.
+    static func showsShowLine(slot: Slot, width: CGFloat, hasLeadingSlot: Bool,
+                              trailingReserve: CGFloat) -> Bool {
+        guard showsArtistLine(for: slot), width.isFinite, width > 0 else { return false }
+        let chosen = controls(slot: slot, width: width, hasLeadingSlot: hasLeadingSlot,
+                              trailingReserve: trailingReserve)
+        let budget = textBudget(width: width, controls: chosen,
+                                hasLeadingSlot: hasLeadingSlot) - trailingReserve
+        return budget >= minShowLineWidth
+    }
+
     /// Points left for the title/artist column after padding, the control
     /// cluster, and the optional leading slot have taken their share.
     static func textBudget(width: CGFloat, slot: Slot, hasLeadingSlot: Bool) -> CGFloat {

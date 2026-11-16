@@ -54,6 +54,13 @@ struct NowPlayingPill: View {
                             hasLeadingSlot: true, trailingReserve: chevronReserve)
     }
 
+    /// Whether the artist line also names the show — only when the measured
+    /// pill leaves the text column room for it (`PillLayout.minShowLineWidth`).
+    private var showsShowLine: Bool {
+        PillLayout.showsShowLine(slot: slot, width: pillWidth,
+                                 hasLeadingSlot: true, trailingReserve: chevronReserve)
+    }
+
     private var slot: PillLayout.Slot {
         // `.map` rather than `placement == .inline`: the latter would collapse
         // the optional to false before PillLayout sees it, so the nil case
@@ -94,7 +101,11 @@ struct NowPlayingPill: View {
                     // matching this file's convention that a nil expand means
                     // the pill was mounted by hand in a sheet with no
                     // navigation stack behind it to push onto.
-                    NowPlayingMetaText(track: app.player.current, fields: [.artist],
+                    // With room (the Duo's inner display), the same one line
+                    // names the show too; same font, same single line, so
+                    // the pill's row geometry never changes.
+                    NowPlayingMetaText(track: app.player.current,
+                                       fields: showsShowLine ? [.artist, .show] : [.artist],
                                        showsLinks: onExpand != nil)
                         .font(theme.type.body(10.5))
                         .foregroundStyle(theme.palette.textSecondary)
