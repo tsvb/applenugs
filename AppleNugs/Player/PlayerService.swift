@@ -1169,6 +1169,12 @@ final class PlayerService {
             // Anchor listening there too: the offset was heard last session.
             lastCreditPosition = saved.position
         }
+        // Fetch the cover now, not on the first play: a resumed queue sits
+        // paused on Home's hero, the pill and the lock screen, and without
+        // this every one of them showed the monogram until play was pressed.
+        // Same pairing as `startCurrent()` — the push below goes out at once
+        // with no art, and `loadArtwork` re-pushes when the image lands.
+        loadArtwork(for: current)
         pushNowPlayingInfo()
     }
 
