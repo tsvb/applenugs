@@ -2,7 +2,8 @@ import SwiftUI
 
 /// An artist as a tile: the photo in a circle (Apple Music's shape for an
 /// artist, so it reads apart from square show covers), the name centered below,
-/// on a raised shelf. Home's crate (iOS) and the Favorites page use it.
+/// on a raised shelf. Home's crate (iOS), Home's favorites shelf and the
+/// Favorites page use it.
 ///
 /// Names are never cut off for ~98% of the catalog: up to three lines,
 /// shrinking to 85% before truncating (median name 14 characters, 1 in 10 past

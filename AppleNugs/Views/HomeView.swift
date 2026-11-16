@@ -17,8 +17,9 @@ struct HomeView: View {
     @State private var artistCount = 0
     @State private var appeared = false
     @State private var sampleError: String?
-    /// The crate artists' photos, by artist id. Empty until the lookup lands
-    /// (and for good if it fails) — tiles show the monogram meanwhile.
+    /// Artist photos for the crate and the favorites shelf, by artist id.
+    /// Empty until a lookup lands (and for good if it fails) — tiles show the
+    /// monogram meanwhile.
     @State private var avatars: [String: URL] = [:]
     /// Starts true: the fetch is already coming, and a one-frame "nothing in
     /// the crate" is a worse lie than a spinner nobody sees.
@@ -265,6 +266,9 @@ struct HomeView: View {
     /// Section headers: `.sec h3`'s heavy 22.
     private var sectionSize: CGFloat { 22 }
 
+    /// A favorite artist's tile on the shelf.
+    private var favoriteTileWidth: CGFloat { 100 }
+
     // --- favorites strip ----------------------------------------------------
 
     private var favoritesStrip: some View {
@@ -281,31 +285,30 @@ struct HomeView: View {
             }
 
             if !app.favorites.artists.isEmpty {
-                LazyVGrid(columns: [GridItem(.adaptive(minimum: 150, maximum: 240), spacing: 10)],
-                          alignment: .leading, spacing: 10) {
-                    ForEach(app.favorites.artists.prefix(8)) { fav in
-                        NavigationLink(value: Route.artist(ArtistEntry(id: fav.id, name: fav.name))) {
-                            HStack {
-                                Text(fav.name)
-                                    .font(theme.type.body(13.5).weight(.bold))
-                                    .foregroundStyle(theme.palette.textPrimary)
-                                    .lineLimit(1)
-                                Spacer(minLength: 0)
+                // One scrolling shelf of photo tiles (`ArtistTile`, as in the
+                // crate and on the Favorites page), the artist circles above
+                // the square show covers below. One row, not a grid: eight
+                // tiles in a grid were three rows on a phone. 100pt leaves a
+                // peek of the fourth tile across a portrait phone, so the row
+                // reads as scrollable; the Mac's ~800pt Home shows about seven.
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(alignment: .top, spacing: ArtistTile.spacing) {
+                        ForEach(app.favorites.artists.prefix(8)) { fav in
+                            NavigationLink(value: Route.artist(ArtistEntry(id: fav.id, name: fav.name))) {
+                                ArtistTile(name: fav.name, photo: avatars[fav.id])
+                                    .frame(width: favoriteTileWidth)
                             }
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 9)
-                            .background {
-                                RoundedRectangle(cornerRadius: 9, style: .continuous)
-                                    .fill(theme.palette.raised)
-                                    // `.chips span`: shelf with a frost keyline.
-                                    .overlay {
-                                        RoundedRectangle(cornerRadius: 9, style: .continuous)
-                                            .strokeBorder(theme.palette.hairline, lineWidth: 1)
-                                    }
-                            }
-                            .contentShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
+                            .buttonStyle(.plain)
                         }
-                        .buttonStyle(.plain)
+                    }
+                    // Tiles stretch to the tallest name, so the row lines up.
+                    .fixedSize(horizontal: false, vertical: true)
+                }
+                .task(id: app.favorites.artists.prefix(8).map(\.id)) {
+                    let ids = app.favorites.artists.prefix(8).map(\.id)
+                    // A failure leaves the monograms, and reports nothing.
+                    if let found = try? await app.artistAvatars(ids: Array(ids)) {
+                        avatars.merge(found) { _, new in new }
                     }
                 }
             }
@@ -339,8 +342,9 @@ struct HomeView: View {
         }
         // Photos are a nicety on top of a crate that already works: a failure
         // leaves the monograms, and reports nothing.
-        if !sample.isEmpty {
-            avatars = (try? await app.artistAvatars(ids: sample.map(\.id))) ?? [:]
+        // Merged, not assigned: the favorites shelf shares this table.
+        if !sample.isEmpty, let found = try? await app.artistAvatars(ids: sample.map(\.id)) {
+            avatars.merge(found) { _, new in new }
         }
     }
 }
