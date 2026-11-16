@@ -64,7 +64,13 @@ Native **macOS + iOS SwiftUI** player for nugs.net, shipped to users as **Yeti �
   because offset content stops painting its safe-area backgrounds). Players read
   `\.nowPlayingQueueBeside` and swap their queue button for a same-size hidden placeholder. Scaling a
   fixed-geometry cluster uses `NowPlayingFit.scale` + `scaleEffect` + a matching `.frame` —
-  `scaleEffect` alone keeps the old footprint.
+  `scaleEffect` alone keeps the old footprint. (4) **Wide Home splits into two columns, by measured
+  width** (2026-11-16, branch `duo-wide-home`): at ≥ 560pt of Home content with a track loaded
+  (`HomeColumns`, iOS only), the hero keeps its UPRIGHT blister pack in a 280–320pt leading column and
+  favorites / nice list / crate stack beside it. A sideways hero card was built first and REJECTED by
+  Tim ("still too wide… a little lazy") — don't bring it back; it's parked on `duo-wide-home-sideways`.
+  The pill's second line becomes "artist · show" at a ≥ 220pt text column (`PillLayout.showsShowLine`;
+  Duo flat and landscape iPhones — the upright Duo pill is ~400pt, artist only). Verified on Tim's Duo.
 - **Audio/video arbiter: only one plays, the last one DELIBERATELY started wins** (2026-11-08 fix for
   audio and video playing over each other). `VideoPlayerService` calls `PlayerService.pauseForExternalAudio()`
   on EVERY claim, even one it thinks it already holds; that silences the engine unconditionally and reads
@@ -163,8 +169,9 @@ Mac Playback ▸ Clear Queue `NSAlert` in each window state, VoiceOver on the he
   `git branch -f main origin/main` — the worktree shares the repo's refs, and `main` isn't checked out
   anywhere; `git -C …` / network fetches from Tim's remote-control `!` shell fail). Remote branches `iphone-duo` and
   `yeti` are merged and can be deleted on GitHub (Tim's call).
-- **Listening stats, still unverified on screen** (a green build can't see these): the ledger POPULATED
-  (nothing has drawn a real row yet — needs a credited play); **locked-screen credit on the Duo** (play a
+- **Listening stats, still unverified on screen** (a green build can't see these): ~~the ledger
+  POPULATED~~ — SEEN on Tim's Duo 2026-11-16 ("2 hours listened · 1 artist", in Home's right column);
+  **locked-screen credit on the Duo** (play a
   show locked for 5+ min, unlock, the artist's time should include it; `debugBackgroundTicks` must stay 0);
   the iOS reset dialog and that Reset empties the ledger; row tap → `ArtistDetailView` (an unresolvable
   name should be inert text); long name vs the `19 plays · 31h` block at the narrowest Mac window; Dynamic
