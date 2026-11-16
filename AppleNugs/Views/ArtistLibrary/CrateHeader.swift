@@ -1,7 +1,8 @@
 import SwiftUI
 
-/// The artist page header: the artist's name as a large title, the counts under
-/// it as plain type, and Follow as a frost-outlined button. No LCD pill and no
+/// The artist page header: the artist's photo in a circle (as in the Artists
+/// list and Home's crate), and beside it the name as a large title, the counts
+/// as plain type, and Follow as a frost-outlined button. No LCD pill and no
 /// bars (the stage-c row-sticker table: this site gets nothing).
 struct CrateHeader: View {
     let artist: ArtistEntry
@@ -12,23 +13,43 @@ struct CrateHeader: View {
     @Environment(AppModel.self) private var app
     @Environment(\.theme) private var theme
 
-    /// The surfaces sheet's artist page: `.large-title`, then `.crate-head`
-    /// (counts left, Follow right). The counts row is as tall as the 30pt
-    /// button whether or not any counts have arrived, so paging in the
-    /// catalog never moves the list below it.
+    /// The artist's photo, once its lookup lands (the monogram until then,
+    /// and for good on a miss).
+    @State private var portraitURL: URL?
+
+    /// Big enough to read as the page's subject; the column beside it keeps
+    /// the name, counts and Follow, so the header stands about this tall.
+    private static let portraitSide: CGFloat = 88
+
+    /// The photo, then a column: the surfaces sheet's `.large-title`, the
+    /// counts, and Follow under them (beside a photo there's no room on a phone
+    /// for the sheet's counts-left / Follow-right row). The counts line always
+    /// holds one line's height whether or not any counts have arrived, so
+    /// paging in the catalog never moves the list below it.
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text(artist.name)
-                .font(theme.type.hero(34))
-                .foregroundStyle(theme.palette.textPrimary)
-                .lineLimit(2)
-                .minimumScaleFactor(0.7)
-                .accessibilityAddTraits(.isHeader)
-            HStack(spacing: 12) {
-                countsLine
-                    .frame(maxWidth: .infinity, alignment: .leading)
+        HStack(alignment: .center, spacing: 16) {
+            ArtistPortrait(url: portraitURL, name: artist.name)
+                .frame(width: Self.portraitSide, height: Self.portraitSide)
+            VStack(alignment: .leading, spacing: 4) {
+                Text(artist.name)
+                    .font(theme.type.hero(34))
+                    .foregroundStyle(theme.palette.textPrimary)
+                    .lineLimit(2)
+                    .minimumScaleFactor(0.7)
+                    .accessibilityAddTraits(.isHeader)
+                ZStack(alignment: .leading) {
+                    // Holds the line's height before any counts arrive.
+                    Text(verbatim: " ").font(theme.type.body(14)).hidden()
+                    countsLine
+                }
                 followButton
+                    .padding(.top, 4)
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .task(id: artist.id) {
+            portraitURL = nil
+            portraitURL = await app.artistAvatar(id: artist.id)
         }
     }
 

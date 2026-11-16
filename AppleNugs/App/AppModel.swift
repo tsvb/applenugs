@@ -42,6 +42,9 @@ final class AppModel {
     /// Every artist's photo, by id — the Artists list's, fetched once per
     /// session (8 pages). Cleared with `cachedArtists`.
     private var cachedArtistAvatars: [String: URL]?
+    /// Photos fetched a few at a time (Home's crate, artist pages) before the
+    /// full walk, so going back and forth between artists asks once each.
+    private var knownArtistAvatars: [String: URL] = [:]
 
     /// Fully loaded artist catalogs (shows/releases, and videos), reused for
     /// `ArtistCatalogPaging.cacheTTL` so revisiting an artist page makes no
@@ -169,6 +172,7 @@ final class AppModel {
         discardOfflineLibrary()
         cachedArtists = nil
         cachedArtistAvatars = nil
+        knownArtistAvatars.removeAll()
         artistShowsCache.removeAll()
         artistVideosCache.removeAll()
         sessionState = .loggedOut
@@ -219,7 +223,18 @@ final class AppModel {
         if let cachedArtistAvatars {
             return cachedArtistAvatars.filter { ids.contains($0.key) }
         }
-        return try await client.artistAvatars(ids: ids)
+        let missing = ids.filter { knownArtistAvatars[$0] == nil }
+        if !missing.isEmpty {
+            let fetched = try await client.artistAvatars(ids: missing)
+            knownArtistAvatars.merge(fetched) { _, new in new }
+        }
+        return knownArtistAvatars.filter { ids.contains($0.key) }
+    }
+
+    /// One artist's photo (the artist page's header), or nil — never throws:
+    /// a missing photo is the monogram, not an error.
+    func artistAvatar(id: String) async -> URL? {
+        (try? await artistAvatars(ids: [id]))?[id]
     }
 
     /// Every artist's photo, by id, cached for the session. Empty on a
