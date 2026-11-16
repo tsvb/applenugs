@@ -39,6 +39,9 @@ final class AppModel {
     private var deepLinkTask: Task<Void, Never>?
 
     private var cachedArtists: [ArtistEntry]?
+    /// Every artist's photo, by id — the Artists list's, fetched once per
+    /// session (8 pages). Cleared with `cachedArtists`.
+    private var cachedArtistAvatars: [String: URL]?
 
     /// Fully loaded artist catalogs (shows/releases, and videos), reused for
     /// `ArtistCatalogPaging.cacheTTL` so revisiting an artist page makes no
@@ -165,6 +168,7 @@ final class AppModel {
         player.clear()
         discardOfflineLibrary()
         cachedArtists = nil
+        cachedArtistAvatars = nil
         artistShowsCache.removeAll()
         artistVideosCache.removeAll()
         sessionState = .loggedOut
@@ -212,7 +216,23 @@ final class AppModel {
         #if DEBUG
         if AppModel.isUITestRun { return [:] }
         #endif
+        if let cachedArtistAvatars {
+            return cachedArtistAvatars.filter { ids.contains($0.key) }
+        }
         return try await client.artistAvatars(ids: ids)
+    }
+
+    /// Every artist's photo, by id, cached for the session. Empty on a
+    /// `-UITEST` run (fake ids), and not cached when the walk came back empty,
+    /// so a failed first try is retried next time the list opens.
+    func allArtistAvatars() async throws -> [String: URL] {
+        #if DEBUG
+        if AppModel.isUITestRun { return [:] }
+        #endif
+        if let cachedArtistAvatars { return cachedArtistAvatars }
+        let avatars = try await client.allArtistAvatars()
+        if !avatars.isEmpty { cachedArtistAvatars = avatars }
+        return avatars
     }
 
     /// Resolve a display name to the catalog's own entry.

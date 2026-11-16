@@ -219,6 +219,22 @@ enum Catalog {
         return avatars
     }
 
+    /// The v1 `/artists` list's largest page (`limit` above 100 → HTTP 400).
+    static let artistPageSize = 100
+    /// A ceiling on pages walked, so a misreported `total` can't loop us:
+    /// the catalog was 718 artists (8 pages) on 2026-11-16.
+    static let maxArtistPages = 20
+
+    /// The offset of the next v1 `/artists` page, or nil when the walk is done:
+    /// a short or empty page, the reported `total` reached, or the page cap.
+    static func nextArtistPageOffset(after offset: Int, received: Int,
+                                     total: Int?, pageIndex: Int) -> Int? {
+        guard received >= artistPageSize, pageIndex + 1 < maxArtistPages else { return nil }
+        let next = offset + received
+        if let total, next >= total { return nil }
+        return next
+    }
+
     /// catalog.containersAll → containers (newest-first per the API).
     static func containers(from json: JSON) -> [ContainerSummary] {
         json.unwrapped.arr("containers", "Containers").compactMap { c in

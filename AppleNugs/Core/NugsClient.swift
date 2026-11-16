@@ -267,6 +267,35 @@ actor NugsClient {
         return Catalog.artistAvatars(from: json)
     }
 
+    /// Every artist's photo, for the Artists list: the v1 `/artists` list
+    /// walked a page (100) at a time — 8 requests for the 718-artist catalog,
+    /// through the same token bucket as every catalog call. Keyed by
+    /// `ArtistEntry.id`. Pages that arrive before a failure are kept.
+    func allArtistAvatars() async throws -> [String: URL] {
+        var avatars: [String: URL] = [:]
+        var offset: Int? = 0
+        var page = 0
+        while let current = offset {
+            let json: JSON
+            do {
+                json = try await catalogV1Get("/artists", query: [
+                    "offset": String(current),
+                    "limit": String(Catalog.artistPageSize),
+                ])
+            } catch {
+                if avatars.isEmpty { throw error }
+                break
+            }
+            let received = json.unwrapped.arr("items", "Items").count
+            avatars.merge(Catalog.artistAvatars(from: json)) { _, new in new }
+            offset = Catalog.nextArtistPageOffset(after: current, received: received,
+                                                  total: json.unwrapped.int("total"),
+                                                  pageIndex: page)
+            page += 1
+        }
+        return avatars
+    }
+
     // --- video catalog ------------------------------------------------------
 
     /// Recently-added VOD (the only artist-independent global video listing).
