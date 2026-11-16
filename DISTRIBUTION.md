@@ -96,7 +96,8 @@ with your team.)
 ## Prerequisites (both paths)
 
 - **Apple Developer Program** membership ($99/yr).
-- **Xcode 16+** signed into your Apple ID (Settings → Accounts).
+- **Xcode 27.1+** signed into your Apple ID (Settings → Accounts). 27.1 is the
+  floor because the iOS app compiles iOS 27.1 SDK symbols; CI asserts it.
 - Bundle ID `com.timvbs.applenugs` registered to your team. (Automatic signing
   registers it for you the first time you archive; or pre-register it at
   developer.apple.com → Identifiers.)
