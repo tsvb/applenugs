@@ -12,6 +12,9 @@ struct SearchView: View {
     @State private var results: SearchModel?
     @State private var searching = false
     @State private var error: String?
+    /// The artist hits' photos, by id. Empty until the lookup lands (and for
+    /// good if it fails) — rows show the monogram meanwhile.
+    @State private var avatars: [String: URL] = [:]
     @FocusState private var fieldFocused: Bool
 
     var body: some View {
@@ -37,6 +40,13 @@ struct SearchView: View {
             #endif
         }
         .onChange(of: ui.searchFocusTick) { fieldFocused = true }
+        // One `?ids=` lookup per result set (known photos are remembered on
+        // AppModel). Merged, so an earlier search's photos stay put.
+        .task(id: results?.artists.map(\.id) ?? []) {
+            guard let ids = results?.artists.map(\.id), !ids.isEmpty,
+                  let found = try? await app.artistAvatars(ids: ids) else { return }
+            avatars.merge(found) { _, new in new }
+        }
         .scrollDismissesKeyboard(.immediately)
         .toolbar {
             #if os(iOS)
@@ -90,7 +100,10 @@ struct SearchView: View {
                 ContentUnavailableView(theme.copy.searchNoResults(searchedQuery),
                                        systemImage: "magnifyingglass")
             } else {
-                resultsList(results)
+                // `avatars` is read here, in body, and handed down: read only
+                // inside the List's rows it isn't a dependency of this body,
+                // and photos that land late never reach the rows.
+                resultsList(results, avatars: avatars)
             }
         } else {
             ContentUnavailableView(
@@ -100,13 +113,18 @@ struct SearchView: View {
         }
     }
 
-    private func resultsList(_ results: SearchModel) -> some View {
+    private func resultsList(_ results: SearchModel, avatars: [String: URL]) -> some View {
         List {
             if !results.artists.isEmpty {
                 Section {
                     ForEach(results.artists) { artist in
                         NavigationLink(value: Route.artist(artist)) {
-                            Label(artist.name, systemImage: "music.mic")
+                            HStack(spacing: 10) {
+                                // The artist's photo, as on the Artists list.
+                                ArtistPortrait(url: avatars[artist.id], name: artist.name)
+                                    .frame(width: 32, height: 32)
+                                Text(artist.name).lineLimit(1)
+                            }
                         }
                         .themedListRow()
                         .contextMenu {

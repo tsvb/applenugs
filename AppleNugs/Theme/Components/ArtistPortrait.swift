@@ -6,7 +6,8 @@ import SwiftUI
 /// fails, so a list with no network still reads as artists, not holes.
 ///
 /// Photos come from the v1 catalog's `avatarImage` (`Catalog.artistAvatars`).
-/// Used by Home's crate tiles and the Artists list.
+/// Used by `ArtistTile` (Home, Favorites), the Artists list, the artist page
+/// header and search results.
 struct ArtistPortrait: View {
     @Environment(\.theme) private var theme
 
