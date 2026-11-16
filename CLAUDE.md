@@ -68,7 +68,7 @@ Native **macOS + iOS SwiftUI** player for nugs.net, shipped to users as **Yeti �
   width** (2026-11-16, branch `duo-wide-home`): at ≥ 560pt of Home content with a track loaded
   (`HomeColumns`, iOS only), the hero keeps its UPRIGHT blister pack in a 280–320pt leading column and
   favorites / nice list / crate stack beside it. A sideways hero card was built first and REJECTED by
-  Tim ("still too wide… a little lazy") — don't bring it back; it's parked on `duo-wide-home-sideways`.
+  Tim ("still too wide… a little lazy") — don't bring it back (its branch is deleted).
   The pill's second line becomes "artist · show" at a ≥ 220pt text column (`PillLayout.showsShowLine`;
   Duo flat and landscape iPhones — the upright Duo pill is ~400pt, artist only). Verified on Tim's Duo.
 - **Audio/video arbiter: only one plays, the last one DELIBERATELY started wins** (2026-11-08 fix for
