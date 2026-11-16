@@ -255,6 +255,18 @@ actor NugsClient {
         return try await getJSON(url, bearer: session.accessToken)
     }
 
+    /// Artist photos for a handful of artists, in ONE request: the v1
+    /// catalog's `/artists?ids=` filter (verified 2026-11-16 — the unfiltered
+    /// list is 718 artists across 8 pages). Keyed by `ArtistEntry.id`.
+    func artistAvatars(ids: [String]) async throws -> [String: URL] {
+        guard !ids.isEmpty else { return [:] }
+        let json = try await catalogV1Get("/artists", query: [
+            "ids": ids.joined(separator: ","),
+            "limit": String(ids.count),
+        ])
+        return Catalog.artistAvatars(from: json)
+    }
+
     // --- video catalog ------------------------------------------------------
 
     /// Recently-added VOD (the only artist-independent global video listing).

@@ -205,6 +205,16 @@ final class AppModel {
         return parsed
     }
 
+    /// Artist photos for the given catalog ids (Home's crate). Empty on a
+    /// `-UITEST` run, whose stub catalog's ids are fake — a real lookup would
+    /// put strangers' photos on the stub artists' names.
+    func artistAvatars(ids: [String]) async throws -> [String: URL] {
+        #if DEBUG
+        if AppModel.isUITestRun { return [:] }
+        #endif
+        return try await client.artistAvatars(ids: ids)
+    }
+
     /// Resolve a display name to the catalog's own entry.
     ///
     /// The player only ever knows an artist's NAME — `QueueTrack` carries no

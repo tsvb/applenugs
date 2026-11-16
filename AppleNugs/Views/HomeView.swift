@@ -17,6 +17,9 @@ struct HomeView: View {
     @State private var artistCount = 0
     @State private var appeared = false
     @State private var sampleError: String?
+    /// The crate artists' photos, by artist id. Empty until the lookup lands
+    /// (and for good if it fails) — tiles show the monogram meanwhile.
+    @State private var avatars: [String: URL] = [:]
     /// Starts true: the fetch is already coming, and a one-frame "nothing in
     /// the crate" is a worse lie than a spinner nobody sees.
     @State private var loadingSample = true
@@ -237,20 +240,32 @@ struct HomeView: View {
     private var crateColumn: GridItem.Size { .adaptive(minimum: 92, maximum: 132) }
     private var crateSpacing: CGFloat { 10 }
 
-    /// Monogram over the name, centered. The name always reserves two lines,
-    /// so every tile in a row stands the same height whatever the name's length.
+    /// The artist's photo in a circle (Apple Music's shape for an artist, so it
+    /// reads apart from the square show covers in Favorites above), the name
+    /// centered below.
+    ///
+    /// Names are never cut off for ~98% of the catalog: up to three lines,
+    /// shrinking to 85% before truncating (median name 14 characters, 1 in 10
+    /// past 27, the longest 62). Two lines are always reserved, and the tile
+    /// stretches to its row, so a row of short and long names lines up.
     private func crateCell(_ artist: ArtistEntry) -> some View {
         VStack(spacing: 8) {
-            MonogramTile(text: artist.name, size: 44)
-            Text(artist.name)
-                .font(theme.type.body(13))
-                .foregroundStyle(theme.palette.textPrimary)
-                .multilineTextAlignment(.center)
-                .lineLimit(2, reservesSpace: true)
+            ArtistPortrait(url: avatars[artist.id], name: artist.name)
+            ZStack(alignment: .top) {
+                // Holds two lines' height at the current Dynamic Type size.
+                Text(" ").lineLimit(2, reservesSpace: true).hidden()
+                Text(artist.name)
+                    .foregroundStyle(theme.palette.textPrimary)
+                    .multilineTextAlignment(.center)
+                    .lineLimit(3)
+                    .minimumScaleFactor(0.85)
+            }
+            .font(theme.type.body(13))
         }
         .padding(.horizontal, 8)
-        .padding(.vertical, 12)
-        .frame(maxWidth: .infinity)
+        .padding(.top, 10)
+        .padding(.bottom, 10)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
     }
     #else
     private var crateColumn: GridItem.Size { .adaptive(minimum: 200, maximum: 280) }
@@ -344,6 +359,13 @@ struct HomeView: View {
         } catch {
             sampleError = error.localizedDescription
         }
+        #if os(iOS)
+        // Photos are a nicety on top of a crate that already works: a failure
+        // leaves the monograms, and reports nothing.
+        if !sample.isEmpty {
+            avatars = (try? await app.artistAvatars(ids: sample.map(\.id))) ?? [:]
+        }
+        #endif
     }
 }
 
@@ -444,3 +466,47 @@ private extension View {
         modifier(Reveal(appeared: appeared, index: index))
     }
 }
+
+#if os(iOS)
+// MARK: - Artist portrait
+
+/// An artist's photo clipped to a circle, filling the width it's given. The
+/// monogram stands in while the photo loads, when there is none, and when it
+/// fails — so a crate with no network still reads as artists, not holes.
+private struct ArtistPortrait: View {
+    @Environment(\.theme) private var theme
+
+    let url: URL?
+    let name: String
+
+    var body: some View {
+        GeometryReader { geo in
+            let side = min(geo.size.width, geo.size.height)
+            Group {
+                if let url {
+                    AsyncImage(url: url) { phase in
+                        if case .success(let image) = phase {
+                            image.resizable().aspectRatio(contentMode: .fill)
+                        } else {
+                            monogram(side)
+                        }
+                    }
+                } else {
+                    monogram(side)
+                }
+            }
+            .frame(width: side, height: side)
+            .clipShape(Circle())
+            .overlay { Circle().strokeBorder(theme.palette.hairline, lineWidth: 1) }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
+        .aspectRatio(1, contentMode: .fit)
+        .accessibilityHidden(true)
+    }
+
+    private func monogram(_ side: CGFloat) -> some View {
+        MonogramTile(text: name, size: side)
+    }
+}
+#endif
+

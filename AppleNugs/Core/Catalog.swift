@@ -198,6 +198,27 @@ enum Catalog {
         }
     }
 
+    /// v1 `GET /artists?ids=…` → artist id → avatar photo URL.
+    ///
+    /// The legacy `catalog.artists` list the app browses carries only a dead
+    /// header GIF per artist; the v1 catalog carries a real 800×800 photo for
+    /// every artist (`avatarImage.url`, a redirect to the image CDN). The two
+    /// share artist ids, so the result keys straight onto `ArtistEntry.id`.
+    /// Entries without an id or a parseable http(s) URL are skipped, so a
+    /// missing photo falls back to the monogram rather than a broken image.
+    static func artistAvatars(from json: JSON) -> [String: URL] {
+        var avatars: [String: URL] = [:]
+        for item in json.unwrapped.arr("items", "Items") {
+            guard let id = item.str("id", "artistID", "artistId"),
+                  let string = item["avatarImage"].str("url"),
+                  let url = URL(string: string),
+                  let scheme = url.scheme?.lowercased(), scheme == "https" || scheme == "http"
+            else { continue }
+            avatars[id] = url
+        }
+        return avatars
+    }
+
     /// catalog.containersAll → containers (newest-first per the API).
     static func containers(from json: JSON) -> [ContainerSummary] {
         json.unwrapped.arr("containers", "Containers").compactMap { c in
