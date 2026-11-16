@@ -9,8 +9,8 @@ extension View {
     /// column such as the ~300pt player column beside the queue on iPhone Duo's
     /// upright inner display.
     ///
-    /// Click Wheel's `controlPad` pattern, with the natural size MEASURED rather
-    /// than hard-coded (SF Symbol advances aren't known up front): the row is
+    /// `NowPlayingFit.scale` + `scaleEffect` + a matching frame, with the natural
+    /// size MEASURED rather than hard-coded (SF Symbol advances aren't known up front): the row is
     /// measured at its ideal size before `scaleEffect`, which changes only the
     /// drawing, so the measurement doesn't depend on the scale; the available
     /// width is measured on the full-width container, whose width is the

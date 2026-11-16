@@ -2,7 +2,7 @@ import SwiftUI
 
 /// The transport's tactile vocabulary. Three feelings, used everywhere, so a
 /// tap means the same thing whichever surface it lands on — the docked bar,
-/// the full-screen player, the faceplate, the Click Wheel.
+/// the full-screen player, the pill and its expanded panel.
 extension SensoryFeedback {
     /// Play/pause: the one press that commits to something.
     static let transportToggle = SensoryFeedback.impact(weight: .medium, intensity: 0.9)

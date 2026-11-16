@@ -32,9 +32,8 @@ import SwiftUI
 /// whose ScrollView keeps its own vertical scrolling) moves the whole
 /// arrangement down 1:1 and closes it past a threshold, otherwise springs it
 /// back — policy in `NowPlayingDismissDrag`. It is a plain `.gesture`, so any
-/// child gesture that recognizes wins: the scrub and volume sliders, every
-/// button, and The Receiver's volume ladder (`DragGesture(minimumDistance: 0)`,
-/// which recognizes on touch-down). The cover is presented with a clear
+/// child gesture that recognizes wins: the scrub and volume sliders and every
+/// button. The cover is presented with a clear
 /// presentation background so the app shows through as the player slides;
 /// at rest every player and the panel paint their own opaque, safe-area-
 /// ignoring backgrounds, and the `palette.base` backing below covers any seam

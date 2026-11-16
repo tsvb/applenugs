@@ -154,7 +154,7 @@ enum AudioFormat: String {
     }
 
     /// Whether the format is compressed without loss — the single source of
-    /// truth for the lossless badge tint and the cassette's lossless tick.
+    /// truth for the price sticker (the lossless badge).
     ///
     /// Deliberately an exhaustive switch rather than a `Set` literal or a
     /// `default: false`: adding a case to `AudioFormat` should be a compile

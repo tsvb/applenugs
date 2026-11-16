@@ -5,12 +5,12 @@ import SwiftUI
 ///
 /// Renders **exactly one** `Text(AttributedString)` — no wrapper stack, no
 /// `contentShape`, no frame of its own — so it is a drop-in for the plain
-/// `Text` it replaces at all sixteen render sites. Callers keep their entire
+/// `Text` it replaces at every render site. Callers keep their entire
 /// modifier chain (`.font`, `.tracking`, `.lineLimit`, `.truncationMode`,
 /// `.multilineTextAlignment`); those are View modifiers and propagate to the
 /// descendant Text, so metrics and truncation are unchanged. That matters:
-/// several of these surfaces have no slack at all (the cassette's 25:16 ratio,
-/// the pill's text budget, the faceplate's fixed-width ticker).
+/// several of these surfaces have no slack at all (the pill's text budget above
+/// all).
 ///
 /// **Invisible at rest.** Each link run is given the surrounding foreground
 /// color explicitly, which SwiftUI honors over its own link tint — verified by
@@ -29,9 +29,10 @@ struct NowPlayingMetaText: View {
     var mode: NowPlayingMetaLine.Mode = .joined
     var casing: NowPlayingMetaLine.Casing = .asIs
     /// The glyph color. Callers that paint from a theme token can leave this
-    /// nil and set `.foregroundStyle` as they always have; the cassette passes
-    /// its local paper `ink` here because the run color has to be set on the
-    /// attributed string, not inherited, for the link runs to match.
+    /// nil and set `.foregroundStyle` as they always have; a caller painting
+    /// from a local color passes it here instead, because the run color has to
+    /// be set on the attributed string, not inherited, for the link runs to
+    /// match.
     var tint: Color?
     /// Rendered when there is no track. Absorbs the ticker surfaces' idle copy.
     var idle: String?
@@ -60,9 +61,8 @@ struct NowPlayingMetaText: View {
         if segments.isEmpty, (idle ?? "").isEmpty {
             // Nothing to say — render NOTHING, not an empty Text, which would
             // still claim a line's height. Most of the sites this replaces were
-            // `if let` and depended on that: the cassette's 25:16 ratio budget
-            // has ~19pt of slack and has already been yielded twice by a label
-            // growing a line.
+            // `if let` and depended on that: a phantom empty line moves every
+            // layout that budgets its height (the pill above all).
             EmptyView()
         } else {
             Text(attributed)

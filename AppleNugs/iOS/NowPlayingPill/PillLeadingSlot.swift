@@ -2,13 +2,9 @@ import SwiftUI
 
 /// The pill's 32pt leading slot: the cover, wrapped in the progress ring.
 ///
-/// This was five themed faces (Tape Room's reel, the Receiver's VU, Click
-/// Wheel's disc, Shoebox's J-card spine, and a plain chip for Soundboard).
-/// The ring changed that calculus — a ring wants one consistent shape to
-/// encircle, and three of those faces are themselves circles, so the slot
-/// would have carried two concentric rings. Theme identity lives on in the
-/// full-screen player, the palette, the typography, the copy, and the macOS
-/// miniplayer.
+/// One uniform `ArtChip`, clipped to a circle: a ring wants one consistent
+/// shape to encircle, and the circle keeps the ring's 1pt gap at every angle
+/// (a rounded square's corners would put the arc on the cover).
 ///
 /// Nothing in THIS view observes `player.currentTime`; the ring is a separate
 /// leaf so the 4Hz playback tick stops there. See `PillProgressRing`.

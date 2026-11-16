@@ -6,9 +6,10 @@ import Foundation
 /// `AppleNugsTests` bundle (the `PillLayout` trick).
 ///
 /// Home is one column on a phone. On a wide canvas — the iPhone Duo's inner
-/// display (~870pt of Home content flat, ~629pt upright), or a landscape
-/// iPhone — one column stretches the hero into a long strip of bare card
-/// stock and leaves little else above the fold. There, Home splits instead:
+/// display (~870pt of Home content flat, ~629pt upright; regular iPhones are
+/// portrait-locked by `OrientationGate`, so they never get here) — one column
+/// stretches the hero into a long strip of bare card stock and leaves little
+/// else above the fold. There, Home splits instead:
 /// the hero keeps its designed upright blister pack in a leading column, and
 /// favorites, the nice list and the crate stack beside it.
 ///

@@ -100,8 +100,8 @@ enum PillLayout {
     /// The narrowest text column that also carries the show after the artist
     /// ("Goose · 11/11/26 The Truth, Nashville, TN"). Regular iPhones (~104pt
     /// with the chevron) and the Duo's folded outer display stay artist-only;
-    /// the Duo's inner display flat (~560pt) and a landscape iPhone have room
-    /// to spare. (Upright, the Duo's tab bar is horizontal again and the pill
+    /// the Duo's inner display flat (~560pt) has room to spare. (Phones are
+    /// portrait-locked, so no regular iPhone gets here. Upright, the Duo's tab bar is horizontal again and the pill
     /// is ~400pt: artist only.)
     static let minShowLineWidth: CGFloat = 220
 
