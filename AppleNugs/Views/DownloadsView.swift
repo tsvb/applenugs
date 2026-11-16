@@ -55,7 +55,8 @@ struct DownloadsView: View {
             play(show)
         } label: {
             HStack(spacing: 12) {
-                MonogramTile(text: show.artist ?? show.title ?? "?", size: 44)
+                DownloadCover(path: show.artworkPath,
+                              fallback: show.artist ?? show.title ?? "?")
 
                 VStack(alignment: .leading, spacing: 2) {
                     Text(show.title ?? "Untitled show")
@@ -112,5 +113,46 @@ struct DownloadsView: View {
                        artworkPath: show.artworkPath, showId: show.containerID)
         }
         app.player.play(queue)
+    }
+}
+
+/// A downloaded show's square cover — a show reads as its cover everywhere
+/// else, not as its artist's initials. The monogram stands in while the
+/// cover loads and when it can't (offline: the download keeps the cover's
+/// address, not the image).
+private struct DownloadCover: View {
+    @Environment(\.theme) private var theme
+
+    let path: String?
+    let fallback: String
+
+    private static let side: CGFloat = 44
+
+    var body: some View {
+        Group {
+            if let url = path.flatMap({ NugsConstants.imageURL(path: $0) }) {
+                AsyncImage(url: url) { phase in
+                    if case .success(let image) = phase {
+                        image.resizable().aspectRatio(contentMode: .fill)
+                    } else {
+                        monogram
+                    }
+                }
+            } else {
+                monogram
+            }
+        }
+        .frame(width: Self.side, height: Self.side)
+        .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+        // Flat on the shelf with a frost keyline, like `CoverArt`.
+        .overlay {
+            RoundedRectangle(cornerRadius: 6, style: .continuous)
+                .strokeBorder(theme.palette.hairline, lineWidth: 1)
+        }
+        .accessibilityHidden(true)
+    }
+
+    private var monogram: some View {
+        MonogramTile(text: fallback, size: Self.side)
     }
 }

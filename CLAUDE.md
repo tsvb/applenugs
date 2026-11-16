@@ -96,6 +96,9 @@ or release notes for design changes, but keep his own data safe.
   down: read only inside a `LazyVGrid`/`List` cell, it isn't a dependency of the body, and the tiles keep
   their monograms (the Favorites page did exactly that until 2026-11-16). Home's crate and the Artists
   list get away with it only because a `defer { loading = false }` lands in the same update.
+  **Where photos go (audited 2026-11-16):** every artist LIST — Home's crate, favorites shelf and nice
+  list, the Favorites page, the Artists list, search — plus the artist page header. Deliberately NOT on
+  show/video pages, now playing, the pill or the Mac miniplayer: there the artist is a name on a cover.
 
 ### Platforms and layout
 - **macOS vs iOS:** `AppleNugs/macOS/` and `AppleNugs/iOS/` are per-platform (excluded from the other
@@ -184,7 +187,7 @@ or release notes for design changes, but keep his own data safe.
   (4) Backgrounded iOS has no tick, so credit is SETTLED (`ListeningCredit.span`), reading `creditPosition`
   — nil, never the stale `currentTime`, when the head isn't our item; paused → playing re-anchors without
   crediting. Don't add a wake or background tick for stats. Deliberate scope cuts: artists only, all-time
-  only, Home only, typographic ledger, audio only. Reset lives in the account menu.
+  only, Home only, typographic ledger (no cards or tiles; each row has a 28pt artist photo beside its check, 2026-11-16), audio only. Reset lives in the account menu.
 - **Compliance (nugs.net Terms):** identity is honest everywhere — `NugsIdentity.current` =
   `Yeti/<ver> (unofficial; +github; <OS>)`, no Referer; the old Android UA strings exist ONLY as the DEBUG
   Network Probe's control. Streams try tier 7 (ALAC 16) first and other tiers ONE AT A TIME

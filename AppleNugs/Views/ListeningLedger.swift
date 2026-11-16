@@ -19,7 +19,8 @@ import SwiftUI
 /// pinned by tests rather than by this body. Do not format here.
 ///
 /// It is "the nice list": a sentence-case section header, one totals line
-/// ("112 hours listened · 9 artists"), and rows of a checked box, the name
+/// ("112 hours listened · 9 artists"), and rows of a checked box, the
+/// artist's photo in a circle, the name
 /// (which truncates first) and plays / hours in two right-aligned columns; the
 /// split numbers come from `LedgerSummary`.
 ///
@@ -37,12 +38,21 @@ struct ListeningLedger: View {
     /// clickable on one launch and not the next.
     @State private var resolved: [String: ArtistEntry] = [:]
 
+    /// The resolved rows' photos, by catalog id. Empty until the lookup lands
+    /// (and for good if it fails) — rows show the monogram meanwhile.
+    @State private var avatars: [String: URL] = [:]
+
     var body: some View {
         let tallies = Self.tallies(from: app.listening.stats)
         let rows = LedgerSummary.top(tallies)
         let totals = LedgerSummary.totals(tallies)
+        // Each row's photo, worked out HERE so body reads `resolved` and
+        // `avatars` and redraws when they land (the CLAUDE.md artist-photo rule).
+        let photos = rows.reduce(into: [String: URL]()) { out, row in
+            if let id = resolved[row.key]?.id, let url = avatars[id] { out[row.key] = url }
+        }
 
-        niceList(rows: rows, totals: totals)
+        niceList(rows: rows, totals: totals, photos: photos)
             .task(id: rows.map(\.key).joined(separator: "|")) {
                 await resolveNames(rows)
             }
@@ -77,16 +87,19 @@ struct ListeningLedger: View {
     /// `.nice.ledger-wide` (72/48). Minimum widths, so the columns line up at
     /// the default text size and grow rather than clip at larger ones.
     #if os(macOS)
+    private static let photoSide: CGFloat = 28
     private static let playsColumn: CGFloat = 72
     private static let hoursColumn: CGFloat = 48
     private static let rowPadding: CGFloat = 9
     #else
+    private static let photoSide: CGFloat = 28
     private static let playsColumn: CGFloat = 62
     private static let hoursColumn: CGFloat = 40
     private static let rowPadding: CGFloat = 11
     #endif
 
-    private func niceList(rows: [LedgerSummary.Row], totals: LedgerSummary.Totals) -> some View {
+    private func niceList(rows: [LedgerSummary.Row], totals: LedgerSummary.Totals,
+                          photos: [String: URL]) -> some View {
         VStack(alignment: .leading, spacing: 0) {
             // `.sec h3`: heavy 22, sentence case.
             Text(theme.copy.ledgerTitle)
@@ -107,16 +120,21 @@ struct ListeningLedger: View {
             VStack(spacing: 0) {
                 ForEach(rows) { row in
                     hairline
-                    linked(row) { niceRow(row) }
+                    linked(row) { niceRow(row, photo: photos[row.key]) }
                 }
                 if !rows.isEmpty { hairline }
             }
         }
     }
 
-    private func niceRow(_ row: LedgerSummary.Row) -> some View {
+    private func niceRow(_ row: LedgerSummary.Row, photo: URL?) -> some View {
         HStack(spacing: 12) {
             CheckedBox()
+            // The artist's photo, beside the box rather than instead of it:
+            // the check is the nice list's joke (Tim, 2026-11-16). A name that
+            // doesn't resolve to the catalog keeps the monogram.
+            ArtistPortrait(url: photo, name: row.displayName)
+                .frame(width: Self.photoSide, height: Self.photoSide)
             Text(row.displayName)
                 .font(theme.type.title(16))
                 .foregroundStyle(theme.palette.textPrimary)
@@ -160,6 +178,12 @@ struct ListeningLedger: View {
             }
         }
         resolved = found
+        // Photos are a nicety on top of a list that already works: a failure
+        // leaves the monograms, and reports nothing.
+        let ids = found.values.map(\.id)
+        if !ids.isEmpty, let photos = try? await app.artistAvatars(ids: ids) {
+            avatars = photos
+        }
     }
 }
 
