@@ -34,20 +34,54 @@ struct HomeView: View {
     private var horizontalPadding: CGFloat { 36 }
     #endif
 
+    /// Home's measured content width (inside the padding, under the 880 cap).
+    /// 0 until the first measurement lands, which `HomeColumns` answers with
+    /// one column. iOS reads it; the Mac never splits.
+    @State private var contentWidth: CGFloat = 0
+
+    private var columns: HomeColumns {
+        #if os(iOS)
+        HomeColumns.columns(width: contentWidth, hasHero: showsHero)
+        #else
+        .single
+        #endif
+    }
+
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 30) {
                 greeting.reveal(appeared, 0)
-                if showsHero { YetiHeroHost().reveal(appeared, 1) }
-                if !app.favorites.isEmpty { favoritesStrip.reveal(appeared, 2) }
-                #if os(macOS)
-                entryRow.reveal(appeared, 3)
-                #endif
-                if app.listening.hasAnyPlay {
-                    ListeningLedger().reveal(appeared, 4)
+                switch columns {
+                case .single:
+                    if showsHero { YetiHeroHost().reveal(appeared, 1) }
+                    sections
+                case .split(let leading):
+                    // The wide canvas (the Duo's inner display): the hero keeps
+                    // its designed upright pack in a leading column instead of
+                    // stretching into a long card, and the rest sits beside it.
+                    HStack(alignment: .top, spacing: HomeColumns.gutter) {
+                        YetiHeroHost()
+                            .frame(width: leading)
+                            .reveal(appeared, 1)
+                        VStack(alignment: .leading, spacing: 30) { sections }
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
                 }
-                crate.reveal(appeared, 5)
             }
+            // Fill the proposal rather than hug the content, so the reading
+            // below is the width Home has — not the widest section's.
+            .frame(maxWidth: .infinity, alignment: .leading)
+            // Never animate the switch: the first frame is unmeasured (one
+            // column), and the reveal animation would otherwise morph it into
+            // the split on the Duo.
+            .animation(nil, value: columns)
+            #if os(iOS)
+            // Measured inside the padding and the cap, so this is the width
+            // the columns actually share. Both arrangements fill it, so the
+            // reading never depends on which one is showing. iOS only: the Mac
+            // never splits, and a window resize shouldn't re-run Home's body.
+            .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { contentWidth = $0 }
+            #endif
             .padding(.horizontal, horizontalPadding)
             .padding(.top, 34)
             .padding(.bottom, 40)
@@ -59,6 +93,19 @@ struct HomeView: View {
         .compactNavigationTitle()
         .task { await loadSample() }
         .onAppear { appeared = true }
+    }
+
+    /// Everything after the hero, in order — one column's tail, or the whole
+    /// trailing column of a split.
+    @ViewBuilder private var sections: some View {
+        if !app.favorites.isEmpty { favoritesStrip.reveal(appeared, 2) }
+        #if os(macOS)
+        entryRow.reveal(appeared, 3)
+        #endif
+        if app.listening.hasAnyPlay {
+            ListeningLedger().reveal(appeared, 4)
+        }
+        crate.reveal(appeared, 5)
     }
 
     // --- greeting -----------------------------------------------------------

@@ -235,6 +235,9 @@ targets:
         # now-playing pill; compiled in rather than @testable-imported so the
         # test bundle stays host-free — and so macOS-hosted tests can cover
         # iOS-only layout logic.
+      - path: AppleNugs/Views/HomeColumns.swift
+        # Pure Foundation policy: when iPhone Home splits into two columns
+        # (measured width, the Duo's inner display). Same deal as PillLayout.
       - path: AppleNugs/Theme/Transport/NowPlayingMetaLine.swift
         # Pure Foundation policy for the now-playing meta line's linkable runs
         # (and their URL vocabulary). Compiled in so the segmentation rules —
