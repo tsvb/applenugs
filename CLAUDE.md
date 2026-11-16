@@ -91,6 +91,11 @@ or release notes for design changes, but keep his own data safe.
   networking); the now-playing counter reads "Track 3 of 24"; the Mac Home resume card is a FLAT cover (the
   Mac's bubble belongs to the dashboard miniplayer and the Now Playing window); "Sign out" app-wide; all
   clear-queue paths confirm.
+- **Artist photos** (`ArtistPortrait`, `ArtistTile`) come from `AppModel.artistAvatars(ids:)` into a
+  view's `@State` table that lands AFTER the grid is built. **Read that table in `body`** and hand it
+  down: read only inside a `LazyVGrid`/`List` cell, it isn't a dependency of the body, and the tiles keep
+  their monograms (the Favorites page did exactly that until 2026-11-16). Home's crate and the Artists
+  list get away with it only because a `defer { loading = false }` lands in the same update.
 
 ### Platforms and layout
 - **macOS vs iOS:** `AppleNugs/macOS/` and `AppleNugs/iOS/` are per-platform (excluded from the other

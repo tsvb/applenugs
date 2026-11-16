@@ -20,7 +20,12 @@ struct FavoritesView: View {
                     .frame(maxWidth: .infinity, minHeight: 360)
             } else {
                 VStack(alignment: .leading, spacing: 26) {
-                    if !favorites.artists.isEmpty { artistsSection }
+                    // `avatars` is read HERE, in body, and handed down. Read only
+                    // inside the LazyVGrid's cells, it never registered as a
+                    // dependency of this body, so a photo landing after the
+                    // grid was built never redrew the tile (Goose stayed a
+                    // monogram on Tim's Duo, 2026-11-16).
+                    if !favorites.artists.isEmpty { artistsSection(avatars) }
                     if !favorites.shows.isEmpty { showsSection }
                     if !favorites.videos.isEmpty { videosSection }
                 }
@@ -45,7 +50,7 @@ struct FavoritesView: View {
             .foregroundStyle(theme.palette.textPrimary)
     }
 
-    private var artistsSection: some View {
+    private func artistsSection(_ avatars: [String: URL]) -> some View {
         VStack(alignment: .leading, spacing: 12) {
             sectionTitle("Artists")
             LazyVGrid(columns: [GridItem(ArtistTile.column, spacing: ArtistTile.spacing)],
