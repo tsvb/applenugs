@@ -210,32 +210,64 @@ struct HomeView: View {
         .padding(.vertical, 2)
     }
 
+    /// The crate's grid. The Mac keeps the design sheet's `.crategrid`: rows of
+    /// a small monogram and the name, three across a ~800pt Home. iOS gets
+    /// compact TILES instead — monogram above, name below — because rows sized
+    /// for the Mac ran the full width of a phone (one ~350pt bar per artist)
+    /// and of the Duo's right column, mostly bare. Tiles put three across a
+    /// portrait phone and five across the flat Duo's column.
     private var crateGrid: some View {
-        LazyVGrid(
-            columns: [GridItem(.adaptive(minimum: 200, maximum: 280), spacing: 12)],
-            alignment: .leading, spacing: 12
-        ) {
+        LazyVGrid(columns: [GridItem(crateColumn, spacing: crateSpacing)],
+                  alignment: .leading, spacing: crateSpacing) {
             ForEach(sample) { artist in
                 NavigationLink(value: Route.artist(artist)) {
-                    HStack(spacing: 11) {
-                        MonogramTile(text: artist.name, size: 36)
-                        Text(artist.name)
-                            .font(theme.type.body(14))
-                            .foregroundStyle(theme.palette.textPrimary)
-                            .lineLimit(1)
-                        Spacer(minLength: 0)
-                    }
-                    .padding(8)
-                    .background {
-                        RoundedRectangle(cornerRadius: 10, style: .continuous)
-                            .fill(theme.palette.raised)
-                    }
-                    .contentShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                    crateCell(artist)
+                        .background {
+                            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                                .fill(theme.palette.raised)
+                        }
+                        .contentShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
                 }
                 .buttonStyle(.plain)
             }
         }
     }
+
+    #if os(iOS)
+    private var crateColumn: GridItem.Size { .adaptive(minimum: 92, maximum: 132) }
+    private var crateSpacing: CGFloat { 10 }
+
+    /// Monogram over the name, centered. The name always reserves two lines,
+    /// so every tile in a row stands the same height whatever the name's length.
+    private func crateCell(_ artist: ArtistEntry) -> some View {
+        VStack(spacing: 8) {
+            MonogramTile(text: artist.name, size: 44)
+            Text(artist.name)
+                .font(theme.type.body(13))
+                .foregroundStyle(theme.palette.textPrimary)
+                .multilineTextAlignment(.center)
+                .lineLimit(2, reservesSpace: true)
+        }
+        .padding(.horizontal, 8)
+        .padding(.vertical, 12)
+        .frame(maxWidth: .infinity)
+    }
+    #else
+    private var crateColumn: GridItem.Size { .adaptive(minimum: 200, maximum: 280) }
+    private var crateSpacing: CGFloat { 12 }
+
+    private func crateCell(_ artist: ArtistEntry) -> some View {
+        HStack(spacing: 11) {
+            MonogramTile(text: artist.name, size: 36)
+            Text(artist.name)
+                .font(theme.type.body(14))
+                .foregroundStyle(theme.palette.textPrimary)
+                .lineLimit(1)
+            Spacer(minLength: 0)
+        }
+        .padding(8)
+    }
+    #endif
 
     /// Section headers: `.sec h3`'s heavy 22.
     private var sectionSize: CGFloat { 22 }
