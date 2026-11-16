@@ -225,11 +225,6 @@ struct HomeView: View {
             ForEach(sample) { artist in
                 NavigationLink(value: Route.artist(artist)) {
                     crateCell(artist)
-                        .background {
-                            RoundedRectangle(cornerRadius: 10, style: .continuous)
-                                .fill(theme.palette.raised)
-                        }
-                        .contentShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
                 }
                 .buttonStyle(.plain)
             }
@@ -237,35 +232,11 @@ struct HomeView: View {
     }
 
     #if os(iOS)
-    private var crateColumn: GridItem.Size { .adaptive(minimum: 92, maximum: 132) }
-    private var crateSpacing: CGFloat { 10 }
+    private var crateColumn: GridItem.Size { ArtistTile.column }
+    private var crateSpacing: CGFloat { ArtistTile.spacing }
 
-    /// The artist's photo in a circle (Apple Music's shape for an artist, so it
-    /// reads apart from the square show covers in Favorites above), the name
-    /// centered below.
-    ///
-    /// Names are never cut off for ~98% of the catalog: up to three lines,
-    /// shrinking to 85% before truncating (median name 14 characters, 1 in 10
-    /// past 27, the longest 62). Two lines are always reserved, and the tile
-    /// stretches to its row, so a row of short and long names lines up.
     private func crateCell(_ artist: ArtistEntry) -> some View {
-        VStack(spacing: 8) {
-            ArtistPortrait(url: avatars[artist.id], name: artist.name)
-            ZStack(alignment: .top) {
-                // Holds two lines' height at the current Dynamic Type size.
-                Text(" ").lineLimit(2, reservesSpace: true).hidden()
-                Text(artist.name)
-                    .foregroundStyle(theme.palette.textPrimary)
-                    .multilineTextAlignment(.center)
-                    .lineLimit(3)
-                    .minimumScaleFactor(0.85)
-            }
-            .font(theme.type.body(13))
-        }
-        .padding(.horizontal, 8)
-        .padding(.top, 10)
-        .padding(.bottom, 10)
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        ArtistTile(name: artist.name, photo: avatars[artist.id])
     }
     #else
     private var crateColumn: GridItem.Size { .adaptive(minimum: 200, maximum: 280) }
@@ -283,6 +254,11 @@ struct HomeView: View {
             Spacer(minLength: 0)
         }
         .padding(8)
+        .background {
+            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                .fill(theme.palette.raised)
+        }
+        .contentShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
     }
     #endif
 

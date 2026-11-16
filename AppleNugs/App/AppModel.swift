@@ -224,8 +224,10 @@ final class AppModel {
             return cachedArtistAvatars.filter { ids.contains($0.key) }
         }
         let missing = ids.filter { knownArtistAvatars[$0] == nil }
-        if !missing.isEmpty {
-            let fetched = try await client.artistAvatars(ids: missing)
+        // `?ids=` answers at most a page (100); a long follow list goes in batches.
+        for start in stride(from: 0, to: missing.count, by: Catalog.artistPageSize) {
+            let batch = Array(missing[start..<min(start + Catalog.artistPageSize, missing.count)])
+            let fetched = try await client.artistAvatars(ids: batch)
             knownArtistAvatars.merge(fetched) { _, new in new }
         }
         return knownArtistAvatars.filter { ids.contains($0.key) }

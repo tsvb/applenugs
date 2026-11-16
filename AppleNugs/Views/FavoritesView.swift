@@ -1,12 +1,17 @@
 import SwiftUI
 
-/// The Favorites destination: followed artists as text chips, then saved shows
-/// as a cover-art grid (newest saved first). Stacked sections, fully themed.
+/// The Favorites destination: followed artists as photo tiles (`ArtistTile`, as
+/// on Home's crate), then saved shows as a cover-art grid (newest saved first).
+/// Stacked sections, fully themed.
 struct FavoritesView: View {
     @Environment(AppModel.self) private var app
     @Environment(\.theme) private var theme
 
     private var favorites: FavoritesStore { app.favorites }
+
+    /// Followed artists' photos, by id. Empty until the lookup lands (and for
+    /// good if it fails) — tiles show the monogram meanwhile.
+    @State private var avatars: [String: URL] = [:]
 
     var body: some View {
         ScrollView {
@@ -25,6 +30,13 @@ struct FavoritesView: View {
         }
         .background(theme.palette.base)
         .navigationTitle("Favorites")
+        // Re-asks only when the followed set changes; known photos are
+        // remembered on AppModel, so a follow adds one lookup, not a refetch.
+        .task(id: favorites.artists.map(\.id)) {
+            let ids = favorites.artists.map(\.id)
+            guard !ids.isEmpty else { return }
+            avatars = (try? await app.artistAvatars(ids: ids)) ?? avatars
+        }
     }
 
     private func sectionTitle(_ text: String) -> some View {
@@ -36,29 +48,11 @@ struct FavoritesView: View {
     private var artistsSection: some View {
         VStack(alignment: .leading, spacing: 12) {
             sectionTitle("Artists")
-            LazyVGrid(columns: [GridItem(.adaptive(minimum: 150, maximum: 240), spacing: 10)],
-                      alignment: .leading, spacing: 10) {
+            LazyVGrid(columns: [GridItem(ArtistTile.column, spacing: ArtistTile.spacing)],
+                      alignment: .leading, spacing: ArtistTile.spacing) {
                 ForEach(favorites.artists) { fav in
                     NavigationLink(value: Route.artist(ArtistEntry(id: fav.id, name: fav.name))) {
-                        HStack {
-                            Text(fav.name)
-                                .font(theme.type.body(13))
-                                .foregroundStyle(theme.palette.textPrimary)
-                                .lineLimit(1)
-                            Spacer(minLength: 0)
-                        }
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 9)
-                        .background {
-                            RoundedRectangle(cornerRadius: 9, style: .continuous)
-                                .fill(theme.palette.raised)
-                        }
-                        // Chips on the shelf with a frost keyline, as on Home.
-                        .overlay {
-                            RoundedRectangle(cornerRadius: 9, style: .continuous)
-                                .strokeBorder(theme.palette.hairline, lineWidth: 1)
-                        }
-                        .contentShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
+                        ArtistTile(name: fav.name, photo: avatars[fav.id])
                     }
                     .buttonStyle(.plain)
                     .contextMenu {
