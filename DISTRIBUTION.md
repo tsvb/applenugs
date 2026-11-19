@@ -81,8 +81,15 @@ testers or the App Store by accident.
 
 One-time setup, in App Store Connect (the API can't create apps):
 
+0. **Sign Xcode into the team's Apple ID** (Xcode → Settings → Accounts).
+   Without it `xcodebuild` reports "No Accounts" at export: development
+   builds get by on the team's wildcard profile, but an App Store export needs
+   an explicit App ID and a distribution profile, which only an account can
+   create. With it, `-allowProvisioningUpdates` registers `com.timvbs.yeti.ios`
+   and the profile on the first run (or register the ID by hand at
+   developer.apple.com → Identifiers).
 1. **Apps → ＋ → New App.** Platform iOS; bundle ID `com.timvbs.yeti.ios`
-   (Xcode's automatic signing already registered it); any SKU (e.g. `yeti-ios`).
+   (it appears once registered — step 0); any SKU (e.g. `yeti-ios`).
    The name must be unique across the whole App Store even for a
    TestFlight-only app, so plain "Yeti" is likely taken; keep "nugs" out of it
    (a trademark). Testers' home screens show `CFBundleDisplayName` ("Yeti")
