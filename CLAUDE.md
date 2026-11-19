@@ -229,7 +229,7 @@ v1.5 release is backed up at `~/AppleNugs-1.5-build6-backup.zip`.
   `docs/superpowers/specs/`). Not yet scheduled: a release of everything since v1.5 (Path B, after the
   version bump) — Tim's call.
 - **Small follow-ups:** Home's Favorites strip still shows followed artists as text chips (could be photo
-  circles); decide the `.app`/`PRODUCT_NAME` rename; goosealmanac's deep-link doc should mention `yeti://`;
+  circles); publish a `timvanbenschoten.com/code/yeti` page and point the About menu, Credits and the appcast link at it; goosealmanac's deep-link doc should mention `yeti://`;
   `VideoPlayerService` pushes Now Playing every 0.5s during video; ask nugs.net for an official OAuth client;
   shuffle and repeat (collapse the partial transport-control implementations first — player-backlog memory).
 - **Unverified, needs hardware:** locked-screen listening credit on the Duo (play locked 5+ min; the
