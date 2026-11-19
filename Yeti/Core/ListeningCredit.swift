@@ -16,7 +16,7 @@ import Foundation
 ///
 /// Deliberately Foundation-only (no SwiftUI, no AVFoundation, no Observation)
 /// and taking loose primitives, so it compiles straight into the host-free
-/// `AppleNugsTests` target.
+/// `YetiTests` target.
 struct ListeningCredit: Equatable {
 
     /// What one commit hands to the store.

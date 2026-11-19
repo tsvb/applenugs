@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Scene id for the macOS Now Playing window (see AppleNugsApp). Shared so the
+/// Scene id for the macOS Now Playing window (see YetiApp). Shared so the
 /// window scene, the Window-menu command, and the transport expand buttons all
 /// reference one constant.
 enum NowPlayingWindow {

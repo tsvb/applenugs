@@ -22,7 +22,7 @@
 // The icon is the app icon's master art (docs/design/yeti-icon/yeti-icon-master.svg),
 // embedded with its ids prefixed so they can't collide with the banner's own.
 //
-// Colors are the `Theme.yeti` palette (AppleNugs/Theme/Theme.swift) — keep them in step.
+// Colors are the `Theme.yeti` palette (Yeti/Theme/Theme.swift) — keep them in step.
 //
 // Run:  swift scripts/generate-banner.swift
 //

@@ -67,7 +67,7 @@ enum NowPlayingMetaRouter {
     /// Stamped onto the main window by `WindowMinSizeUpdater`, because
     /// `NSApp.mainWindow` is whichever window is key — which is exactly the Now
     /// Playing window in the case we need to handle.
-    static let mainWindowIdentifier = "applenugs.main"
+    static let mainWindowIdentifier = "yeti.main"
 }
 
 // MARK: - installing the interceptor

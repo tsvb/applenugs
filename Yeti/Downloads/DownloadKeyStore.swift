@@ -34,7 +34,7 @@ final class DownloadKeyStore: @unchecked Sendable {
 
     private let lock = NSLock()
     private var cached: SymmetricKey?
-    private let service = Bundle.main.bundleIdentifier ?? "com.timvbs.applenugs"
+    private let service = Bundle.main.bundleIdentifier ?? "com.timvbs.yeti"
     private let account = "download-key"
 
     private var baseQuery: [String: Any] {

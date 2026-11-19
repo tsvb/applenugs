@@ -9,7 +9,7 @@ final class NugsIdentityTests: XCTestCase {
         let current = NugsIdentity.current
         XCTAssertTrue(current.userAgentAPI.hasPrefix("Yeti/"), current.userAgentAPI)
         XCTAssertTrue(current.userAgentAPI.contains(
-            " (unofficial; +https://github.com/tsvb/applenugs; macOS "), current.userAgentAPI)
+            " (unofficial; +https://github.com/tsvb/yeti; macOS "), current.userAgentAPI)
         XCTAssertTrue(current.userAgentAPI.hasSuffix(")"), current.userAgentAPI)
         XCTAssertEqual(current.userAgentLegacy, current.userAgentAPI)
         XCTAssertEqual(current.userAgentCDN, current.userAgentAPI)
@@ -55,13 +55,13 @@ final class NugsIdentityTests: XCTestCase {
     func testHonestUserAgentShape() {
         XCTAssertEqual(
             NugsIdentity.honestUserAgent(version: "1.5", platform: "iOS 26.5"),
-            "Yeti/1.5 (unofficial; +https://github.com/tsvb/applenugs; iOS 26.5)")
+            "Yeti/1.5 (unofficial; +https://github.com/tsvb/yeti; iOS 26.5)")
     }
 
     func testHonestUserAgentDropsAnEmptyPlatform() {
         XCTAssertEqual(
             NugsIdentity.honestUserAgent(version: "1.5", platform: "  "),
-            "Yeti/1.5 (unofficial; +https://github.com/tsvb/applenugs)")
+            "Yeti/1.5 (unofficial; +https://github.com/tsvb/yeti)")
     }
 
     func testHonestUserAgentNeverHasAnEmptyVersion() {

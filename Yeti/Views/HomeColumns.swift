@@ -3,7 +3,7 @@ import Foundation
 /// Column policy for iPhone Home.
 ///
 /// Deliberately SwiftUI-free so it compiles straight into the host-free
-/// `AppleNugsTests` bundle (the `PillLayout` trick).
+/// `YetiTests` bundle (the `PillLayout` trick).
 ///
 /// Home is one column on a phone. On a wide canvas — the iPhone Duo's inner
 /// display (~870pt of Home content flat, ~629pt upright; regular iPhones are

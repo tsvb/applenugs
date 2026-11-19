@@ -88,7 +88,7 @@ struct AlbumDetailView: View {
     }
 
     /// The artist, heavy 15 in snow, opening the artist page through the same
-    /// `x-applenugs-meta://` route the now-playing links use (the scene
+    /// `x-yeti-meta://` route the now-playing links use (the scene
     /// root's `.nowPlayingMetaLinks` resolves the name; a miss is a toast).
     /// A `.link` run in a `Text`, like `NowPlayingMetaText`, carrying its snow
     /// explicitly so SwiftUI doesn't paint it in the link tint.

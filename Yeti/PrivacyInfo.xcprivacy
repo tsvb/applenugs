@@ -3,7 +3,7 @@
 <plist version="1.0">
 <dict>
 	<!--
-	  AppleNugs collects no data on behalf of the developer. The user's
+	  Yeti collects no data on behalf of the developer. The user's
 	  nugs.net credentials are sent only to nugs.net's own identity server to
 	  obtain a session; the resulting tokens are stored locally in the app
 	  sandbox and never transmitted to the developer or any third party. There

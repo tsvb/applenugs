@@ -1,8 +1,8 @@
 # Yeti (formerly AppleNugs) — guide for Claude
 
 Native **macOS + iOS SwiftUI** player for nugs.net, shipped as **Yeti — an unofficial player for nugs.net**
-(named for the Goose song). Public repo `tsvb/applenugs`; the repo, bundle ids, Xcode project/target names
-and the `.app` file name still say AppleNugs on purpose (see Conventions → compliance). Unofficial: talks
+(named for the Goose song). Public repo `tsvb/yeti`; renamed all the way down (bundle ids, data, project, `.app`) on 2026-11-18 —
+see Conventions → compliance. Unofficial: talks
 nugs.net's private API with the user's own subscription and identifies itself honestly as Yeti. Developer ID /
 direct-download distribution, not the App Store (guideline 5.2.2). Latest release: **v1.5** (build 6), which
 predates the Yeti design — everything since is on `main`, unreleased. **Tim is the only user**: no migrations
@@ -27,16 +27,16 @@ or release notes for design changes, but keep his own data safe.
 - Install on Tim's devices to verify before landing anything visual — he judges on hardware.
 
 ## Environment & build
-- Work in the git **worktree** you were started in; don't `cd` to the main checkout (`/Users/tim/applenugs`).
-  `git -C /Users/tim/applenugs pull --ff-only` updates it when Tim asks.
-- `xcodegen generate` after any `project.yml` edit (`AppleNugs.xcodeproj/` is gitignored). Regenerate before
-  building. `APPLENUGS_TEAM_ID=<team> xcodegen generate` for device builds (team ID in memory, not the repo).
+- Work in the git **worktree** you were started in; don't `cd` to the main checkout (`/Users/tim/yeti`).
+  `git -C /Users/tim/yeti pull --ff-only` updates it when Tim asks.
+- `xcodegen generate` after any `project.yml` edit (`Yeti.xcodeproj/` is gitignored). Regenerate before
+  building. `YETI_TEAM_ID=<team> xcodegen generate` for device builds (team ID in memory, not the repo).
 - **Toolchain:** Xcode **27.1+** is required — the iOS app compiles iOS 27.1 SDK symbols (`ArrangementView`)
   behind `#available`, which an older SDK can't compile at all. CI pins `Xcode_27.1.app` and asserts it;
   locally `xcode-select` points at Xcode 27.2. Deployment floors: macOS 14.0, iOS 26.1 (for
   `tabViewBottomAccessory(isEnabled:)`; see `project.yml`).
-- Schemes: `AppleNugs` (macOS, `-destination 'platform=macOS'`), `AppleNugs-iOS`
-  (`'generic/platform=iOS Simulator'` or `'platform=iOS,id=<udid>'`), `AppleNugsTests` (host-free unit tests
+- Schemes: `Yeti` (macOS, `-destination 'platform=macOS'`), `Yeti-iOS`
+  (`'generic/platform=iOS Simulator'` or `'platform=iOS,id=<udid>'`), `YetiTests` (host-free unit tests
   — pure Foundation files compiled straight into the bundle via `project.yml`, no `@testable`; take the count
   from the suite, not from docs).
 - **Always verify with a fresh `-derivedDataPath`** (incremental builds can report a false clean), and keep
@@ -50,8 +50,8 @@ or release notes for design changes, but keep his own data safe.
   never registers a new phone → `0xe8008012`), then `xcrun devicectl device install app --device <udid> <app>`.
   Trust `devicectl list devices` over `xctrace`. A running VPN on the Mac hangs every `devicectl` call.
 - **Mac local install** must be **Developer ID-signed** (ad-hoc + hardened runtime can't load Sparkle) —
-  recipe in the `applenugs-local-install-signing` memory. Every built `.app` registers `applenugs://`; after
-  installing, `lsregister -u` the build-folder copy and `lsregister -f /Applications/AppleNugs.app`.
+  recipe in the `applenugs-local-install-signing` memory. Every built `.app` registers `yeti://` and `applenugs://`; after
+  installing, `lsregister -u` the build-folder copy and `lsregister -f /Applications/Yeti.app`.
 - **Duo simulator:** needs its own runtime (iOS 27.1 `24A94425`). Xcode 27 has no Simulator.app — open
   `/Applications/Xcode.app/Contents/Applications/DeviceHub.app`; folding/rotating are on-screen controls only,
   so poses need Tim. `simctl io <udid> screenshot --display=1` (outer) / `--display=3` (inner); a black inner
@@ -62,7 +62,7 @@ or release notes for design changes, but keep his own data safe.
 ### Design system
 - **Yeti is the only design** (macOS + iOS, dark only). The five old themes, their picker, the transport and
   miniplayer variants, the art-color pipeline, wash and grain were deleted 2026-11-07. ONE token struct,
-  `Theme` (`AppleNugs/Theme/Theme.swift`, the only place literal hex lives): `palette` (semantic roles —
+  `Theme` (`Yeti/Theme/Theme.swift`, the only place literal hex lives): `palette` (semantic roles —
   `base`/`raised`/`hairline`, `textPrimary`/`textSecondary`/`textIdle`, `accent` = foil, `playState` = sale
   yellow, `cardStock`, `stickerInk`, the sticker stock stops, `segmentThumb`, `videoErrorBackdrop`, the
   bubble's plastic), `type` (size-taking font closures) and `copy` (the app's voice). `Theme.yeti` is the
@@ -71,7 +71,7 @@ or release notes for design changes, but keep his own data safe.
 - **Foil means time.** The root tint is snow (`palette.textPrimary`), so system controls never paint an
   accent fill; foil is applied explicitly only where time moves (scrubs, the pill ring, the sweep, the caret,
   download/resume progress).
-- **Components** live in `AppleNugs/Theme/Components/`: `BlisterPack` (card stock + bubble, `PackArt`,
+- **Components** live in `Yeti/Theme/Components/`: `BlisterPack` (card stock + bubble, `PackArt`,
   `BlisterGlass`; the card's top padding is DERIVED from the hang slot + clearance + halo — don't copy the
   sheet's 30–34pt tops back), the stickers (`StickerStock`, `PlaySticker`, `PriceSticker`, `RowSticker`,
   `LabelSticker`), `FoilSweep` (reads no time), `YetiButtonStyles` (+ the macOS foil focus outline),
@@ -83,7 +83,7 @@ or release notes for design changes, but keep his own data safe.
   the loading/miss fallback. Show covers stay square.
 - **Design pages:** `docs/design/yeti-theme/` (`yeti-theme.html` token sheet, `yeti-surfaces.html`,
   `yeti-decisions.html` — Tim's rulings); superseded mockups are in its `archive/`. App icon:
-  `AppleNugs/AppIcon.icon` (Icon Composer; concepts in `docs/design/yeti-icon/`, rendered by
+  `Yeti/AppIcon.icon` (Icon Composer; concepts in `docs/design/yeti-icon/`, rendered by
   `scripts/render-app-icon.py`). The README banner is generated by `scripts/generate-banner.swift`.
 - **Never quote the Goose song's lyrics** in the app or docs (copyrighted) — paraphrase only. The app's
   copy lines ("It's on its way", "Says so on the box", "The nice list"…) are cleared as paraphrase.
@@ -101,10 +101,10 @@ or release notes for design changes, but keep his own data safe.
   show/video pages, now playing, the pill or the Mac miniplayer: there the artist is a name on a cover.
 
 ### Platforms and layout
-- **macOS vs iOS:** `AppleNugs/macOS/` and `AppleNugs/iOS/` are per-platform (excluded from the other
+- **macOS vs iOS:** `Yeti/macOS/` and `Yeti/iOS/` are per-platform (excluded from the other
   target); everything else is shared. Keep the untouched platform building.
 - **`DashboardPanel.swift` is SHARED**, not macOS code: iOS presents it as a sheet from `NowPlayingScreen`
-  and beside it in `NowPlayingArrangement`. Anything under `AppleNugs/macOS/` it calls MUST sit behind
+  and beside it in `NowPlayingArrangement`. Anything under `Yeti/macOS/` it calls MUST sit behind
   `#if os(macOS)` — the macOS build won't catch the iOS break.
 - **Leaf views own the ~4Hz tick.** `DashboardPanel` is a `ScrollView`+`VStack` (NOT a `List` — macOS-26
   `NSTableView` reentrancy). Only leaf views may read `currentTime`: `MiniPlayerScrubTrack`, `BufferedRow`,
@@ -116,7 +116,7 @@ or release notes for design changes, but keep his own data safe.
   `player.current`, never on `nowPick`/`specs` (`startCurrent()` nils them every track change). Unknown
   values degrade to `"—"`, dimmed via `foregroundStyle` ONLY (a font/weight change moves the row height);
   `"--:--"` is reserved for clocks.
-- **Dashboard miniplayer** (`AppleNugs/macOS/MiniPlayer/`, macOS only): `DashboardMiniPlayer` shows the idle
+- **Dashboard miniplayer** (`Yeti/macOS/MiniPlayer/`, macOS only): `DashboardMiniPlayer` shows the idle
   line or `MiniPlayerStandard` (the blister-pack miniplayer); shared leaves in `MiniPlayerParts.swift`. The
   inspector column is pinned `min: 340, ideal: 340, max: 380` because a real 44-char venue clips below 340.
 - **Duration-less streams:** a stream that reports no duration must not pin a scrub thumb hard right
@@ -152,7 +152,7 @@ or release notes for design changes, but keep his own data safe.
 ### Navigation and metadata
 - **Now-playing metadata is clickable** (`NowPlayingMetaText` + pure `NowPlayingMetaLine`): artist and show
   are separate `.link` runs inside ONE `Text(AttributedString)` — never an HStack of Buttons (several sites
-  have no layout slack, the pill above all). Taps arrive as `x-applenugs-meta://` URLs, intercepted by
+  have no layout slack, the pill above all). Taps arrive as `x-yeti-meta://` URLs, intercepted by
   `.nowPlayingMetaLinks(app:ui:)` at all THREE scene roots (`RootView`, `IOSRootView`, the macOS Now Playing
   `Window`). **The interceptor MUST return `.systemAction` for foreign URLs** or the video page's donation
   links break. Links are invisible at rest (each run carries the surrounding color) and get a dotted
@@ -199,9 +199,11 @@ or release notes for design changes, but keep his own data safe.
   play needs a subscription check within 30 days. No Reveal in Finder or export. Keep
   `isEntireLengthAvailableOnDemand = true` in `SealedAssetLoader` (without it AVFoundation buffers whole
   files; a test guards it), and keep the player tick off in the background.
-- **Display-only rename:** bundle ids `com.timvbs.applenugs*`, `Application Support/AppleNugs/`, the Keychain
-  service, the Sparkle feed + EdDSA key, the repo and `PRODUCT_NAME` (`AppleNugs.app`) are deliberately
-  unchanged (DISTRIBUTION.md lays out the `.app` rename trade-off).
+- **Full rename (2026-11-18):** bundle ids `com.timvbs.yeti*`, `Application Support/Yeti/`, the Keychain
+  service (= bundle id), `Yeti.app`, repo `tsvb/yeti`, feed `raw.githubusercontent.com/tsvb/yeti/main/appcast.xml`
+  (EdDSA key unchanged). A new bundle id is a NEW app: no Sparkle path from AppleNugs installs, and data
+  moves by hand (DISTRIBUTION.md → Naming). Kept on purpose: the `applenugs://` alias, the v1.5 asset name
+  `AppleNugs-1.5.dmg`, and `timvanbenschoten.com/code/applenugs` (no `/code/yeti` page yet).
 
 ### Verifying UI
 - Launching the app is fine, but quit it afterward, don't grind on stuck GUI automation, and never enter
@@ -213,7 +215,7 @@ or release notes for design changes, but keep his own data safe.
 `DISTRIBUTION.md` is the runbook (Path B: Developer ID → notarize → DMG → GitHub release → Sparkle appcast),
 with the details and gotchas in the `applenugs-distribution` memory (the `ExportOptions` `TEAMID` template,
 where `generate_appcast` lives after `rm -rf build`). Push the version bump BEFORE `gh release create`.
-**Tim's `/Applications/AppleNugs.app` is a local Developer ID build of `main`**, not the v1.5 release, though
+**Tim's `/Applications/Yeti.app` is a local Developer ID build of `main`**, not the v1.5 release, though
 it still reads 1.5 (6) — bump `MARKETING_VERSION`/`CURRENT_PROJECT_VERSION` before any real release. The
 v1.5 release is backed up at `~/AppleNugs-1.5-build6-backup.zip`.
 

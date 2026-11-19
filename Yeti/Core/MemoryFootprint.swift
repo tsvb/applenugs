@@ -13,7 +13,7 @@ import Foundation
 /// A DEBUG sampler would have been exactly the periodic background wake-up
 /// this readout exists to catch.
 ///
-/// Pure Darwin + Foundation, compiled into `AppleNugsTests`.
+/// Pure Darwin + Foundation, compiled into `YetiTests`.
 struct MemoryFootprint: Equatable, Sendable {
     /// `phys_footprint`, bytes.
     var current: UInt64

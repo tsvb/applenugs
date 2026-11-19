@@ -54,7 +54,7 @@ final class SealedAssetLoader: NSObject, AVAssetResourceLoaderDelegate, @uncheck
     private(set) var largestRequestedLength = 0
     #endif
 
-    let queue = DispatchQueue(label: "com.timvbs.applenugs.sealed-loader", qos: .userInitiated)
+    let queue = DispatchQueue(label: "com.timvbs.yeti.sealed-loader", qos: .userInitiated)
     private let fileURL: URL
     private let keyProvider: @Sendable () throws -> SymmetricKey
 

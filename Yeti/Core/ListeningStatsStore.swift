@@ -40,7 +40,7 @@ final class ListeningStatsStore {
     init() {
         let dir = FileManager.default
             .urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
-            .appendingPathComponent("AppleNugs", isDirectory: true)
+            .appendingPathComponent("Yeti", isDirectory: true)
         try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         fileURL = dir.appendingPathComponent("listening.json")
         load()

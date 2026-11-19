@@ -7,7 +7,7 @@ rim; all on night navy.
 
 Writes, under --out (default: the repo root):
 
-  AppleNugs/AppIcon.icon/            the shipping icon, an Icon Composer document. actool compiles
+  Yeti/AppIcon.icon/            the shipping icon, an Icon Composer document. actool compiles
     icon.json                        it for both targets (ASSETCATALOG_COMPILER_APPICON_NAME:
     Assets/*.svg                     AppIcon) into the Liquid Glass icon stack for iOS/macOS 26+
                                      (default, dark, clear, tinted) plus a flat AppIcon.icns /
@@ -305,7 +305,7 @@ def main():
     ap.add_argument("--no-previews", action="store_true")
     a = ap.parse_args()
 
-    icon = os.path.join(a.out, "AppleNugs", "AppIcon.icon")
+    icon = os.path.join(a.out, "Yeti", "AppIcon.icon")
     assets = os.path.join(icon, "Assets")
     if os.path.isdir(assets):
         shutil.rmtree(assets)

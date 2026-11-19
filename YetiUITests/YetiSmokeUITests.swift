@@ -4,7 +4,7 @@ import XCTest
 /// `.loggedIn`, stub catalog, no network). Proves the app boots into the main
 /// layout, every sidebar section is selectable, and the core chrome exists.
 @MainActor
-final class AppleNugsSmokeUITests: XCTestCase {
+final class YetiSmokeUITests: XCTestCase {
 
     private var app: XCUIApplication!
 

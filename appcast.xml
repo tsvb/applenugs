@@ -8,7 +8,7 @@
             <sparkle:version>6</sparkle:version>
             <sparkle:shortVersionString>1.5</sparkle:shortVersionString>
             <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-            <enclosure url="https://github.com/tsvb/applenugs/releases/download/v1.5/AppleNugs-1.5.dmg" length="4097532" type="application/octet-stream" sparkle:edSignature="2pTzvghg/jaVhql4LbRBiqRXPaahHp+sAKQBo17C8H6dyC4rqJmO6rjj+ZO6mKpQVAtdmvFv1r1Xl2MVKRfdCg=="/>
+            <enclosure url="https://github.com/tsvb/yeti/releases/download/v1.5/AppleNugs-1.5.dmg" length="4097532" type="application/octet-stream" sparkle:edSignature="2pTzvghg/jaVhql4LbRBiqRXPaahHp+sAKQBo17C8H6dyC4rqJmO6rjj+ZO6mKpQVAtdmvFv1r1Xl2MVKRfdCg=="/>
         </item>
     </channel>
 </rss>

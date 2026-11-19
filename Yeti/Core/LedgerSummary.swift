@@ -4,7 +4,7 @@ import Foundation
 ///
 /// Takes loose primitives rather than the `ListeningStats` table — the
 /// `SignalReadout` idiom, and for the same reason: it stays Foundation-only and
-/// compiles straight into the host-free `AppleNugsTests` target. The view does
+/// compiles straight into the host-free `YetiTests` target. The view does
 /// the one-line mapping from the stored dictionary.
 ///
 /// Every string the ledger shows is produced here, so the formatting is pinned

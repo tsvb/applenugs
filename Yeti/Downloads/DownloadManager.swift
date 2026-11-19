@@ -29,7 +29,7 @@ final class DownloadManager: NSObject {
     /// manager immediately moves each finished file here under its trackId.
     private let inboxDir: URL
 
-    init(identifier: String = "com.timvbs.applenugs.downloads",
+    init(identifier: String = "com.timvbs.yeti.downloads",
          onProgress: @escaping ProgressHandler,
          onComplete: @escaping CompletionHandler) {
         self.onProgress = onProgress
@@ -37,7 +37,7 @@ final class DownloadManager: NSObject {
 
         let dir = FileManager.default
             .urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
-            .appendingPathComponent("AppleNugs/DownloadInbox", isDirectory: true)
+            .appendingPathComponent("Yeti/DownloadInbox", isDirectory: true)
         try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         // Anything parked here belongs to a completion that never routed
         // (previous run died mid-handoff) — full-size audio files, purge.

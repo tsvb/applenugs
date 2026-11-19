@@ -152,16 +152,16 @@ final class NowPlayingMetaLineTests: XCTestCase {
         // donation links in VideoDetailView's webcast notes stop working.
         XCTAssertNil(Target(url: URL(string: "https://nugs.net")!))
         XCTAssertNil(Target(url: URL(string: "applenugs://show/2024-03-14")!))
-        XCTAssertNil(Target(url: URL(string: "x-applenugs-meta://elsewhere?name=Goose")!))
-        XCTAssertNil(Target(url: URL(string: "x-applenugs-meta://artist")!))
-        XCTAssertNil(Target(url: URL(string: "x-applenugs-meta://artist?name=")!))
-        XCTAssertNil(Target(url: URL(string: "x-applenugs-meta://show?title=No%20Id")!))
+        XCTAssertNil(Target(url: URL(string: "x-yeti-meta://elsewhere?name=Goose")!))
+        XCTAssertNil(Target(url: URL(string: "x-yeti-meta://artist")!))
+        XCTAssertNil(Target(url: URL(string: "x-yeti-meta://artist?name=")!))
+        XCTAssertNil(Target(url: URL(string: "x-yeti-meta://show?title=No%20Id")!))
     }
 
     /// A show link only needs its id to work; a missing title degrades to an
     /// empty title hint rather than dropping the navigation.
     func testShowURLSurvivesAMissingTitle() {
-        XCTAssertEqual(Target(url: URL(string: "x-applenugs-meta://show?id=42")!),
+        XCTAssertEqual(Target(url: URL(string: "x-yeti-meta://show?id=42")!),
                        .show(id: "42", title: ""))
     }
 }

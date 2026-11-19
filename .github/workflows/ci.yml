@@ -59,8 +59,8 @@ jobs:
       - name: Build
         run: |
           xcodebuild \
-            -project AppleNugs.xcodeproj \
-            -scheme AppleNugs \
+            -project Yeti.xcodeproj \
+            -scheme Yeti \
             -configuration Debug \
             -derivedDataPath build \
             CODE_SIGNING_ALLOWED=NO \
@@ -69,8 +69,8 @@ jobs:
       - name: Test (host-free unit bundle)
         run: |
           xcodebuild test \
-            -project AppleNugs.xcodeproj \
-            -scheme AppleNugsTests \
+            -project Yeti.xcodeproj \
+            -scheme YetiTests \
             -destination 'platform=macOS' \
             -derivedDataPath build-tests \
             CODE_SIGNING_ALLOWED=NO
@@ -78,8 +78,8 @@ jobs:
       - name: Build iOS (Simulator)
         run: |
           xcodebuild \
-            -project AppleNugs.xcodeproj \
-            -scheme AppleNugs-iOS \
+            -project Yeti.xcodeproj \
+            -scheme Yeti-iOS \
             -configuration Debug \
             -destination 'generic/platform=iOS Simulator' \
             -derivedDataPath build-ios \

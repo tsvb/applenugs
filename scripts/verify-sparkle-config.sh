@@ -7,10 +7,10 @@
 #
 set -euo pipefail
 
-INFO="AppleNugs/Info.plist"
-ENT="AppleNugs/AppleNugs.entitlements"
+INFO="Yeti/Info.plist"
+ENT="Yeti/Yeti.entitlements"
 EXPECTED_KEY="WKOnGAu8QlsO9cDxBQ8peCSLDuVRTmx+p5MsruHqUFE="
-EXPECTED_FEED="https://raw.githubusercontent.com/tsvb/applenugs/main/appcast.xml"
+EXPECTED_FEED="https://raw.githubusercontent.com/tsvb/yeti/main/appcast.xml"
 
 fail() { echo "❌ sparkle-config: $1" >&2; exit 1; }
 pass() { echo "✅ $1"; }

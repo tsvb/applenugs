@@ -2,18 +2,15 @@
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/images/banner-dark.svg">
-  <!-- TODO(yeti): the banner's lettering is outlined paths that still read "AppleNugs".
-       Regenerate both SVGs with the Yeti wordmark (swift scripts/generate-banner.swift),
-       then update this alt text to match. -->
-  <img src="docs/images/banner-light.svg" alt="AppleNugs — a native Mac and iPhone client for nugs.net" width="838">
+  <img src="docs/images/banner-light.svg" alt="Yeti — an unofficial player for nugs.net" width="838">
 </picture>
 
 Yeti is an unofficial player for nugs.net. Not affiliated with, authorized, sponsored or endorsed by nugs.net or Apple. Requires your own nugs.net subscription.
 
-[![CI](https://github.com/tsvb/applenugs/actions/workflows/ci.yml/badge.svg)](https://github.com/tsvb/applenugs/actions/workflows/ci.yml)
-[![Latest release](https://img.shields.io/github/v/release/tsvb/applenugs?label=release&color=E8A13A)](https://github.com/tsvb/applenugs/releases/latest)
-[![macOS 14+](https://img.shields.io/badge/macOS-14%2B-A89B8B)](https://github.com/tsvb/applenugs/releases/latest)
-[![License](https://img.shields.io/github/license/tsvb/applenugs?color=A89B8B)](LICENSE)
+[![CI](https://github.com/tsvb/yeti/actions/workflows/ci.yml/badge.svg)](https://github.com/tsvb/yeti/actions/workflows/ci.yml)
+[![Latest release](https://img.shields.io/github/v/release/tsvb/yeti?label=release&color=E8A13A)](https://github.com/tsvb/yeti/releases/latest)
+[![macOS 14+](https://img.shields.io/badge/macOS-14%2B-A89B8B)](https://github.com/tsvb/yeti/releases/latest)
+[![License](https://img.shields.io/github/license/tsvb/yeti?color=A89B8B)](LICENSE)
 
 </div>
 
@@ -23,12 +20,12 @@ seams, offline shows on the phone, lossless where nugs offers it, and five front
 from the gear this music was recorded on. It plays what your subscription already gives you, and
 nothing else.
 
-**Why Yeti?** It's named for the Goose song "Yeti." The project began life as AppleNugs, which
-is why the repository, the bundle identifiers and the installed `.app` still carry that name.
+**Why Yeti?** It's named for the Goose song "Yeti." The project began life as AppleNugs; the
+v1.5 download below still carries that name.
 
-**[Download Yeti 1.5 for macOS](https://github.com/tsvb/applenugs/releases/download/v1.5/AppleNugs-1.5.dmg)** — 4 MB,
+**[Download Yeti 1.5 for macOS](https://github.com/tsvb/yeti/releases/download/v1.5/AppleNugs-1.5.dmg)** — 4 MB,
 signed and notarized, opens with no Gatekeeper warning, and updates itself from then on.
-Requires macOS 14 or later. [All releases](https://github.com/tsvb/applenugs/releases).
+Requires macOS 14 or later. [All releases](https://github.com/tsvb/yeti/releases).
 
 <img src="docs/images/mac-window.png" alt="The Yeti window on macOS in the Tape Room theme: artist sidebar, an expanded show, the dashboard inspector open on the right showing format and buffer, and the transport bar along the bottom" width="838">
 
@@ -121,7 +118,7 @@ There is no App Store build and no TestFlight.
 
 ## Install
 
-Download the [signed DMG](https://github.com/tsvb/applenugs/releases/latest), drag it to
+Download the [signed DMG](https://github.com/tsvb/yeti/releases/latest), drag it to
 Applications, and let Sparkle handle updates from there. "Check for Updates…" lives under the app
 menu.
 
@@ -132,7 +129,7 @@ generated, not committed:
 
 ```sh
 xcodegen generate
-open AppleNugs.xcodeproj   # then ⌘R
+open Yeti.xcodeproj   # then ⌘R
 ```
 
 Sign in on nugs.net's own page in the system browser sheet. Tokens are stored in the
@@ -160,16 +157,16 @@ field has focus. On the iPhone, transport lives on screen and on the lock screen
 <details>
 <summary><b>Build it yourself</b> — schemes, the iOS target, tests</summary>
 
-Everything under `AppleNugs/` is shared by both apps except `AppleNugs/macOS/` (Sparkle glue,
-keyboard monitor, split-view shell, desktop faceplate) and `AppleNugs/iOS/` (app entry, tab
+Everything under `Yeti/` is shared by both apps except `Yeti/macOS/` (Sparkle glue,
+keyboard monitor, split-view shell, desktop faceplate) and `Yeti/iOS/` (app entry, tab
 shell, now-playing screens, the pill, orientation gate). `project.yml` excludes each platform
 directory from the other target; small in-file divergences use `#if os(...)`.
 
-Schemes are `AppleNugs` (macOS), `AppleNugs-iOS`, and `AppleNugsTests`. The project must stay
+Schemes are `Yeti` (macOS), `Yeti-iOS`, and `YetiTests`. The project must stay
 warning-free under `SWIFT_STRICT_CONCURRENCY=complete` on both app schemes.
 
 ```sh
-xcodebuild -project AppleNugs.xcodeproj -scheme AppleNugs -configuration Debug build
+xcodebuild -project Yeti.xcodeproj -scheme Yeti -configuration Debug build
 ```
 
 The committed configuration is **ad-hoc signed** so it builds in CI and on any machine with no
@@ -180,13 +177,13 @@ Apple Developer team. Producing a signed, notarized build is covered in
 make it stick, export your team ID first:
 
 ```sh
-export APPLENUGS_TEAM_ID=YOUR_TEAM_ID   # then: xcodegen generate
+export YETI_TEAM_ID=YOUR_TEAM_ID   # then: xcodegen generate
 ```
 
 or headless against the simulator:
 
 ```sh
-xcodebuild -project AppleNugs.xcodeproj -scheme AppleNugs-iOS \
+xcodebuild -project Yeti.xcodeproj -scheme Yeti-iOS \
   -configuration Debug -destination 'generic/platform=iOS Simulator' \
   CODE_SIGNING_ALLOWED=NO build
 ```
@@ -198,7 +195,7 @@ whole cycle without a cable.
 **Tests.** 269 pure-logic tests in a host-free bundle — no app launch, no `@testable`:
 
 ```sh
-xcodebuild test -project AppleNugs.xcodeproj -scheme AppleNugsTests
+xcodebuild test -project Yeti.xcodeproj -scheme YetiTests
 ```
 
 </details>
@@ -229,7 +226,7 @@ codebase already, and they want collapsing into one before either of those gets 
 
 No CONTRIBUTING, no code of conduct, no issue templates, no security policy. This is one
 person's music player, and the paperwork would be set dressing. If something is broken,
-[open an issue](https://github.com/tsvb/applenugs/issues) and say what it did.
+[open an issue](https://github.com/tsvb/yeti/issues) and say what it did.
 
 ## License
 

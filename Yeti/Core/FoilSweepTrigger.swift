@@ -2,7 +2,7 @@ import Foundation
 
 /// When Yeti's one flourish — the foil band crossing the now-playing title —
 /// should run. Pure Foundation so the four rules are pinned host-free in
-/// `AppleNugsTests`; the `foilSweep(identity:isPlaying:)` modifier holds one
+/// `YetiTests`; the `foilSweep(identity:isPlaying:)` modifier holds one
 /// of these and runs the band when `observe` says so.
 ///
 /// The whole state is the identity that last swept. The rule: **fire when

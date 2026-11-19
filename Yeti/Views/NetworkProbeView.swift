@@ -135,7 +135,7 @@ final class NetworkProbeRunner {
 /// honest identity versus the legacy Android one. Reached from the account menu
 /// ("Network Probe (Debug)") on both platforms; `-UITestShowNetworkProbe`
 /// presents it at launch for screenshots. Shared by the iOS and macOS shells,
-/// so nothing here may come from `AppleNugs/macOS/` or `AppleNugs/iOS/`.
+/// so nothing here may come from `Yeti/macOS/` or `Yeti/iOS/`.
 struct NetworkProbeView: View {
     @Environment(AppModel.self) private var app
     @Environment(\.dismiss) private var dismiss

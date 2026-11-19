@@ -3,7 +3,7 @@ import Foundation
 // Pure policies that keep the app's traffic to nugs.net modest (Phase A item 5
 // of docs/superpowers/specs/2026-11-06-yeti-compliance-design.md): a token
 // bucket for API/resolver requests, playback retry backoff, the artist catalog
-// cache and its paging cap. Pure Foundation, compiled into AppleNugsTests —
+// cache and its paging cap. Pure Foundation, compiled into YetiTests —
 // every clock is a parameter.
 
 /// A token bucket in reservation form: `reserve` always takes a token, going

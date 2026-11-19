@@ -2,7 +2,7 @@ import AVFAudio
 import SwiftUI
 
 @main
-struct AppleNugsiOSApp: App {
+struct YetiIOSApp: App {
     @State private var app = AppModel()
     @State private var ui: UIState
     @Environment(\.scenePhase) private var scenePhase

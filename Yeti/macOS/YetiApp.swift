@@ -2,7 +2,7 @@ import SwiftUI
 import Sparkle
 
 @main
-struct AppleNugsApp: App {
+struct YetiApp: App {
     @State private var app = AppModel()
     @State private var ui = UIState()
     #if DEBUG

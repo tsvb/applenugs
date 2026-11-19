@@ -9,7 +9,7 @@ import Foundation
 /// ONE resolve: tier 7 first, and only if it has no usable stream the other
 /// tiers one at a time, stopping at the first usable one. Never in parallel.
 ///
-/// Pure Foundation, compiled into AppleNugsTests. The networking loop that
+/// Pure Foundation, compiled into YetiTests. The networking loop that
 /// drives it lives in `NugsClient.resolveStreams`.
 enum StreamTierPlan {
     /// The tier asked first: ALAC 16 on the probe's track.

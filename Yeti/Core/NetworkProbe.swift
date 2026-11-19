@@ -6,7 +6,7 @@ import Foundation
 // spec (docs/superpowers/specs/2026-11-06-yeti-compliance-design.md) — Tim runs
 // it with his real session and decides the honest identity from the results.
 //
-// Pure Foundation, compiled into AppleNugsTests. The networking lives in the
+// Pure Foundation, compiled into YetiTests. The networking lives in the
 // DEBUG extension at the bottom of NugsClient.swift; the sequencing (one
 // request at a time, a second apart) in NetworkProbeView.swift.
 

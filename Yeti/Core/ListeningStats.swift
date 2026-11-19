@@ -23,7 +23,7 @@ struct ArtistTally: Codable, Equatable {
 /// load-bearing rather than a nicety.
 ///
 /// Deliberately Foundation-only so it compiles straight into the host-free
-/// `AppleNugsTests` target.
+/// `YetiTests` target.
 struct ListeningStats: Codable, Equatable {
     var artists: [String: ArtistTally]
     var version: Int

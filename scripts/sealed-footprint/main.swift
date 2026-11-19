@@ -10,7 +10,7 @@
 //
 // Build (from the repo root; output goes wherever you like):
 //   swiftc -O -swift-version 5 -o /tmp/sealed-footprint scripts/sealed-footprint/main.swift \
-//       AppleNugs/Downloads/SealedFile.swift AppleNugs/Downloads/SealedAssetLoader.swift
+//       Yeti/Downloads/SealedFile.swift Yeti/Downloads/SealedAssetLoader.swift
 // Run:
 //   /tmp/sealed-footprint gen  <dir>                     # ~1.3 GB of fixtures; delete after
 //   /tmp/sealed-footprint play <dir> flac|m4a plain|sealed [early|late]

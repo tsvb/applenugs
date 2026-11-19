@@ -13,7 +13,7 @@ import Foundation
 /// agents and the web player's Referer; those strings now exist only in DEBUG
 /// builds, as the Network Probe's control (`legacyAndroidForProbe`).
 ///
-/// Pure Foundation, compiled into AppleNugsTests.
+/// Pure Foundation, compiled into YetiTests.
 struct NugsIdentity: Sendable, Equatable {
     /// JSON hosts: id.nugs.net (token, userinfo), subscriptions.nugs.net, and
     /// the streamapi/catalog JSON endpoints.
@@ -58,7 +58,7 @@ struct NugsIdentity: Sendable, Equatable {
 
     // --- the honest identity -------------------------------------------------
 
-    static let projectURL = "https://github.com/tsvb/applenugs"
+    static let projectURL = "https://github.com/tsvb/yeti"
 
     /// `Yeti/<version> (unofficial; +<project URL>; <platform>)` — names the
     /// app, says it is unofficial, and gives nugs somewhere to look. The

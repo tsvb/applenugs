@@ -220,7 +220,7 @@ final class NetworkProbeTests: XCTestCase {
             Yeti network probe — 2026-11-06T12:00:00Z
             App: Yeti 1.5 · iOS 26.5
             Track: Away From the Mire — Billy Strings (trackID t1, show s1)
-            Yeti UA: Yeti/1.5 (unofficial; +https://github.com/tsvb/applenugs; iOS 26.5)
+            Yeti UA: Yeti/1.5 (unofficial; +https://github.com/tsvb/yeti; iOS 26.5)
             Android UA (API, CDN): NugsNet/3.26.724 (Android; 7.1.2; Asus; ASUS_Z01QD; Scale/2.0; en)
             Android UA (resolve): nugsnetAndroid
             Referer (CDN): https://play.nugs.net/

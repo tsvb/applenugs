@@ -135,7 +135,7 @@ final class DeepLinkYetiSchemeTests: XCTestCase {
         // Pins the allow-list: a near-miss or a foreign scheme stays inert.
         XCTAssertEqual(DeepLink.schemes, ["yeti", "applenugs"])
         XCTAssertNil(DeepLink.parse(URL(string: "yeti-local://show/2024-04-20?artist=Goose")!))
-        XCTAssertNil(DeepLink.parse(URL(string: "x-applenugs-meta://show/2024-04-20?artist=Goose")!))
+        XCTAssertNil(DeepLink.parse(URL(string: "x-yeti-meta://show/2024-04-20?artist=Goose")!))
         XCTAssertNil(DeepLink.parse(URL(string: "nugsnet://show/2024-04-20?artist=Goose")!))
     }
 }

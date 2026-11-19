@@ -93,7 +93,7 @@ final class DownloadStore {
 
         let dir = FileManager.default
             .urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
-            .appendingPathComponent("AppleNugs/Downloads", isDirectory: true)
+            .appendingPathComponent("Yeti/Downloads", isDirectory: true)
         try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         root = dir
         manifestURL = dir.appendingPathComponent("manifest.json")

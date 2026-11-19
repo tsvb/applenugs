@@ -17,7 +17,7 @@ import Foundation
 ///
 /// Deliberately Foundation-only, and taking loose fields rather than a
 /// `QueueTrack` (which lives in `PlayerService.swift` and drags in AVFoundation),
-/// so it compiles straight into the host-free `AppleNugsTests` target.
+/// so it compiles straight into the host-free `YetiTests` target.
 enum NowPlayingMetaLine {
 
     /// Where a segment points. Carries everything the destination needs: the
@@ -133,7 +133,7 @@ extension NowPlayingMetaLine.Target {
     /// through it would invite LaunchServices and any future `onOpenURL`
     /// handler into a purely in-process hop. Unregistered means the worst case
     /// if an interceptor is ever missing is a silent no-op, not a relaunch.
-    static let scheme = "x-applenugs-meta"
+    static let scheme = "x-yeti-meta"
 
     private static let artistHost = "artist"
     private static let showHost = "show"

@@ -19,7 +19,7 @@ TOOLS="${SPARKLE_TOOLS:-build/sparkle-tools/bin}"
 # DMG (Yeti-X.Y.html for Yeti-X.Y.dmg; generate_appcast pairs them by basename)
 # in the enclosure dir is embedded as the description.
 "$TOOLS/generate_appcast" \
-  --download-url-prefix "https://github.com/tsvb/applenugs/releases/download/${TAG}/" \
+  --download-url-prefix "https://github.com/tsvb/yeti/releases/download/${TAG}/" \
   --link "https://timvanbenschoten.com/code/applenugs" \
   "$ENCLOSURE_DIR"
 

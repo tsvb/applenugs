@@ -1,4 +1,4 @@
-name: AppleNugs
+name: Yeti
 
 options:
   bundleIdPrefix: com.timvbs
@@ -29,13 +29,13 @@ packages:
     from: "2.6.0"
 
 targets:
-  AppleNugs:
+  Yeti:
     type: application
     platform: macOS
     sources:
-      # AppleNugs/iOS is the iOS target's platform-specific code (entry point,
+      # Yeti/iOS is the iOS target's platform-specific code (entry point,
       # navigation shell, UIKit shims); everything else is shared.
-      - path: AppleNugs
+      - path: Yeti
         excludes:
           - "iOS/**"
           # The iOS target's generated Info.plist materializes next to the Mac
@@ -43,13 +43,13 @@ targets:
           - "Info-iOS.plist"
     scheme:
       testTargets:
-        - AppleNugsTests
-        - AppleNugsUITests
+        - YetiTests
+        - YetiUITests
       gatherCoverageData: false
     dependencies:
       - package: Sparkle
     entitlements:
-      path: AppleNugs/AppleNugs.entitlements
+      path: Yeti/Yeti.entitlements
       properties:
         # Minimal sandbox: outbound network only. No file/mic/camera access —
         # all persistence stays inside the app's own container.
@@ -62,14 +62,12 @@ targets:
           - "$(PRODUCT_BUNDLE_IDENTIFIER)-spks"
           - "$(PRODUCT_BUNDLE_IDENTIFIER)-spki"
     info:
-      path: AppleNugs/Info.plist
+      path: Yeti/Info.plist
       properties:
-        # User-facing name is "Yeti" (display-only rename). CFBundleName drives
-        # the macOS menu-bar app name, the app menu's About/Hide/Quit items and
-        # the About panel; CFBundleDisplayName drives Finder/Spotlight where the
-        # bundle is localized. Bundle id, PRODUCT_NAME (so the .app file name),
-        # the Application Support folder and the Keychain service all stay
-        # "applenugs" — renaming those would lose data, logins or updates.
+        # CFBundleName drives the macOS menu-bar app name, the app menu's
+        # About/Hide/Quit items and the About panel; CFBundleDisplayName drives
+        # Finder/Spotlight where the bundle is localized. (The project was
+        # AppleNugs until 2026-11-18; only the applenugs:// alias remains.)
         CFBundleName: Yeti
         CFBundleDisplayName: Yeti
         # Deep-link schemes: `yeti://` plus `applenugs://`, kept as an alias
@@ -78,17 +76,17 @@ targets:
         # to avoid clashing with the official nugs.net app. Handles
         # yeti://show/<date>?artist=…&song=…&venue=…&media=audio|video
         CFBundleURLTypes:
-          - CFBundleURLName: com.timvbs.applenugs.deeplink
+          - CFBundleURLName: com.timvbs.yeti.deeplink
             CFBundleURLSchemes:
               - applenugs
               - yeti
         # One process per bundle id. LaunchServices otherwise keys "is this the
         # running handler?" on the registered on-disk PATH, so with several
-        # AppleNugs.app copies around (an export, a DMG staging dir, /Applications)
+        # Yeti.app copies around (an export, a DMG staging dir, /Applications)
         # a link can launch a fresh instance from a different path instead of
         # reaching the live one. This does NOT stop the duplicate-window bug —
         # that is a scene decision, handled by handlesExternalEvents in
-        # AppleNugsApp — the two guard different layers.
+        # YetiApp — the two guard different layers.
         LSMultipleInstancesProhibited: true
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
@@ -103,12 +101,12 @@ targets:
         # outbound HTTPS and the downloader XPC is not needed in the sandbox.
         # SUEnableAutomaticChecks is omitted intentionally: leaving it unset
         # causes Sparkle to ask the user on first launch ("Check automatically?").
-        SUFeedURL: https://raw.githubusercontent.com/tsvb/applenugs/main/appcast.xml
+        SUFeedURL: https://raw.githubusercontent.com/tsvb/yeti/main/appcast.xml
         SUPublicEDKey: WKOnGAu8QlsO9cDxBQ8peCSLDuVRTmx+p5MsruHqUFE=
         SUEnableInstallerLauncherService: true
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.timvbs.applenugs
+        PRODUCT_BUNDLE_IDENTIFIER: com.timvbs.yeti
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
         # Hardened runtime is required for Developer ID notarization (the
@@ -127,29 +125,28 @@ targets:
         DEVELOPMENT_TEAM: ""
 
   # iOS app (iPhone-first; personal install via Xcode — see DISTRIBUTION.md).
-  # Shares all sources except AppleNugs/macOS. No Sparkle (macOS-only); no
+  # Shares all sources except Yeti/macOS. No Sparkle (macOS-only); no
   # entitlements (plain Keychain needs none, and there is no iOS sandbox opt-in).
-  # App icon: AppleNugs/AppIcon.icon, an Icon Composer document picked up by
-  # both targets through the AppleNugs glob (regenerate it with
+  # App icon: Yeti/AppIcon.icon, an Icon Composer document picked up by
+  # both targets through the Yeti glob (regenerate it with
   # scripts/render-app-icon.py). XcodeGen 2.45.4 types it `wrapper.icon`, not
   # Xcode's `folder.iconcomposer.icon`; Xcode still hands it to actool, which
   # also derives the pre-26 flat icons (AppIcon.icns, AppIcon60x60@2x.png).
-  AppleNugs-iOS:
+  Yeti-iOS:
     type: application
     platform: iOS
     sources:
-      - path: AppleNugs
+      - path: Yeti
         excludes:
           - "macOS/**"
           # The Mac target's Info.plist and sandbox entitlements are not iOS
           # resources; without these excludes the plist collides with the
           # processed Info-iOS.plist in the bundle.
           - "Info.plist"
-          - "AppleNugs.entitlements"
+          - "Yeti.entitlements"
     info:
-      path: AppleNugs/Info-iOS.plist
+      path: Yeti/Info-iOS.plist
       properties:
-        # Display-only rename, mirroring the Mac target (bundle id unchanged).
         CFBundleName: Yeti
         CFBundleDisplayName: Yeti
         # Deep-link schemes, mirroring the Mac target: `yeti://` plus the
@@ -158,7 +155,7 @@ targets:
         # official nugs.net app. No LaunchServices keys here: iOS has no
         # path-keyed handler model, so nothing to disambiguate.
         CFBundleURLTypes:
-          - CFBundleURLName: com.timvbs.applenugs.deeplink
+          - CFBundleURLName: com.timvbs.yeti.deeplink
             CFBundleURLSchemes:
               - applenugs
               - yeti
@@ -176,143 +173,145 @@ targets:
         NSHumanReadableCopyright: "Yeti is an unofficial player for nugs.net, for personal use with your own subscription. Not affiliated with nugs.net or Apple."
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.timvbs.applenugs.ios
-        # AppleNugs/AppIcon.icon (see the comment above this target).
+        PRODUCT_BUNDLE_IDENTIFIER: com.timvbs.yeti.ios
+        # Yeti.app, matching the Mac product (the target name stays Yeti-iOS).
+        PRODUCT_NAME: Yeti
+        # Yeti/AppIcon.icon (see the comment above this target).
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
         # iPhone only for v1; iPad runs the iPhone layout in compatibility mode.
         TARGETED_DEVICE_FAMILY: "1"
-        # Personal install: set APPLENUGS_TEAM_ID in your shell before running
+        # Personal install: set YETI_TEAM_ID in your shell before running
         # xcodegen (persists across regenerations), or select the team in Xcode
         # each time. Expands to empty when unset — CI/simulator unaffected.
         CODE_SIGN_STYLE: Automatic
-        DEVELOPMENT_TEAM: ${APPLENUGS_TEAM_ID}
+        DEVELOPMENT_TEAM: ${YETI_TEAM_ID}
 
   # Pure-logic unit tests: host-free (no app dependency, no @testable, no
   # TEST_HOST) — the files under test compile directly into the bundle, so
   # tests run without launching (and code-signing) the host app, which would
   # otherwise trigger AppModel.bootstrap()/Keychain access on every test run.
   # Keep only Foundation-clean files in this list.
-  AppleNugsTests:
+  YetiTests:
     type: bundle.unit-test
     platform: macOS
     sources:
-      - AppleNugsTests
-      - AppleNugs/Core/Models.swift
-      - AppleNugs/Downloads/DownloadManifest.swift
-      - AppleNugs/Downloads/StreamPickDownload.swift
-      - AppleNugs/Core/WebcastPartition.swift
-      - AppleNugs/Core/WebcastRouting.swift
-      - AppleNugs/Core/JSON.swift
-      - AppleNugs/Core/NugsConstants.swift
-      - path: AppleNugs/Core/NugsIdentity.swift
+      - YetiTests
+      - Yeti/Core/Models.swift
+      - Yeti/Downloads/DownloadManifest.swift
+      - Yeti/Downloads/StreamPickDownload.swift
+      - Yeti/Core/WebcastPartition.swift
+      - Yeti/Core/WebcastRouting.swift
+      - Yeti/Core/JSON.swift
+      - Yeti/Core/NugsConstants.swift
+      - path: Yeti/Core/NugsIdentity.swift
         # The one place request identity (User-Agent / Referer) is decided;
         # pure Foundation, so the honest-UA formatting is covered host-free.
-      - path: AppleNugs/Core/StreamTierPlan.swift
+      - path: Yeti/Core/StreamTierPlan.swift
         # Which stream-resolver tier is asked, in what order, and when to stop
         # (tier 7 first, the rest one at a time). Pure Foundation, so the
         # "one request per track, never parallel" walk is covered host-free.
-      - path: AppleNugs/Core/PoliteNetworking.swift
+      - path: Yeti/Core/PoliteNetworking.swift
         # Pure request-pacing policies: the API token bucket, playback retry
         # backoff, the artist-catalog TTL cache and page cap. Clocks injected.
-      - path: AppleNugs/Core/NetworkProbe.swift
+      - path: Yeti/Core/NetworkProbe.swift
         # The DEBUG Network Probe's pure half (plan, parsing, report text).
         # DEBUG-only like the screen it serves; tests build Debug.
-      - path: AppleNugs/Core/MemoryFootprint.swift
+      - path: Yeti/Core/MemoryFootprint.swift
         # The probe's memory readout: task_info(TASK_VM_INFO) footprint, the
         # kernel's lifetime peak, jetsam headroom, and their formatting.
         # Darwin + Foundation only.
-      - path: AppleNugs/Core/Catalog.swift
+      - path: Yeti/Core/Catalog.swift
         # Foundation-only parsing; compiled in (not @testable) to keep tests host-free.
-      - path: AppleNugs/Core/DeepLink.swift
+      - path: Yeti/Core/DeepLink.swift
         # Compiled into the test bundle too (not @testable-imported) so the
         # logic tests stay host-free. DeepLink.swift is pure Foundation.
-      - path: AppleNugs/Views/ArtistLibrary/CrateSection.swift
+      - path: Yeti/Views/ArtistLibrary/CrateSection.swift
         # Same deal: pure Foundation (no SwiftUI, no Route/NugsConstants), so
         # the crate's month-sectioning and filter logic tests stay host-free.
-      - path: AppleNugs/iOS/NowPlayingPill/PillLayout.swift
+      - path: Yeti/iOS/NowPlayingPill/PillLayout.swift
         # Pure Foundation policy (control sets, width budgets) for the iOS
         # now-playing pill; compiled in rather than @testable-imported so the
         # test bundle stays host-free — and so macOS-hosted tests can cover
         # iOS-only layout logic.
-      - path: AppleNugs/Views/HomeColumns.swift
+      - path: Yeti/Views/HomeColumns.swift
         # Pure Foundation policy: when iPhone Home splits into two columns
         # (measured width, the Duo's inner display). Same deal as PillLayout.
-      - path: AppleNugs/Theme/Transport/NowPlayingMetaLine.swift
+      - path: Yeti/Theme/Transport/NowPlayingMetaLine.swift
         # Pure Foundation policy for the now-playing meta line's linkable runs
         # (and their URL vocabulary). Compiled in so the segmentation rules —
         # including the guard that the rendered text still matches the flat
         # string it replaced — stay host-free.
-      - path: AppleNugs/Core/SignalReadout.swift
+      - path: Yeti/Core/SignalReadout.swift
         # Pure Foundation policy for the dashboard inspector's Signal rows. The
         # tests pin the constant-shape invariant that keeps the section from
         # collapsing while a track loads, so it has to be compiled in here.
-      - path: AppleNugs/Views/NowPlaying/NowPlayingFit.swift
+      - path: Yeti/Views/NowPlaying/NowPlayingFit.swift
         # Pure Foundation scale-to-fit for the full-screen players' fixed-
         # proportion parts (Click Wheel's pad); compiled in so the "an
         # unmeasured pass never shrinks" rule stays covered host-free.
-      - path: AppleNugs/iOS/NowPlayingDismissDrag.swift
+      - path: Yeti/iOS/NowPlayingDismissDrag.swift
         # Pure Foundation swipe-down-to-close policy for the iOS full-screen
         # player (track / follow / dismiss thresholds and the per-drag latch).
         # Compiled in rather than @testable-imported so the test bundle stays
         # host-free — and so macOS-hosted tests can cover iOS-only gesture logic.
-      - path: AppleNugs/iOS/NowPlayingColumns.swift
+      - path: Yeti/iOS/NowPlayingColumns.swift
         # Pure Foundation layout policy for the iOS full-screen player (alone /
         # arrangement / explicit columns, and the queue column's width).
         # Compiled in for the same host-free reason as the drag policy above.
-      - path: AppleNugs/Downloads/SealedFile.swift
+      - path: Yeti/Downloads/SealedFile.swift
         # The sealed-download format (Foundation + CryptoKit): header, chunk/
         # range math, streaming seal, random-access open. DownloadManifest
         # (above) depends on it for `isSealed`.
-      - path: AppleNugs/Downloads/OfflineAccessPolicy.swift
+      - path: Yeti/Downloads/OfflineAccessPolicy.swift
         # The 30-day offline-play window, clock injected.
-      - path: AppleNugs/Downloads/SealedAssetLoader.swift
+      - path: Yeti/Downloads/SealedAssetLoader.swift
         # AVFoundation + CryptoKit only (the Keychain key is injected), so the
         # integration tests can play a sealed FLAC/ALAC through it host-free.
-      - path: AppleNugs/Core/ListeningStats.swift
+      - path: Yeti/Core/ListeningStats.swift
         # The listening tally table (artist counters + the folded-name key).
         # Pure Foundation; compiled in so the merge rule — two spellings of one
         # artist folding to a single tally — is covered host-free.
-      - path: AppleNugs/Core/ListeningCredit.swift
+      - path: Yeti/Core/ListeningCredit.swift
         # Pure Foundation policy holding the per-track listening accumulator:
         # the [0,1]s tick clamp, the min(50%, 240s) play threshold, and the
         # commit-boundary batching that keeps ticking seconds OUT of the
         # store's @Observable state. Compiled in to stay host-free.
-      - path: AppleNugs/Core/LedgerSummary.swift
+      - path: Yeti/Core/LedgerSummary.swift
         # Pure Foundation presentation logic for the Home listening ledger —
         # totals, top-5 ranking, and the display copy. Compiled in so the
         # rendered strings are pinned by test rather than by eyeball.
-      - path: AppleNugs/Core/PriceStickerLabel.swift
+      - path: Yeti/Core/PriceStickerLabel.swift
         # Pure Foundation policy for Yeti's lossless price sticker: what it
         # prints, what VoiceOver reads, and when a known lossy pick hides it.
-      - path: AppleNugs/Core/FoilSweepTrigger.swift
+      - path: Yeti/Core/FoilSweepTrigger.swift
         # Pure Foundation policy for Yeti's one-shot title sweep: fires once per
         # new track while playing, never on pause/resume or at launch.
     scheme:
       testTargets:
-        - AppleNugsTests
+        - YetiTests
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.timvbs.applenugs.tests
+        PRODUCT_BUNDLE_IDENTIFIER: com.timvbs.yeti.tests
         GENERATE_INFOPLIST_FILE: YES
         CODE_SIGN_STYLE: Manual
         CODE_SIGN_IDENTITY: "-"
         DEVELOPMENT_TEAM: ""
         ENABLE_HARDENED_RUNTIME: NO
 
-  # UI tests. `bundle.ui-testing` + a dependency on AppleNugs makes XcodeGen set
-  # TEST_TARGET_NAME=AppleNugs (the app is the test host). The app is driven into
+  # UI tests. `bundle.ui-testing` + a dependency on Yeti makes XcodeGen set
+  # TEST_TARGET_NAME=Yeti (the app is the test host). The app is driven into
   # a logged-in stub state via the `-UITEST` launch argument (see AppModel).
-  AppleNugsUITests:
+  YetiUITests:
     type: bundle.ui-testing
     platform: macOS
     sources:
-      - AppleNugsUITests
+      - YetiUITests
     dependencies:
-      - target: AppleNugs
+      - target: Yeti
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.timvbs.applenugs.uitests
+        PRODUCT_BUNDLE_IDENTIFIER: com.timvbs.yeti.uitests
         GENERATE_INFOPLIST_FILE: YES
         # UI-test bundles don't run under the app sandbox; no entitlements.
         # Match the app's ad-hoc signing so XCTest can launch the signed host app.

@@ -11,14 +11,14 @@ import Security
 final class SessionStore {
     private let fileURL: URL
     private let keychain = KeychainItem(
-        service: Bundle.main.bundleIdentifier ?? "com.timvbs.applenugs",
+        service: Bundle.main.bundleIdentifier ?? "com.timvbs.yeti",
         account: "session")
     private var cached: PersistedSession?
 
     init() {
         let dir = FileManager.default
             .urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
-            .appendingPathComponent("AppleNugs", isDirectory: true)
+            .appendingPathComponent("Yeti", isDirectory: true)
         try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         fileURL = dir.appendingPathComponent("session.json")
     }

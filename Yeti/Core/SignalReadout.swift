@@ -19,7 +19,7 @@ import Foundation
 ///
 /// Deliberately Foundation-only (no SwiftUI, no AVFoundation) and taking loose
 /// primitives rather than `PlayerService.AudioSpecs`, so it compiles straight
-/// into the host-free `AppleNugsTests` target.
+/// into the host-free `YetiTests` target.
 enum SignalReadout {
 
     /// The one placeholder for every unknown scalar. Matches the em-dash the

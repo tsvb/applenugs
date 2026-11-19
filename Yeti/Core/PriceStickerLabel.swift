@@ -3,7 +3,7 @@ import Foundation
 /// What the Yeti price sticker (the lossless badge) says — or `nil` when it
 /// should not be shown at all.
 ///
-/// Pure Foundation so the rules are pinned host-free in `AppleNugsTests`. The
+/// Pure Foundation so the rules are pinned host-free in `YetiTests`. The
 /// view (`PriceSticker`) feeds it plain values; `PriceStickerLabel(player:)`
 /// in `PriceSticker.swift` reads them off `PlayerService` correctly.
 ///
