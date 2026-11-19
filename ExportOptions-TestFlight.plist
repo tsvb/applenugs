@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Export options for an INTERNAL TestFlight upload of the iOS app.
+  scripts/testflight-upload.sh writes a copy with the real team ID into
+  build/ (git-ignored); this committed file keeps the TEAMID placeholder.
+  See DISTRIBUTION.md → Internal TestFlight.
+
+  testFlightInternalTestingOnly: the build can only go to internal testers
+  (App Store Connect team members) and can never be submitted for Beta App
+  Review or the App Store. manageAppVersionAndBuildNumber is off so the
+  numbers in project.yml are exactly what testers see.
+-->
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>method</key>
+	<string>app-store-connect</string>
+	<key>destination</key>
+	<string>upload</string>
+	<key>teamID</key>
+	<string>TEAMID</string>
+	<key>signingStyle</key>
+	<string>automatic</string>
+	<key>testFlightInternalTestingOnly</key>
+	<true/>
+	<key>manageAppVersionAndBuildNumber</key>
+	<false/>
+	<key>uploadSymbols</key>
+	<true/>
+</dict>
+</plist>

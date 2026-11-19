@@ -61,16 +61,51 @@ Everything else in this repo (icon, privacy manifest, sandbox, hardened
 runtime, export compliance, versioning) is genuinely required and is done.
 Nothing here is a reason not to *try* — just go in informed.
 
-### iOS target: personal install only
+### iOS target: personal install or internal TestFlight
 
 `Yeti-iOS` is deliberately outside both distribution paths above. iOS has
 no Developer ID equivalent: the App Store and *external* TestFlight both pass
-Apple review, where the 5.2.2 exposure applies in full. (Internal TestFlight,
-for up to 100 members of your App Store Connect team, has no human review.) The supported
-route is building from source with your own team selected and installing on
-your own devices (a paid developer account keeps a personal install signed for
-one year; free accounts expire after 7 days). Sparkle does not apply to iOS —
-update by rebuilding.
+Apple review, where the 5.2.2 exposure applies in full. Two routes avoid it:
+
+- **Internal TestFlight** (below) — for up to 100 members of your App Store
+  Connect team. No human review; builds expire after 90 days.
+- **Personal install** — build from source with your own team and install on
+  your own devices (a paid account keeps it signed for a year; free accounts
+  expire after 7 days). Sparkle does not apply to iOS — update by rebuilding.
+
+#### Internal TestFlight
+
+The export options (`ExportOptions-TestFlight.plist`) set
+`testFlightInternalTestingOnly`, so these builds can never be sent to external
+testers or the App Store by accident.
+
+One-time setup, in App Store Connect (the API can't create apps):
+
+1. **Apps → ＋ → New App.** Platform iOS; bundle ID `com.timvbs.yeti.ios`
+   (Xcode's automatic signing already registered it); any SKU (e.g. `yeti-ios`).
+   The name must be unique across the whole App Store even for a
+   TestFlight-only app, so plain "Yeti" is likely taken; keep "nugs" out of it
+   (a trademark). Testers' home screens show `CFBundleDisplayName` ("Yeti")
+   whatever the record is called.
+2. **TestFlight → Internal Testing → ＋** to create a group (e.g. "Friends"),
+   with automatic distribution on so new builds reach it without a click.
+3. **Testers** must be App Store Connect users first: **Users and Access → ＋**,
+   the narrowest role (Customer Support or Marketing; App Manager and above see
+   much more), then add them to the group. They accept two emails (the team
+   invite and the TestFlight invite) and install the TestFlight app.
+
+Each upload (`CURRENT_PROJECT_VERSION` must be new to App Store Connect, so bump
+it first; Xcode must be signed into the team's Apple ID):
+
+```sh
+YETI_TEAM_ID=<TEAMID> scripts/testflight-upload.sh
+```
+
+It refuses a dirty tree, archives a Release build with automatic signing, and
+uploads. Processing takes roughly 5–30 minutes; then the build appears in the
+group. Testers need iOS 26.1+ and their own nugs.net subscription.
+
+#### Personal install
 
 The whole install cycle runs headlessly once the device is paired and has
 Developer Mode on (`export YETI_TEAM_ID=<TEAMID>` makes the team survive

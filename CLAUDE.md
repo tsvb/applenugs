@@ -215,8 +215,11 @@ or release notes for design changes, but keep his own data safe.
 `DISTRIBUTION.md` is the runbook (Path B: Developer ID → notarize → DMG → GitHub release → Sparkle appcast),
 with the details and gotchas in the `applenugs-distribution` memory (the `ExportOptions` `TEAMID` template,
 where `generate_appcast` lives after `rm -rf build`). Push the version bump BEFORE `gh release create`.
-**Tim's `/Applications/Yeti.app` is a local Developer ID build of `main`**, not the v1.5 release, though
-it still reads 1.5 (6) — bump `MARKETING_VERSION`/`CURRENT_PROJECT_VERSION` before any real release. The
+**Tim's `/Applications/Yeti.app` is a local Developer ID build of `main`**, not the v1.5 release. `main` is
+1.6 (7) since the first TestFlight upload; the next Mac release ships as 1.6.
+**Internal TestFlight (iOS):** `YETI_TEAM_ID=<team> scripts/testflight-upload.sh` (internal-only export —
+`testFlightInternalTestingOnly`; DISTRIBUTION.md → Internal TestFlight). Bump `CURRENT_PROJECT_VERSION` before
+EVERY upload (Mac + iOS share it). Never external TestFlight: Beta App Review would cite 5.2.2. The
 v1.5 release is backed up at `~/AppleNugs-1.5-build6-backup.zip`.
 
 ## State — as of 2026-11-16

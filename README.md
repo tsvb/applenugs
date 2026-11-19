@@ -101,8 +101,8 @@ offers to listen offline directly.
 
 <img src="docs/images/ios.png" alt="The Yeti iPhone app on the Library tab's Downloads segment: one Goose show saved offline at 12 tracks and 1.2 GB, with the now-playing pill above the tab bar showing cover art ringed by a progress arc" width="380">
 
-The iPhone app is **personal-install only** — build it yourself and run it on your own device.
-There is no App Store build and no TestFlight.
+The iPhone app isn't on the App Store. Build it yourself and run it on your own device; a few
+invited friends get it through internal TestFlight.
 
 ## Unofficial, and what that means
 
