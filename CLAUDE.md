@@ -222,17 +222,19 @@ where `generate_appcast` lives after `rm -rf build`). Push the version bump BEFO
 EVERY upload (Mac + iOS share it). Never external TestFlight: Beta App Review would cite 5.2.2. The
 v1.5 release is backed up at `~/AppleNugs-1.5-build6-backup.zip`.
 
-## State — as of 2026-11-16
+## State — as of 2026-11-19
 - `main` carries the whole Yeti design (PR #8), the Duo two-column Home + pill show line (#9), the restored
   queue's cover art (#10), crate tiles (#11), artist photos on the crate (#12), the Artists list (#13), the
-  Mac (#14), the artist page (#15) and Favorites (#16). Tim's Duo and Mac run this build.
+  Mac (#14), the artist page (#15), Favorites (#16), Home's favorites strip as photo tiles (#18), artist
+  photos in search (#19) and on the nice list, plus show covers on Downloads rows (#20), the full rename to
+  Yeti (#21), and the internal TestFlight upload path with the 1.6 (7) bump.
+- **In flight:** the `docs-refresh` branch (a README for the Yeti design) waits on Mac + Duo screenshots.
 - **Next on Tim's list:** the Duo nightstand/tent work (Tim chose all three: a propped-open player with
   clock + night dimming, a tent-pose landscape player that auto-opens, a StandBy Now Playing widget — start
   with a DEBUG pose probe; `onHingeChange` gives only status + angle, there is no posture enum; spec local in
   `docs/superpowers/specs/`). Not yet scheduled: a release of everything since v1.5 (Path B, after the
   version bump) — Tim's call.
-- **Small follow-ups:** Home's Favorites strip still shows followed artists as text chips (could be photo
-  circles); publish a `timvanbenschoten.com/code/yeti` page and point the About menu, Credits and the appcast link at it; goosealmanac's deep-link doc should mention `yeti://`;
+- **Small follow-ups:** publish a `timvanbenschoten.com/code/yeti` page and point the About menu, Credits and the appcast link at it; goosealmanac's deep-link doc should mention `yeti://`;
   `VideoPlayerService` pushes Now Playing every 0.5s during video; ask nugs.net for an official OAuth client;
   shuffle and repeat (collapse the partial transport-control implementations first — player-backlog memory).
 - **Unverified, needs hardware:** locked-screen listening credit on the Duo (play locked 5+ min; the
